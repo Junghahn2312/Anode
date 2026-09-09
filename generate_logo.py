@@ -3,75 +3,83 @@ import sys
 import numpy as np
 from PIL import Image, ImageFilter
 
-def generate_anode_logo(output_dir=".", size=1254):
+def generate_anode_sphere_logo(output_dir=".", size=1254):
     os.makedirs(output_dir, exist_ok=True)
     
-    # Coordinate grid: -1 to 1 centered
     y, x = np.ogrid[:size, :size]
     cx = (size - 1) / 2.0
     cy = (size - 1) / 2.0
     
-    # Normalized coordinates
-    u = (x - cx) / (size * 0.40)
-    v = (y - cy) / (size * 0.40)
+    R = size * 0.40
+    dx = (x - cx)
+    dy = (y - cy)
+    r = np.sqrt(dx**2 + dy**2)
+    r2 = (dx**2 + dy**2) / (R**2)
+    inside_sphere = r2 <= 1.0
     
-    r = np.sqrt(u**2 + v**2)
-    theta = np.arctan2(v, u)
+    z = np.where(inside_sphere, np.sqrt(np.maximum(0.0, 1.0 - r2)), 0.0)
     
-    # Anode energy node:
-    # 4-fold astroid-squircle symmetry, clean and balanced
-    # Base radius modulation
-    modulation = 0.30 * np.cos(4 * theta) + 0.04 * np.cos(8 * theta)
-    r_target = 0.78 + modulation
+    # Perspective latitude curvature matching user image
+    D = 2.7
+    y_3d = np.where(inside_sphere, (dy / R) * (1.0 - z / D), 0.0)
     
-    # Distance in pixels to the contour
-    scale = (size * 0.40)
-    dist_px = (r - r_target) * scale
+    # 7 luminous bands and 6 open transparent gaps
+    bands_def = [
+        (-0.085, 0.085),   # equator band
+        (0.205, 0.360),    # mid band 1 (+Y)
+        (-0.360, -0.205),  # mid band 1 (-Y)
+        (0.485, 0.630),    # high band 2 (+Y)
+        (-0.630, -0.485),  # high band 2 (-Y)
+        (0.745, 1.200),    # bottom cap (+Y)
+        (-1.200, -0.745)   # top cap (-Y)
+    ]
     
-    # Binary/Sharp mask with smooth 2px antialiased boundary
-    # Inside: dist_px < 0 -> alpha = 255
-    # Outside: dist_px > 0 -> alpha = 0
-    mask_alpha = np.clip(0.5 - dist_px * 0.5, 0.0, 1.0) * 255.0
+    d_list = []
+    for y0, y1 in bands_def:
+        center = (y0 + y1) / 2.0
+        half_w = (y1 - y0) / 2.0
+        d_list.append(np.abs(y_3d - center) - half_w)
+        
+    d_bands = np.minimum.reduce(d_list)
+    dist_bands_px = d_bands * R
+    dist_sphere_px = r - R
+    dist_comb_px = np.maximum(dist_sphere_px, dist_bands_px)
+    
+    # Strict Antialiased Binary Mask for particles
+    mask_alpha = np.clip(0.5 - dist_comb_px * 0.75, 0.0, 1.0) * 255.0
     mask_img = np.zeros((size, size, 4), dtype=np.uint8)
     mask_img[:, :, 0] = 255
     mask_img[:, :, 1] = 255
     mask_img[:, :, 2] = 255
     mask_img[:, :, 3] = mask_alpha.astype(np.uint8)
     
-    # Rim lighting
-    # Outer glow: decays outside the boundary (dist_px > 0)
-    outer_glow = np.exp(-np.maximum(0.0, dist_px)**2 / (2 * 16.0**2))
+    # 3D Normal Vector for lighting:
+    nx = np.where(inside_sphere, dx / R, 0.0)
+    ny = np.where(inside_sphere, dy / R, 0.0)
+    nz = z
     
-    # Inner rim bevel: decays sharply inside the boundary (dist_px < 0)
-    # Reaches near 0 by 50px inwards
-    inner_glow = np.exp(-np.maximum(0.0, -dist_px)**1.6 / (2 * 20.0**2))
-    # Cutoff inner glow completely if deeper than 65px
-    inner_glow = np.where(dist_px < -70.0, 0.0, inner_glow)
+    lx = -0.50
+    ly = -0.60
+    lz = 0.62
+    l_len = np.sqrt(lx**2 + ly**2 + lz**2)
+    lx /= l_len; ly /= l_len; lz /= l_len
     
-    rim = np.where(dist_px >= 0, outer_glow, inner_glow)
+    diffuse = np.clip(nx * lx + ny * ly + nz * lz, 0.0, 1.0)
     
-    # Directional specular highlight from top-left (angle -3pi/4)
-    light_angle = -3.0 * np.pi / 4.0
-    dmod = -0.30 * 4 * np.sin(4 * theta) - 0.04 * 8 * np.sin(8 * theta)
-    nx = np.cos(theta) - dmod * np.sin(theta) / r_target
-    ny = np.sin(theta) + dmod * np.cos(theta) / r_target
-    norm_len = np.sqrt(nx**2 + ny**2) + 1e-6
-    nx /= norm_len
-    ny /= norm_len
+    # Subtle bevel on bands
+    edge_dist = np.clip(-dist_comb_px, 0.0, 20.0)
+    bevel = np.clip(edge_dist / 6.0, 0.0, 1.0)
     
-    lx = np.cos(light_angle)
-    ly = np.sin(light_angle)
-    diffuse = np.clip(nx * lx + ny * ly, 0.0, 1.0)
-    
-    # Rim brightness: strong highlight on top-left, soft rim all around
-    rim_brightness = (0.50 + 0.50 * diffuse) * rim
-    alpha_channel = np.clip(rim_brightness * 255.0, 0.0, 255.0).astype(np.uint8)
+    band_lum = (0.75 + 0.25 * diffuse) * (0.88 + 0.12 * bevel)
+    aa_alpha = np.clip(-dist_comb_px * 0.5 + 0.5, 0.0, 1.0)
+    final_alpha = np.clip(band_lum * aa_alpha * 255.0, 0.0, 255.0).astype(np.uint8)
+    final_alpha = np.where(dist_comb_px > 1.0, 0, final_alpha)
     
     alpha_img = np.zeros((size, size, 4), dtype=np.uint8)
     alpha_img[:, :, 0] = 255
     alpha_img[:, :, 1] = 255
     alpha_img[:, :, 2] = 255
-    alpha_img[:, :, 3] = alpha_channel
+    alpha_img[:, :, 3] = final_alpha
     
     # Save master assets
     alpha_path = os.path.join(output_dir, "logo-alpha.png")
@@ -79,15 +87,12 @@ def generate_anode_logo(output_dir=".", size=1254):
     Image.fromarray(alpha_img).save(alpha_path)
     Image.fromarray(mask_img).save(mask_path)
     
-    # Social preview logo on pitch black background
+    # Social preview logo on pitch black background (clean crisp contrast)
     preview = Image.new("RGBA", (size, size), (0, 0, 0, 255))
     alpha_pil = Image.fromarray(alpha_img)
-    # Ambient halo bloom
-    bloom1 = alpha_pil.filter(ImageFilter.GaussianBlur(radius=32))
-    bloom2 = alpha_pil.filter(ImageFilter.GaussianBlur(radius=80))
-    # Soft composite
-    preview.paste(bloom2, (0, 0), bloom2)
-    preview.paste(bloom1, (0, 0), bloom1)
+    # Very subtle crisp ambient drop shadow
+    subtle_glow = alpha_pil.filter(ImageFilter.GaussianBlur(radius=12))
+    preview.paste(subtle_glow, (0, 0), subtle_glow)
     preview.paste(alpha_pil, (0, 0), alpha_pil)
     preview.convert("RGB").save(os.path.join(output_dir, "logo.png"))
     
@@ -100,8 +105,8 @@ def generate_anode_logo(output_dir=".", size=1254):
     fav32 = preview.resize((32, 32), Image.Resampling.LANCZOS)
     fav16 = preview.resize((16, 16), Image.Resampling.LANCZOS)
     fav32.save(os.path.join(output_dir, "favicon.ico"), format="ICO", sizes=[(16, 16), (32, 32)])
-    print(f"Refined Anode assets generated successfully in {output_dir}")
+    print(f"Generated clean 3D striped sphere assets in {output_dir}")
 
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "."
-    generate_anode_logo(out)
+    generate_anode_sphere_logo(out)

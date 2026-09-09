@@ -41,7 +41,6 @@
   /* Cursor light + pointer state */
   const light = document.querySelector('.light');
   let px = -1e4, py = -1e4;
-  let lx = innerWidth / 2, ly = innerHeight / 2;
 
   addEventListener('pointermove', e => {
     if (e.pointerType !== 'mouse') return;
@@ -76,7 +75,7 @@
 
   document.querySelectorAll('.hero, .sec').forEach(s => io.observe(s));
 
-  /* ---------- Particle & Logo Engine ---------- */
+  /* ---------- 3D Striped Sphere Particle & Dispersion Engine ---------- */
   const cv = document.getElementById('dust');
   const ctx = cv.getContext('2d');
   const stage1 = document.getElementById('stage');
@@ -84,7 +83,7 @@
   const mark = document.getElementById('mark');
 
   let W = 0, H = 0, DPR = 1, P = [];
-  let ready = false, t0 = 0, sY = 0;
+  let ready = false, t0 = 0;
   let markOn = false;
 
   const img = new Image();
@@ -109,11 +108,10 @@
   const L1 = plainLogo(stage1);
   const L2 = plainLogo(stage2);
 
-  const N = () => innerWidth < 700 ? 96 : 128;
+  const N = () => innerWidth < 700 ? 100 : 128;
 
   /* Hover state on logo stages */
   let M = 0, Mt = 0, noiseOff = 0;
-  let prevTop = true, fade = 1, lastL = 0, lastT = 0;
 
   [stage1, stage2].forEach(st => {
     st.addEventListener('pointerenter', e => {
@@ -158,34 +156,39 @@
         const inside = m[idx + 3] > 128;
         if (a < 0.05 && !inside) continue;
         const solid = inside || a > 0.45;
+        
+        // Scatter angles & radial distance for dispersion
         const ang = Math.random() * Math.PI * 2;
-        const dist = 0.5 + Math.random() * 0.9;
+        const dist = 0.6 + Math.random() * 0.9;
+        
         P.push({
           u: (x + 0.5) / n - 0.5,
           v: (y + 0.5) / n - 0.5,
           a,
           sx: Math.cos(ang) * dist,
-          sy: Math.sin(ang) * dist * 0.7 - 0.25,
+          sy: Math.sin(ang) * dist * 0.85,
           x: 0,
           y: 0,
-          vx: 0,
-          vy: 0,
+          vx: (Math.random() - 0.5) * 2,
+          vy: (Math.random() - 0.5) * 2,
           n: Math.random(),
           solid,
-          fall: Math.pow(Math.random(), 1.4),
           seed: Math.random() * 100,
-          spin: Math.random() - 0.5
+          spin: (Math.random() - 0.5) * 1.5,
+          twinkle: Math.random() * Math.PI * 2
         });
       }
     }
 
+    // Initialize particle positions at stage 1
+    const r1 = stage1.getBoundingClientRect();
+    const S = r1.width || 320;
+    const cx = r1.left + S / 2 || W / 2;
+    const cy = r1.top + S / 2 || H * 0.35;
     P.forEach(p => {
-      p.x = W / 2 + p.sx * W * 1.3;
-      p.y = H * 0.4 + p.sy * H * 1.3;
+      p.x = cx + p.u * S;
+      p.y = cy + p.v * S;
     });
-    const r0 = (prevTop ? stage1 : stage2).getBoundingClientRect();
-    lastL = r0.left;
-    lastT = r0.top;
   };
 
   const resize = () => {
@@ -208,144 +211,159 @@
     const t = (now - t0) / 1000;
     if (!ready) return;
 
-    const intro = reduced ? 1 : smooth(clamp((t - 0.15) / 1.9, 0, 1));
-    sY = lerp(sY, scrollY, 0.12);
-
     if (cv.clientWidth * DPR !== cv.width || cv.clientHeight * DPR !== cv.height) {
       resize();
     }
 
-    // Stages bounding boxes
+    // Stages bounding boxes in current viewport
     const r1 = stage1.getBoundingClientRect();
     const r2 = stage2.getBoundingClientRect();
-    const lag = scrollY - sY;
-    const c1 = r1.top + r1.height / 2 + lag;
-    const c2 = r2.top + r2.height / 2 + lag;
 
-    const a1 = 1 - Math.pow(clamp(scrollY / 300, 0, 1), 1.15);
-    const a2 = smooth(clamp((H * 1.2 - c2) / (H * 0.42), 0, 1));
-    const useTop = c1 > -r1.height * 0.5 && a1 > 0.001 && (a1 >= a2 || c2 > H);
-    const rect = useTop ? r1 : r2;
+    const S1 = r1.width;
+    const c1x = r1.left + S1 / 2;
+    const c1y = r1.top + S1 / 2;
 
-    if (useTop === prevTop) {
-      const dx = rect.left - lastL;
-      const dy = rect.top - lastT;
-      if (dx || dy) {
-        for (let i = 0; i < P.length; i++) {
-          P[i].x += dx;
-          P[i].y += dy;
-        }
-      }
-    }
-    lastL = rect.left;
-    lastT = rect.top;
+    const S2 = r2.width;
+    const c2x = r2.left + S2 / 2;
+    const c2y = r2.top + S2 / 2;
 
-    if (useTop !== prevTop) {
-      prevTop = useTop;
-      fade = 0;
-      const S2 = rect.width;
-      const cx2 = rect.left + S2 / 2;
-      const cy2 = rect.top + S2 / 2;
-      const sp2 = S2 * 1.3 + W * 0.3;
-      for (let i = 0; i < P.length; i++) {
-        const p = P[i];
-        p.x = cx2 + p.u * S2 + p.sx * sp2;
-        p.y = cy2 + p.v * S2 + p.sy * sp2;
-        p.vx = p.vy = 0;
-      }
+    // --- CONTINUOUS SCROLL PROGRESSION & DISPERSION LOGIC ---
+    // 1) Top assembly factor: 1 at scrollY=0, dissolves to 0 as you scroll past hero
+    const topAssembly = smooth(clamp(1 - scrollY / 240, 0, 1));
+    const topImgA = smooth(clamp((topAssembly - 0.45) / 0.55, 0, 1));
+
+    // 2) Bottom assembly factor: 0 in mid-page, rises to 1 as stage2 enters viewport center
+    const bottomAssembly = smooth(clamp((H * 0.88 - c2y) / (H * 0.42), 0, 1));
+    const bottomImgA = smooth(clamp((bottomAssembly - 0.55) / 0.45, 0, 1));
+
+    // Crisp stage logos opacity
+    L1.setOpacity(topImgA);
+    L2.setOpacity(bottomImgA);
+
+    // Dock mini mark in navbar once hero logo begins dissolving
+    const shouldDock = topAssembly < 0.45;
+    if (shouldDock !== markOn) {
+      markOn = shouldDock;
+      mark.classList.toggle('is-on', shouldDock);
     }
 
-    fade = Math.min(1, fade + 0.03);
-    const A0 = (useTop ? a1 : a2) * intro;
-    const AE = smooth(A0);
-    const S = rect.width;
-    const cx = rect.left + S / 2;
-    const cyImg = rect.top + S / 2;
-
-    M += (Mt - M) * 0.07;
+    // Hover quantum noise state
+    M += (Mt - M) * 0.08;
     const ME = smooth(M);
-    const imgA = smooth(clamp((A0 - 0.86) / 0.14, 0, 1));
-    const partA = 1 - imgA;
 
+    // Current primary stage / interpolation center
+    // As you scroll down from hero, center gracefully transitions from stage1 to mid-screen, then to stage2
+    const midY = H * 0.5;
+    const midX = W * 0.5;
+
+    let targetCx, targetCy, targetS, assembly;
+    if (bottomAssembly > 0.01) {
+      // Transitioning toward or at bottom stage
+      assembly = bottomAssembly;
+      const tMid = smooth(bottomAssembly);
+      targetCx = lerp(midX, c2x, tMid);
+      targetCy = lerp(midY, c2y, tMid);
+      targetS = lerp(S1, S2, tMid);
+    } else if (topAssembly > 0.01) {
+      // Transitioning from top stage into dispersion
+      assembly = topAssembly;
+      const tMid = smooth(topAssembly);
+      targetCx = lerp(midX, c1x, tMid);
+      targetCy = lerp(midY, c1y, tMid);
+      targetS = S1;
+    } else {
+      // Fully dispersed in mid-page viewport
+      assembly = 0;
+      targetCx = midX;
+      targetCy = midY;
+      targetS = S1;
+    }
+
+    // Dispersion factor: 0 when assembled at either stage, 1 when freely floating in mid-page
+    const disp = 1 - assembly;
+    const spreadX = targetS * 0.6 + W * 0.35;
+    const spreadY = targetS * 0.6 + H * 0.32;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Noise offset for rolling refresh
     for (let i = 0, n = P.length; i < n; i += 3) {
       P[(i + noiseOff) % n].n = Math.random();
     }
     noiseOff = (noiseOff + 1) % 3;
 
-    ctx.clearRect(0, 0, W, H);
-
-    // 1) Set opacity of crisp stage logos
-    L1.setOpacity(useTop ? imgA : 0);
-    L2.setOpacity(useTop ? 0 : imgA);
-
-    // Dock mini mark in navbar
-    const dock = !useTop || a1 < 0.35;
-    if (dock !== markOn) {
-      markOn = dock;
-      mark.classList.toggle('is-on', dock);
-    }
-
-    // 2) Dust simulation
-    ctx.fillStyle = '#ffffff';
-    const size = Math.max(1.2, (S / N()) * 0.95);
-    const L = Math.pow(clamp((0.97 - AE) / 0.97, 0, 1), 1.3);
-    const cyHome = cyImg;
-    const spread = S * 0.55 + W * 0.22;
+    const baseSize = Math.max(1.3, (targetS / N()) * 1.05);
 
     for (let i = 0; i < P.length; i++) {
       const p = P[i];
-      const hx = cx + p.u * S;
-      const hy = cyHome + p.v * S;
-      const wob = Math.sin(t * 0.8 + p.seed) * 6 * L;
-      const scx = hx + p.sx * spread + wob;
-      const scy = hy + p.sy * spread + t * p.spin * 10 + wob;
-      const tx = hx * (1 - L) + scx * L;
-      const ty = hy * (1 - L) + scy * L;
 
-      const k = 0.05 + 0.06 * AE;
-      p.vx = (p.vx + (tx - p.x) * k) * 0.76;
-      p.vy = (p.vy + (ty - p.y) * k) * 0.76;
+      // Assembled home coordinate
+      const hx = targetCx + p.u * targetS;
+      const hy = targetCy + p.v * targetS;
 
-      // Pointer interaction: push grains away when loose
+      // Dispersed floating coordinate across viewport
+      const wob = Math.sin(t * 0.85 + p.seed) * 14 * disp;
+      const scx = targetCx + p.sx * spreadX + wob;
+      const scy = targetCy + p.sy * spreadY + Math.cos(t * 0.75 + p.seed) * 14 * disp + t * p.spin * 6;
+
+      // Target position blends seamlessly between home and dispersed
+      const tx = hx * (1 - disp) + scx * disp;
+      const ty = hy * (1 - disp) + scy * disp;
+
+      // Spring physics toward target
+      const spring = 0.045 + 0.075 * assembly;
+      p.vx = (p.vx + (tx - p.x) * spring) * 0.78;
+      p.vy = (p.vy + (ty - p.y) * spring) * 0.78;
+
+      // Pointer avoidance: push floating grains away dynamically
       const ddx = p.x - px;
       const ddy = p.y - py;
       const dd = ddx * ddx + ddy * ddy;
-      if (ME < 0.01 && dd < 120 * 120 && AE < 0.98) {
+      const repelDist = 135;
+      if (dd < repelDist * repelDist) {
         const d = Math.sqrt(dd) || 1;
-        const f = (1 - d / 120) * 2.6 * (1 - AE * 0.6);
-        p.vx += ddx / d * f;
-        p.vy += ddy / d * f;
+        const f = (1 - d / repelDist) * 3.4 * (0.4 + 0.6 * disp);
+        p.vx += (ddx / d) * f;
+        p.vy += (ddy / d) * f;
       }
+
       p.x += p.vx;
       p.y += p.vy;
 
-      // Hover static noise on logo
-      if (ME > 0.01 && imgA > 0.5) {
-        const R = S * 0.36;
+      // Hover static noise when hovering assembled logo
+      if (ME > 0.01 && assembly > 0.75) {
+        const R = targetS * 0.42;
         const dpx = p.x - px;
         const dpy = p.y - py;
         const d2 = dpx * dpx + dpy * dpy;
-        if (!p.solid || d2 > R * R) continue;
-        const q = 1 - Math.sqrt(d2) / R;
-        const str = q * q * ME;
-        const g = Math.floor(p.n * p.n * 190 + 20);
-        ctx.fillStyle = `rgb(${g},${g},${g})`;
-        ctx.globalAlpha = str * 0.95;
-        ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
-        continue;
+        if (p.solid && d2 <= R * R) {
+          const q = 1 - Math.sqrt(d2) / R;
+          const str = q * q * ME;
+          const g = Math.floor(p.n * p.n * 200 + 40);
+          ctx.fillStyle = `rgb(${g},${g},${g})`;
+          ctx.globalAlpha = str * 0.95;
+          ctx.fillRect(p.x - baseSize / 2, p.y - baseSize / 2, baseSize, baseSize);
+          continue;
+        }
       }
 
-      const vis = partA;
-      if (vis < 0.02) continue;
-      if (p.y < -20 || p.y > H + 20 || p.x < -20 || p.x > W + 20) continue;
+      // Draw particle dot
+      if (p.x < -30 || p.x > W + 30 || p.y < -30 || p.y > H + 30) continue;
 
-      const tw = 0.85 + 0.15 * p.n;
+      // Alpha calculations:
+      // When dispersed in mid-page: bright and crisp (0.75-0.95 alpha)
+      // When assembled: blends with the solid image
+      const activeImgA = Math.max(topImgA, bottomImgA);
+      const dotAlpha = (1 - activeImgA * 0.9) * (0.68 + 0.32 * Math.sin(t * 1.6 + p.twinkle));
+
+      if (dotAlpha < 0.02) continue;
+
       ctx.fillStyle = '#ffffff';
-      const a = p.a + (p.solid ? 0.16 : 0) * L;
-      ctx.globalAlpha = a * vis * (0.55 + 0.45 * AE) * (0.3 + 0.7 * intro) * tw * smooth(fade);
-      const s = size * (0.75 + 0.25 * AE);
+      ctx.globalAlpha = dotAlpha;
+      const s = baseSize * (0.8 + 0.25 * disp);
       ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
     }
+
     ctx.globalAlpha = 1;
   };
 
