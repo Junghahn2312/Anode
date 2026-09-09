@@ -53,7 +53,7 @@ h1, h2, h3, p {
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
+  z-index: 2;
   pointer-events: none;
 }
 
@@ -166,6 +166,25 @@ main {
 .hero__stage.is-live > canvas,
 .hero__stage.is-live > img {
   filter: drop-shadow(0 0 28px rgba(255, 255, 255, 0.28)) drop-shadow(0 0 80px rgba(255, 255, 255, 0.12));
+}
+
+.sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.5s var(--ease);
+  will-change: transform, opacity;
+  -webkit-mask: url(logo-mask.png) center/100% 100% no-repeat;
+  mask: url(logo-mask.png) center/100% 100% no-repeat;
+  background: radial-gradient(34% 34% at var(--sx, 50%) var(--sy, 50%), rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.3) 45%, transparent 70%);
+  mix-blend-mode: screen;
+}
+
+.hero__stage.is-live .sheen,
+.get__stage.is-live .sheen {
+  opacity: 0.65;
 }
 
 .hero h1 {
@@ -325,10 +344,23 @@ main {
 }
 
 .get__stage {
+  position: relative;
   width: min(34vmin, 240px);
   aspect-ratio: 1;
   margin: 0 auto 20px;
   cursor: crosshair;
+}
+
+.get__stage > canvas,
+.get__stage > img {
+  transform-style: preserve-3d;
+  will-change: transform, filter;
+  transition: filter 0.6s var(--ease);
+}
+
+.get__stage.is-live > canvas,
+.get__stage.is-live > img {
+  filter: drop-shadow(0 0 28px rgba(255, 255, 255, 0.28)) drop-shadow(0 0 80px rgba(255, 255, 255, 0.12));
 }
 
 /* Footer */

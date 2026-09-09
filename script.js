@@ -1,5 +1,5 @@
 (() => {
-  // Always start at top, even on reload
+  // Always start at top on reload
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   scrollTo(0, 0);
   addEventListener('load', () => scrollTo(0, 0));
@@ -10,7 +10,7 @@
   const smooth = x => x * x * (3 - 2 * x);
   const lerp = (a, b, t) => a + (b - a) * t;
 
-  /* Header state */
+  /* Header scroll state */
   const topNav = document.querySelector('.top');
   addEventListener('scroll', () => {
     topNav.classList.toggle('is-scrolled', scrollY > 40);
@@ -76,7 +76,7 @@
 
   document.querySelectorAll('.hero, .sec').forEach(s => io.observe(s));
 
-  /* ---------- Interactive Logo & Particle Engine (Odin Logic + Anode Custom Shape) ---------- */
+  /* ---------- Interactive Logo & Particle Engine ---------- */
   const cv = document.getElementById('dust');
   const ctx = cv.getContext('2d');
   const stage1 = document.getElementById('stage');
@@ -100,20 +100,30 @@
     im.width = 1254;
     im.height = 1254;
     im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;will-change:opacity;pointer-events:none;';
+
+    const sheen = document.createElement('div');
+    sheen.className = 'sheen';
+
     st.style.position = 'relative';
     st.appendChild(im);
+    st.appendChild(sheen);
+
     return {
-      setOpacity: o => { im.style.opacity = o; }
+      setOpacity: o => {
+        im.style.opacity = o;
+        sheen.style.opacity = (st.classList.contains('is-live') ? 0.65 : 0) * o;
+      }
     };
   };
 
   const L1 = plainLogo(stage1);
   const L2 = plainLogo(stage2);
 
-  const N = () => innerWidth < 700 ? 96 : 128;
+  // High sampling density to match Odin (~1,100 points on Anode stripes)
+  const N = () => innerWidth < 700 ? 140 : 180;
 
-  /* Hover state: the logo reacts with dynamic static noise and breathing */
-  let M = 0, Mt = 0, noiseOff = 0, prevTop = true, fade = 1, lastL = 0, lastT = 0;
+  /* Hover state: the logo reacts with dynamic analog TV static fuzz */
+  let M = 0, Mt = 0, prevTop = true, fade = 1, lastL = 0, lastT = 0;
 
   [stage1, stage2].forEach(st => {
     st.addEventListener('pointerenter', e => {
@@ -122,14 +132,27 @@
         st.classList.add('is-live');
       }
     });
+
+    st.addEventListener('pointermove', e => {
+      if (e.pointerType === 'mouse') {
+        const r = st.getBoundingClientRect();
+        const sx = ((e.clientX - r.left) / r.width) * 100;
+        const sy = ((e.clientY - r.top) / r.height) * 100;
+        st.style.setProperty('--sx', `${sx}%`);
+        st.style.setProperty('--sy', `${sy}%`);
+      }
+    });
+
     st.addEventListener('pointerleave', () => {
       Mt = 0;
       st.classList.remove('is-live');
     });
+
     st.addEventListener('pointercancel', () => {
       Mt = 0;
       st.classList.remove('is-live');
     });
+
     st.addEventListener('pointerup', e => {
       if (e.pointerType !== 'mouse') {
         Mt = 0;
@@ -175,7 +198,6 @@
           y: 0,
           vx: 0,
           vy: 0,
-          n: Math.random(),
           solid,
           fall: Math.pow(Math.random(), 1.4),
           seed: Math.random() * 100,
@@ -233,7 +255,7 @@
     if (!ready) return;
 
     const intro = reduced ? 1 : smooth(clamp((t - 0.15) / 1.9, 0, 1));
-    sY = lerp(sY, scrollY, 0.12);
+    sY = lerp(sY, scrollY, 0.14);
 
     if (cv.clientWidth * DPR !== cv.width || cv.clientHeight * DPR !== cv.height) {
       resize();
@@ -254,13 +276,29 @@
     const useTop = c1 > -r1.height * 0.5 && a1 > 0.001 && (a1 >= a2 || c2 > H);
     const rect = useTop ? r1 : r2;
 
+    const A0 = (useTop ? a1 : a2) * intro;
+    const A = A0;
+    const AE = smooth(A);
+    const S = rect.width;
+    const cx = rect.left + S / 2;
+    const cyImg = rect.top + S / 2;
+
+    // Dispersion factor: 0 at resting logo, ramps to 1 as particles dissolve into air
+    const L = Math.pow(clamp((0.97 - AE) / 0.97, 0, 1), 1.3);
+
+    // Locking factor: 1 when resting in logo, smoothly 0 once dispersed into stardust
+    // When lock > 0, particles stay rigidly anchored to the stage, eliminating ANY jitter or vibration
+    const lock = smooth(clamp(1 - L / 0.32, 0, 1));
+
     if (useTop === prevTop) {
       const dx = rect.left - lastL;
       const dy = rect.top - lastT;
+      // Dispersed particles receive scroll translation; anchored particles are locked to stage coordinates
       if (dx || dy) {
+        const moveFactor = 1 - lock;
         for (let i = 0; i < P.length; i++) {
-          P[i].x += dx;
-          P[i].y += dy;
+          P[i].x += dx * moveFactor;
+          P[i].y += dy * moveFactor;
         }
       }
     }
@@ -283,23 +321,13 @@
     }
 
     fade = Math.min(1, fade + 0.03);
-    const A0 = (useTop ? a1 : a2) * intro;
-    const A = A0;
-    const AE = smooth(A);
-    const S = rect.width;
-    const cx = rect.left + S / 2;
-    const cyImg = rect.top + S / 2;
 
-    M += (Mt - M) * 0.07;
+    M += (Mt - M) * 0.08;
     const ME = smooth(M);
-    const imgA = smooth(clamp((A - 0.86) / 0.14, 0, 1));
-    const partA = 1 - imgA;
 
-    // Rolling refresh: update noise on 1/3 of the grains per frame
-    for (let i = 0, n = P.length; i < n; i += 3) {
-      P[(i + noiseOff) % n].n = Math.random();
-    }
-    noiseOff = (noiseOff + 1) % 3;
+    // Buttery-smooth cinematic cross-fade over ~80px of scroll
+    const imgA = smooth(clamp((A - 0.74) / 0.26, 0, 1));
+    const partA = smooth(clamp((0.98 - A) / 0.24, 0, 1));
 
     ctx.clearRect(0, 0, W, H);
 
@@ -315,9 +343,7 @@
     }
 
     // 2) Dust simulation & Interactive hover
-    ctx.fillStyle = '#fff';
-    const size = Math.max(1.2, (S / N()) * 0.95);
-    const L = Math.pow(clamp((0.97 - AE) / 0.97, 0, 1), 1.3);
+    const size = Math.max(1.3, (S / N()) * 0.95);
     const cyHome = cyImg;
     const spread = S * 0.55 + W * 0.22;
 
@@ -332,17 +358,26 @@
       const tx = hx * (1 - L) + scx * L;
       const ty = hy * (1 - L) + scy * L;
 
+      // Spring physics
       const k = 0.05 + 0.06 * AE;
       p.vx = (p.vx + (tx - p.x) * k) * 0.76;
       p.vy = (p.vy + (ty - p.y) * k) * 0.76;
+
+      // Jitter prevention: damp velocity and interpolate directly to target when in lattice
+      if (lock > 0) {
+        p.vx *= (1 - lock * 0.95);
+        p.vy *= (1 - lock * 0.95);
+        p.x = lerp(p.x, tx, lock * 0.92);
+        p.y = lerp(p.y, ty, lock * 0.92);
+      }
 
       // Pointer interaction: gently repel floating dust particles
       const ddx = p.x - px;
       const ddy = p.y - py;
       const dd = ddx * ddx + ddy * ddy;
-      if (ME < 0.01 && dd < 120 * 120 && AE < 0.98) {
+      if (ME < 0.01 && dd < 120 * 120 && AE < 0.98 && lock < 0.5) {
         const d = Math.sqrt(dd) || 1;
-        const f = (1 - d / 120) * 2.6 * (1 - AE * 0.6);
+        const f = (1 - d / 120) * 2.6 * (1 - AE * 0.6) * (1 - lock);
         p.vx += (ddx / d) * f;
         p.vy += (ddy / d) * f;
       }
@@ -350,9 +385,9 @@
       p.x += p.vx;
       p.y += p.vy;
 
-      // Interactive hover on logo: creates dynamic static noise patch under the cursor
-      if (ME > 0.01 && imgA > 0.5) {
-        const R = S * 0.36;
+      // Interactive hover on logo: creates dynamic analog CRT / TV static fuzz directly over the logo
+      if (ME > 0.01 && imgA > 0.4) {
+        const R = S * 0.38;
         const dpx = p.x - px;
         const dpy = p.y - py;
         const d2 = dpx * dpx + dpy * dpy;
@@ -360,10 +395,18 @@
 
         const q = 1 - Math.sqrt(d2) / R;
         const str = q * q * ME;
-        const g = Math.floor(p.n * p.n * 190 + 20);
-        ctx.fillStyle = `rgb(${g},${g},${g})`;
-        ctx.globalAlpha = str * 0.95;
-        ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
+
+        // Render fine buzzing TV static grains with micro-jitter over the logo
+        for (let k = 0; k < 2; k++) {
+          const jx = (Math.random() - 0.5) * size * 1.3;
+          const jy = (Math.random() - 0.5) * size * 1.3;
+          const isLight = Math.random() < 0.25;
+          const g = isLight ? 255 : Math.floor(Math.random() * 190 + 20);
+          ctx.fillStyle = `rgb(${g},${g},${g})`;
+          ctx.globalAlpha = str * 0.96;
+          const s = size * (0.8 + 0.3 * Math.random());
+          ctx.fillRect(p.x + jx - s / 2, p.y + jy - s / 2, s, s);
+        }
         continue;
       }
 
@@ -372,7 +415,7 @@
       if (vis < 0.02) continue;
       if (p.y < -20 || p.y > H + 20 || p.x < -20 || p.x > W + 20) continue;
 
-      const tw = 0.85 + 0.15 * p.n;
+      const tw = 0.85 + 0.15 * Math.random();
       ctx.fillStyle = '#fff';
       const a = p.a + (p.solid ? 0.16 : 0) * L;
       ctx.globalAlpha = a * vis * (0.55 + 0.45 * AE) * (0.3 + 0.7 * intro) * tw * smooth(fade);
