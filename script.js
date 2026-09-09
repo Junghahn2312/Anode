@@ -75,7 +75,11 @@
 
   document.querySelectorAll('.hero, .sec').forEach(s => io.observe(s));
 
-  /* ---------- 3D Striped Sphere Particle & Dispersion Engine ---------- */
+  /* ---------- 3D Striped Sphere Particle Engine ---------- */
+  // The dots THEMSELVES form the ball logo.
+  // There is NO static image underneath. When the dots disperse, the ball disappears.
+  // When you scroll to the bottom, the dots assemble to form the bottom ball logo.
+
   const cv = document.getElementById('dust');
   const ctx = cv.getContext('2d');
   const stage1 = document.getElementById('stage');
@@ -86,32 +90,34 @@
   let ready = false, t0 = 0;
   let markOn = false;
 
-  const img = new Image();
-  img.src = 'logo-alpha.png';
   const maskImg = new Image();
   maskImg.src = 'logo-mask.png';
+  const alphaImg = new Image();
+  alphaImg.src = 'logo-alpha.png';
 
-  const plainLogo = st => {
-    const im = new Image();
-    im.src = 'logo-alpha.png';
-    im.alt = 'Anode';
-    im.width = 1254;
-    im.height = 1254;
-    im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;will-change:opacity;';
-    st.style.position = 'relative';
-    st.appendChild(im);
-    return {
-      setOpacity: o => { im.style.opacity = o; }
-    };
+  // Smooth circular dot sprite for calm, high-precision antialiased rendering
+  const makeDotSprite = size => {
+    const c = document.createElement('canvas');
+    c.width = size;
+    c.height = size;
+    const cx = c.getContext('2d');
+    const r = size / 2;
+    const grad = cx.createRadialGradient(r, r, 0, r, r, r);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    grad.addColorStop(0.72, 'rgba(255, 255, 255, 0.95)');
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    cx.fillStyle = grad;
+    cx.beginPath();
+    cx.arc(r, r, r, 0, Math.PI * 2);
+    cx.fill();
+    return c;
   };
+  const dotSprite = makeDotSprite(32);
 
-  const L1 = plainLogo(stage1);
-  const L2 = plainLogo(stage2);
-
-  const N = () => innerWidth < 700 ? 100 : 128;
+  const N = () => innerWidth < 700 ? 96 : 116;
 
   /* Hover state on logo stages */
-  let M = 0, Mt = 0, noiseOff = 0;
+  let M = 0, Mt = 0;
 
   [stage1, stage2].forEach(st => {
     st.addEventListener('pointerenter', e => {
@@ -142,45 +148,52 @@
     off.width = n;
     off.height = n;
     const o = off.getContext('2d', { willReadFrequently: true });
-    o.drawImage(img, 0, 0, n, n);
-    const d = o.getImageData(0, 0, n, n).data;
-    o.clearRect(0, 0, n, n);
+    
+    // Sample mask for lattice points
     o.drawImage(maskImg, 0, 0, n, n);
     const m = o.getImageData(0, 0, n, n).data;
+
+    // Sample alpha for 3D luminance shading
+    o.clearRect(0, 0, n, n);
+    o.drawImage(alphaImg, 0, 0, n, n);
+    const aData = o.getImageData(0, 0, n, n).data;
 
     P = [];
     for (let y = 0; y < n; y++) {
       for (let x = 0; x < n; x++) {
         const idx = (y * n + x) * 4;
-        const a = d[idx + 3] / 255;
-        const inside = m[idx + 3] > 128;
-        if (a < 0.05 && !inside) continue;
-        const solid = inside || a > 0.45;
-        
-        // Scatter angles & radial distance for dispersion
+        const inside = m[idx + 3] > 120;
+        if (!inside) continue;
+
+        // Normalized coordinate relative to sphere center (-0.5 to 0.5)
+        const u = (x + 0.5) / n - 0.5;
+        const v = (y + 0.5) / n - 0.5;
+
+        // 3D brightness from alpha channel
+        const lum = aData[idx + 3] / 255;
+
+        // Calm, elegant dispersion angles and outward spread
         const ang = Math.random() * Math.PI * 2;
-        const dist = 0.6 + Math.random() * 0.9;
-        
+        const dist = 0.5 + Math.random() * 0.85;
+
         P.push({
-          u: (x + 0.5) / n - 0.5,
-          v: (y + 0.5) / n - 0.5,
-          a,
+          u,
+          v,
+          lum: Math.max(0.45, lum),
           sx: Math.cos(ang) * dist,
-          sy: Math.sin(ang) * dist * 0.85,
+          sy: Math.sin(ang) * dist * 0.8,
           x: 0,
           y: 0,
-          vx: (Math.random() - 0.5) * 2,
-          vy: (Math.random() - 0.5) * 2,
-          n: Math.random(),
-          solid,
+          vx: 0,
+          vy: 0,
           seed: Math.random() * 100,
-          spin: (Math.random() - 0.5) * 1.5,
-          twinkle: Math.random() * Math.PI * 2
+          spin: (Math.random() - 0.5) * 0.8,
+          phase: Math.random() * Math.PI * 2
         });
       }
     }
 
-    // Initialize particle positions at stage 1
+    // Initialize positions at top stage
     const r1 = stage1.getBoundingClientRect();
     const S = r1.width || 320;
     const cx = r1.left + S / 2 || W / 2;
@@ -215,7 +228,7 @@
       resize();
     }
 
-    // Stages bounding boxes in current viewport
+    // Stage bounding boxes in current viewport
     const r1 = stage1.getBoundingClientRect();
     const r2 = stage2.getBoundingClientRect();
 
@@ -227,38 +240,31 @@
     const c2x = r2.left + S2 / 2;
     const c2y = r2.top + S2 / 2;
 
-    // --- CONTINUOUS SCROLL PROGRESSION & DISPERSION LOGIC ---
-    // 1) Top assembly factor: 1 at scrollY=0, dissolves to 0 as you scroll past hero
-    const topAssembly = smooth(clamp(1 - scrollY / 240, 0, 1));
-    const topImgA = smooth(clamp((topAssembly - 0.45) / 0.55, 0, 1));
+    // --- CONTINUOUS SCROLL-BASED DISPERSAL & ASSEMBLY ---
+    // 1) Top assembly: 1 at scrollY=0 (dots form top ball), smoothly drops to 0 as you scroll down
+    const topAssembly = smooth(clamp(1 - scrollY / 260, 0, 1));
 
-    // 2) Bottom assembly factor: 0 in mid-page, rises to 1 as stage2 enters viewport center
-    const bottomAssembly = smooth(clamp((H * 0.88 - c2y) / (H * 0.42), 0, 1));
-    const bottomImgA = smooth(clamp((bottomAssembly - 0.55) / 0.45, 0, 1));
+    // 2) Bottom assembly: 0 until stage2 approaches viewport, smoothly rises to 1 as it centers
+    const bottomAssembly = smooth(clamp((H * 0.86 - c2y) / (H * 0.42), 0, 1));
 
-    // Crisp stage logos opacity
-    L1.setOpacity(topImgA);
-    L2.setOpacity(bottomImgA);
-
-    // Dock mini mark in navbar once hero logo begins dissolving
-    const shouldDock = topAssembly < 0.45;
+    // Dock mini mark in navbar when hero ball dissolves
+    const shouldDock = topAssembly < 0.4;
     if (shouldDock !== markOn) {
       markOn = shouldDock;
       mark.classList.toggle('is-on', shouldDock);
     }
 
-    // Hover quantum noise state
-    M += (Mt - M) * 0.08;
+    // Hover state easing
+    M += (Mt - M) * 0.06;
     const ME = smooth(M);
 
-    // Current primary stage / interpolation center
-    // As you scroll down from hero, center gracefully transitions from stage1 to mid-screen, then to stage2
-    const midY = H * 0.5;
+    // Dynamic Swarm Target Center
     const midX = W * 0.5;
+    const midY = H * 0.5;
 
     let targetCx, targetCy, targetS, assembly;
     if (bottomAssembly > 0.01) {
-      // Transitioning toward or at bottom stage
+      // Transitioning toward bottom stage or fully assembled at bottom
       assembly = bottomAssembly;
       const tMid = smooth(bottomAssembly);
       targetCx = lerp(midX, c2x, tMid);
@@ -279,89 +285,82 @@
       targetS = S1;
     }
 
-    // Dispersion factor: 0 when assembled at either stage, 1 when freely floating in mid-page
+    // Dispersion factor: 0 when assembled at either stage, 1 when floating in mid-page
     const disp = 1 - assembly;
-    const spreadX = targetS * 0.6 + W * 0.35;
-    const spreadY = targetS * 0.6 + H * 0.32;
+    const spreadX = targetS * 0.55 + W * 0.32;
+    const spreadY = targetS * 0.55 + H * 0.28;
 
     ctx.clearRect(0, 0, W, H);
 
-    // Noise offset for rolling refresh
-    for (let i = 0, n = P.length; i < n; i += 3) {
-      P[(i + noiseOff) % n].n = Math.random();
-    }
-    noiseOff = (noiseOff + 1) % 3;
-
-    const baseSize = Math.max(1.3, (targetS / N()) * 1.05);
+    // Calmer dot sizing: ~1.4px when assembled, ~1.8px when floating
+    const baseRadius = Math.max(1.3, (targetS / N()) * 0.52);
 
     for (let i = 0; i < P.length; i++) {
       const p = P[i];
 
-      // Assembled home coordinate
+      // Exact assembled home coordinate inside the 3D striped sphere
       const hx = targetCx + p.u * targetS;
       const hy = targetCy + p.v * targetS;
 
-      // Dispersed floating coordinate across viewport
-      const wob = Math.sin(t * 0.85 + p.seed) * 14 * disp;
-      const scx = targetCx + p.sx * spreadX + wob;
-      const scy = targetCy + p.sy * spreadY + Math.cos(t * 0.75 + p.seed) * 14 * disp + t * p.spin * 6;
+      // Calm, organic floating drift when dispersed across viewport
+      const driftX = Math.sin(t * 0.35 + p.seed) * 8 * disp;
+      const driftY = Math.cos(t * 0.30 + p.seed * 1.2) * 8 * disp;
+      const scx = targetCx + p.sx * spreadX + driftX;
+      const scy = targetCy + p.sy * spreadY + driftY + t * p.spin * 3.5;
 
-      // Target position blends seamlessly between home and dispersed
+      // Target position blends smoothly between assembled sphere lattice and floating stardust
       const tx = hx * (1 - disp) + scx * disp;
       const ty = hy * (1 - disp) + scy * disp;
 
-      // Spring physics toward target
-      const spring = 0.045 + 0.075 * assembly;
-      p.vx = (p.vx + (tx - p.x) * spring) * 0.78;
-      p.vy = (p.vy + (ty - p.y) * spring) * 0.78;
+      // Smooth, calm spring physics
+      const spring = 0.038 + 0.07 * assembly;
+      p.vx = (p.vx + (tx - p.x) * spring) * 0.82;
+      p.vy = (p.vy + (ty - p.y) * spring) * 0.82;
 
-      // Pointer avoidance: push floating grains away dynamically
+      // Calmer, gentle pointer interaction: soft repulsion without violent snapping
       const ddx = p.x - px;
       const ddy = p.y - py;
       const dd = ddx * ddx + ddy * ddy;
-      const repelDist = 135;
+      const repelDist = 120;
       if (dd < repelDist * repelDist) {
         const d = Math.sqrt(dd) || 1;
-        const f = (1 - d / repelDist) * 3.4 * (0.4 + 0.6 * disp);
-        p.vx += (ddx / d) * f;
-        p.vy += (ddy / d) * f;
+        // Soft quadratic falloff for serene, fluid gliding
+        const factor = Math.pow(1 - d / repelDist, 1.8) * 2.2 * (0.35 + 0.65 * disp);
+        p.vx += (ddx / d) * factor;
+        p.vy += (ddy / d) * factor;
       }
 
       p.x += p.vx;
       p.y += p.vy;
 
-      // Hover static noise when hovering assembled logo
-      if (ME > 0.01 && assembly > 0.75) {
-        const R = targetS * 0.42;
+      if (p.x < -30 || p.x > W + 30 || p.y < -30 || p.y > H + 30) continue;
+
+      // Calmer, soothing luminosity:
+      // When assembled: steady 3D volume lighting (0.75-0.95 alpha), no harsh flickering
+      // When dispersed: soft, ambient floating glow (0.50-0.70 alpha) with calm breathing
+      let dotAlpha;
+      if (assembly > 0.8) {
+        // Assembled ball: 3D shaded by surface normal
+        dotAlpha = p.lum * 0.88 + 0.12;
+      } else {
+        // Dispersed / transitioning: calm, soft stardust
+        const calmPulse = 0.58 + 0.12 * Math.sin(t * 0.5 + p.phase);
+        dotAlpha = lerp(calmPulse, p.lum * 0.88 + 0.12, assembly);
+      }
+
+      // Gentle hover static glow over the assembled ball
+      if (ME > 0.01 && assembly > 0.7) {
+        const R = targetS * 0.38;
         const dpx = p.x - px;
         const dpy = p.y - py;
-        const d2 = dpx * dpx + dpy * dpy;
-        if (p.solid && d2 <= R * R) {
-          const q = 1 - Math.sqrt(d2) / R;
-          const str = q * q * ME;
-          const g = Math.floor(p.n * p.n * 200 + 40);
-          ctx.fillStyle = `rgb(${g},${g},${g})`;
-          ctx.globalAlpha = str * 0.95;
-          ctx.fillRect(p.x - baseSize / 2, p.y - baseSize / 2, baseSize, baseSize);
-          continue;
+        if (dpx * dpx + dpy * dpy < R * R) {
+          dotAlpha = Math.min(1.0, dotAlpha + ME * 0.25);
         }
       }
 
-      // Draw particle dot
-      if (p.x < -30 || p.x > W + 30 || p.y < -30 || p.y > H + 30) continue;
-
-      // Alpha calculations:
-      // When dispersed in mid-page: bright and crisp (0.75-0.95 alpha)
-      // When assembled: blends with the solid image
-      const activeImgA = Math.max(topImgA, bottomImgA);
-      const dotAlpha = (1 - activeImgA * 0.9) * (0.68 + 0.32 * Math.sin(t * 1.6 + p.twinkle));
-
-      if (dotAlpha < 0.02) continue;
-
-      ctx.fillStyle = '#ffffff';
-      ctx.globalAlpha = dotAlpha;
-      const s = baseSize * (0.8 + 0.25 * disp);
-      ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+      ctx.globalAlpha = clamp(dotAlpha, 0.05, 1.0);
+      const rad = baseRadius * (assembly > 0.5 ? 1.0 : 1.15);
+      ctx.drawImage(dotSprite, p.x - rad, p.y - rad, rad * 2, rad * 2);
     }
 
     ctx.globalAlpha = 1;
@@ -375,8 +374,8 @@
     ready = true;
   };
 
-  img.onload = go;
   maskImg.onload = go;
+  alphaImg.onload = go;
   addEventListener('resize', resize);
   resize();
   requestAnimationFrame(frame);
