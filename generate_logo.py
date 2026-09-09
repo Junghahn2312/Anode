@@ -58,19 +58,25 @@ def generate_anode_sphere_logo(output_dir=".", size=1254):
     ny = np.where(inside_sphere, dy / R, 0.0)
     nz = z
     
-    lx = -0.50
-    ly = -0.60
-    lz = 0.62
+    # Key light from upper-left with dramatic 3D tonal falloff matching Odin
+    lx, ly, lz = -0.55, -0.62, 0.55
     l_len = np.sqrt(lx**2 + ly**2 + lz**2)
     lx /= l_len; ly /= l_len; lz /= l_len
     
     diffuse = np.clip(nx * lx + ny * ly + nz * lz, 0.0, 1.0)
+    fill = np.clip(nx * 0.45 + ny * 0.50 + nz * 0.20, 0.0, 1.0) * 0.10
+    spec = (diffuse ** 4.0) * 0.35
     
-    # Subtle bevel on bands
+    ambient = 0.20
+    key = 0.52 * (diffuse ** 1.35)
+    
+    # Subtle bevel rounding on band edges
     edge_dist = np.clip(-dist_comb_px, 0.0, 20.0)
-    bevel = np.clip(edge_dist / 6.0, 0.0, 1.0)
+    bevel = np.clip(edge_dist / 5.5, 0.0, 1.0)
     
-    band_lum = (0.75 + 0.25 * diffuse) * (0.88 + 0.12 * bevel)
+    band_lum = (ambient + key + spec + fill) * (0.80 + 0.20 * bevel)
+    band_lum = np.clip(band_lum, 0.16, 1.0)
+    
     aa_alpha = np.clip(-dist_comb_px * 0.5 + 0.5, 0.0, 1.0)
     final_alpha = np.clip(band_lum * aa_alpha * 255.0, 0.0, 255.0).astype(np.uint8)
     final_alpha = np.where(dist_comb_px > 1.0, 0, final_alpha)

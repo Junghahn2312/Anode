@@ -56,10 +56,11 @@ for y0, y1 in bands_def:
 
 svg_content = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
   <defs>
-    <radialGradient id="sphereGrad" cx="35%" cy="30%" r="65%">
+    <radialGradient id="sphereGrad" cx="35%" cy="28%" r="70%">
       <stop offset="0%" stop-color="#ffffff" />
-      <stop offset="70%" stop-color="#eeeeee" />
-      <stop offset="100%" stop-color="#cccccc" />
+      <stop offset="38%" stop-color="#b0b0b0" />
+      <stop offset="72%" stop-color="#555555" />
+      <stop offset="100%" stop-color="#282828" />
     </radialGradient>
     <clipPath id="sphereClip">
       <circle cx="50" cy="50" r="44" />
