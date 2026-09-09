@@ -1,89 +1,91 @@
 # Anode
 
-A minimalist, high-performance website inspired by the design, typography, particle physics simulation, and aesthetic of [odinapp.dev](https://odinapp.dev).
+A polished movie and TV discovery application built natively for iOS and Apple TV (tvOS).
+
+Anode is inspired by the simplicity of Fusion, but focused entirely on entertainment discovery. It requires no addons, no plugins, no external accounts, and no complex setup. Its sole purpose is to give you one beautiful place to answer:
+
+> "What should I watch?"
 
 ---
 
 ## Features
 
-- **Interactive Canvas Dust Simulation (`#dust`)**:
-  - Thousands of interactive particles sampled from the geometric Anode logo mask.
-  - Dissolves seamlessly into drifting kinetic dust as the user scrolls down from the hero.
-  - Reassembles into the Anode logo as the user scrolls to the bottom call-to-action stage.
-  - Elastic mouse repulsion physics pushes grains aside dynamically.
-  - Localized CRT / quantum static noise when hovering directly over the logo.
-- **Minimalist Geist Typography & Aesthetic**:
-  - Pitch black `#000000` background with crisp white typography and opacity hierarchies.
-  - Glassmorphic navigation header with backdrop blur on scroll.
-  - Docking mini mark (`#mark`) that expands, scales, and fades into the navbar as the hero logo begins dissolving.
-  - Cryptographic text decipher / scrambler effect (`▓▒░█▌▐│┃...`) on scroll into view.
-  - Section title keyframe flickers and card hover focus dimming.
-  - Ambient radial cursor spotlight (`.light`).
+- Cinema Screenings: Current box-office releases and theatrical screenings with trailers, runtimes, and ratings.
+- Trending Everywhere: High-heat movies and television series across pop culture.
+- Streaming Pulse: Instant filtering across Netflix, Apple TV+, Disney+, Prime Video, and Max in one consolidated feed.
+- New Releases: Fresh theatrical debuts, digital drops, and weekly series releases.
+- Critically Acclaimed: Universally acclaimed cinema and audience favorites curated without algorithmic clutter.
+- Upcoming Radar: Future theatrical release calendar and streaming drop dates.
+- Personal Watchlist: Private on-device watchlist with watched/unwatched tracking, zero account required.
 
 ---
 
-## Free Hosting & Domain Deployment Options
+## Platform Experience
 
-### Option 1: Cloudflare Pages (Recommended - 100% Free Forever)
-Cloudflare Pages offers unlimited bandwidth, global edge distribution, automatic SSL, and provides a free `.dev` URL (`anode.pages.dev`).
+### iOS (iPhone & iPad)
+- Quick discovery, browsing, searching, and building a watchlist on the go.
+- Fast search-as-you-type with genre and media type filters.
+- Native sheet presentations with high-resolution backdrops, cast carousels, and direct trailer access.
+- Haptic feedback and one-handed navigation.
 
-#### Method A: Git Integration (Zero CLI)
-1. Push this folder to a GitHub repository:
-   ```bash
-   cd /Volumes/NetworkSSD/Anode
-   git init
-   git add .
-   git commit -m "Initial commit of Anode website"
-   git remote add origin https://github.com/<your-username>/anode.git
-   git push -u origin main
-   ```
-2. Go to [dash.cloudflare.com](https://dash.cloudflare.com/) → **Workers & Pages** → **Create application** → **Pages** → **Connect to Git**.
-3. Select your `anode` repository.
-4. Leave build command blank (this is a static site), set build output directory to `/` (or root).
-5. Click **Save and Deploy**. Your site is instantly live globally at `https://anode.pages.dev`!
+### Apple TV (tvOS)
+- Cinematic 10-foot viewing experience designed for large screens.
+- Dynamic ambient background artwork that smoothly cross-fades as the Siri Remote focus moves across titles.
+- Parallax card elevation and glow effects driven by Apple TV's Focus Engine.
+- Top navigation bar for seamless switching between Discover, Watchlist, and Search.
 
-#### Method B: Direct Deploy via Wrangler CLI
-```bash
-npx wrangler pages deploy . --project-name=anode
+---
+
+## Architecture & Tech Stack
+
+- Framework: 100% SwiftUI with declarative multiplatform architecture.
+- Concurrency: Modern Swift Concurrency (`async`/`await`, Actors, and Task groups).
+- Persistence: Local-first JSON file storage in Application Support / Documents directory (zero telemetry, zero account requirement).
+- Design System: Pitch black `#000000` aesthetic, `.ultraThinMaterial` glassmorphism, SF Symbols, and typography hierarchies. Zero emojis.
+
+---
+
+## Project Structure
+
+```
+Anode/
+├── Anode.xcodeproj/              # Unified Xcode project (iOS & tvOS targets)
+├── Shared/                       # Multiplatform shared business logic & UI
+│   ├── Models/                   # MediaItem, MediaType, StreamingProvider, VideoTrailer, CastMember
+│   ├── Services/                 # TMDBService, DiscoveryEngine, WatchlistStore
+│   └── Components/               # PosterCardView, BackdropCardView, RatingBadge, CachedAsyncImage
+├── iOS/                          # iOS application entry & views
+│   ├── AnodeApp.swift            # iOS App lifecycle
+│   ├── Views/                    # DiscoverView, StreamingPulseView, SearchView, WatchlistView
+│   └── Assets.xcassets/          # iOS AppIcon & Colors
+└── tvOS/                         # Apple TV application entry & views
+    ├── AnodeTVApp.swift          # tvOS App lifecycle
+    ├── Views/                    # TVHomeView, TVMediaCardView, TVMediaDetailView, TVWatchlistView
+    └── Assets.xcassets/          # tvOS AppIcon & Colors
 ```
 
 ---
 
-### Option 2: Free `is-a.dev` Custom Subdomain
-If you want a developer domain with a `.dev` extension without paying registry fees:
-1. Deploy your site to Cloudflare Pages or GitHub Pages.
-2. Visit [is-a.dev](https://www.is-a.dev/).
-3. Fork their GitHub repository and add an `anode.json` record pointing a CNAME to `anode.pages.dev`.
-4. Once merged, your site is available globally at `https://anode.is-a.dev`!
+## Building & Running
 
----
+### Prerequisites
+- Xcode 15.0 or later (Tested on Xcode 26)
+- macOS Sonoma or later
 
-### Option 3: GitHub Pages (100% Free)
-1. Create a public repository named `anode` on GitHub.
-2. Push your code to GitHub.
-3. In repository settings, navigate to **Pages** → **Build and deployment** → Source: **Deploy from a branch** → select `main` branch → `/ (root)`.
-4. Your site will be published at `https://<username>.github.io/anode`.
+### Command Line Build
 
----
-
-### Option 4: Custom Top-Level `.dev` Domain (~$10/year)
-If you would like an apex domain like `anode.dev`:
-1. Register `anode.dev` at cost-price on [Cloudflare Registrar](https://www.cloudflare.com/products/registrar/) or [Porkbun](https://porkbun.com/) (~$10/yr).
-2. In Cloudflare Pages, go to **Custom domains** → **Set up a custom domain** → enter `anode.dev`.
-3. Cloudflare automatically generates free SSL certificates and routes traffic globally.
-
----
-
-## Local Development & Testing
-
-To preview the website locally on any device on your local network:
-
+To build the iOS application for Simulator:
 ```bash
-# Using Python
-python3 -m http.server 8080
-
-# Or using Node
-npx serve .
+xcodebuild -scheme Anode-iOS -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
-Open `http://localhost:8080` in your browser.
+To build the Apple TV application for Simulator:
+```bash
+xcodebuild -scheme Anode-tvOS -destination 'generic/platform=tvOS Simulator' CODE_SIGNING_ALLOWED=NO build
+```
+
+---
+
+## License
+
+Copyright 2026 Anode Technologies. All rights reserved.

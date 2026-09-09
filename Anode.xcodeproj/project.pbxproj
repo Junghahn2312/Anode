@@ -1,0 +1,530 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		IOSB8D80D753CE864D9DA7AA /* MediaType.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF4AF290C740A04EE78C7B /* MediaType.swift */; };
+		IOSBB23E84DA056C4674B184 /* StreamingProvider.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF7BE68C83D9CC41EEB450 /* StreamingProvider.swift */; };
+		IOSB7E55AC878AAA4B6F8CFE /* VideoTrailer.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREFE6E3ECDEAE9B4083B642 /* VideoTrailer.swift */; };
+		IOSB760E407B079F422DB6C0 /* CastMember.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREFA22841498FEF463B8F5E /* CastMember.swift */; };
+		IOSB6A6972ED7CBE497EBED1 /* MediaItem.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF4752D88BB09F4E89A98F /* MediaItem.swift */; };
+		IOSB7EF720D544354789911C /* WatchlistRecord.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF48F979F8959F484FB975 /* WatchlistRecord.swift */; };
+		IOSB6D764426B0404BCD89D7 /* TMDBService.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF3F002981C06948B4A1C9 /* TMDBService.swift */; };
+		IOSB5D1E27901C554216A87F /* WatchlistStore.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF44475670E65F42AEBC3C /* WatchlistStore.swift */; };
+		IOSBEF21AEE420AB4E9B8F70 /* DiscoveryEngine.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF71D9F6136C08413AAB81 /* DiscoveryEngine.swift */; };
+		IOSBFBBA81011DCD491DA373 /* CachedAsyncImage.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREFD9BD77B470D4459A9151 /* CachedAsyncImage.swift */; };
+		IOSB6CC3AACACC7341BBB8D8 /* RatingBadge.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF9053D09DA30D45CE9F60 /* RatingBadge.swift */; };
+		IOSB76805F13BBA24C3084A9 /* StreamingProviderPill.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF1AE950EF35F44F13B572 /* StreamingProviderPill.swift */; };
+		IOSB317783FA9DF34C1FA808 /* PosterCardView.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF436ADF57498A4B46B27A /* PosterCardView.swift */; };
+		IOSB1E49803C8CE04F49B530 /* BackdropCardView.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF6FA7145A614A42F380F9 /* BackdropCardView.swift */; };
+		IOSB6093BAE21FEE4BBEB431 /* AnodeApp.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF3FE49B00C82D41228ED1 /* AnodeApp.swift */; };
+		IOSB0E0D96BC447949528A99 /* MainTabView.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF075B91A2BC614B1DA6D2 /* MainTabView.swift */; };
+		IOSB3960E75DB86F4A069765 /* DiscoverView.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF405D830AAA794ACE8173 /* DiscoverView.swift */; };
+		IOSB3388CF56380145BDB109 /* StreamingPulseView.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF8CCE7BD623FF40D99E64 /* StreamingPulseView.swift */; };
+		IOSBDCDD5F20EA294F018513 /* SearchView.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREFD42FCAE564C9429191A5 /* SearchView.swift */; };
+		IOSBCD9CD69AC3AA49FCB72E /* WatchlistView.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF9350619CE4B1415D94B2 /* WatchlistView.swift */; };
+		IOSB185B97E062484FCF8A2B /* MediaDetailView.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF1FF222D49A004E3A96D1 /* MediaDetailView.swift */; };
+		IOSBB16B5E9AD42640378803 /* Assets.xcassets in Resources (iOS) */ = {isa = PBXBuildFile; fileRef = FREFF1475891B96645E78E18 /* Assets.xcassets */; };
+		TVOBDD820269C3194B68BFD4 /* MediaType.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF4AF290C740A04EE78C7B /* MediaType.swift */; };
+		TVOB33A837B2121840F08F07 /* StreamingProvider.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF7BE68C83D9CC41EEB450 /* StreamingProvider.swift */; };
+		TVOBE57329F92C854981BDA3 /* VideoTrailer.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREFE6E3ECDEAE9B4083B642 /* VideoTrailer.swift */; };
+		TVOB999A8718F55846CC96F9 /* CastMember.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREFA22841498FEF463B8F5E /* CastMember.swift */; };
+		TVOB39A6D6CF0B7D4170B402 /* MediaItem.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF4752D88BB09F4E89A98F /* MediaItem.swift */; };
+		TVOBABB0C5D14994421F9609 /* WatchlistRecord.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF48F979F8959F484FB975 /* WatchlistRecord.swift */; };
+		TVOB42F90A511AA74593BA85 /* TMDBService.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF3F002981C06948B4A1C9 /* TMDBService.swift */; };
+		TVOB78AD6C03D3ED4EC1B9F0 /* WatchlistStore.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF44475670E65F42AEBC3C /* WatchlistStore.swift */; };
+		TVOBF444E190525547B6805A /* DiscoveryEngine.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF71D9F6136C08413AAB81 /* DiscoveryEngine.swift */; };
+		TVOBDB139CB158BE4BCF8DEE /* CachedAsyncImage.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREFD9BD77B470D4459A9151 /* CachedAsyncImage.swift */; };
+		TVOB322E8E41728D423DBC13 /* RatingBadge.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF9053D09DA30D45CE9F60 /* RatingBadge.swift */; };
+		TVOBEDC364C0470046ECBE3B /* StreamingProviderPill.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF1AE950EF35F44F13B572 /* StreamingProviderPill.swift */; };
+		TVOB132B2CBE50A0471AA369 /* PosterCardView.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF436ADF57498A4B46B27A /* PosterCardView.swift */; };
+		TVOB3E6D6AB7874B4B8F93E1 /* BackdropCardView.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF6FA7145A614A42F380F9 /* BackdropCardView.swift */; };
+		TVOB78B117D57DE3419E9240 /* AnodeTVApp.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF885A2FDE6EB84C658607 /* AnodeTVApp.swift */; };
+		TVOBB7E4C9DF7EF84DDB9666 /* TVHomeView.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF0349D037F885438DB673 /* TVHomeView.swift */; };
+		TVOB809E29F0516B4A0FAF6A /* TVMediaCardView.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF04A36A88DB0A4258A73A /* TVMediaCardView.swift */; };
+		TVOBD0B7304CED364DFF9409 /* TVMediaDetailView.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF53C29DD9E13D4A3D9014 /* TVMediaDetailView.swift */; };
+		TVOBCCADC128F02C41789812 /* TVWatchlistView.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF72403AE3D1C941239A7E /* TVWatchlistView.swift */; };
+		TVOBD9A4D76E195C4897B542 /* TVSearchView.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF57557D139B1C439297ED /* TVSearchView.swift */; };
+		TVOB6F884B11F0AC4AC9B887 /* Assets.xcassets in Resources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF634ED82D24514674B34E /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		FREF4AF290C740A04EE78C7B /* MediaType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MediaType.swift"; sourceTree = "<group>"; };
+		FREF7BE68C83D9CC41EEB450 /* StreamingProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StreamingProvider.swift"; sourceTree = "<group>"; };
+		FREFE6E3ECDEAE9B4083B642 /* VideoTrailer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "VideoTrailer.swift"; sourceTree = "<group>"; };
+		FREFA22841498FEF463B8F5E /* CastMember.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CastMember.swift"; sourceTree = "<group>"; };
+		FREF4752D88BB09F4E89A98F /* MediaItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MediaItem.swift"; sourceTree = "<group>"; };
+		FREF48F979F8959F484FB975 /* WatchlistRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchlistRecord.swift"; sourceTree = "<group>"; };
+		FREF3F002981C06948B4A1C9 /* TMDBService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TMDBService.swift"; sourceTree = "<group>"; };
+		FREF44475670E65F42AEBC3C /* WatchlistStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchlistStore.swift"; sourceTree = "<group>"; };
+		FREF71D9F6136C08413AAB81 /* DiscoveryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DiscoveryEngine.swift"; sourceTree = "<group>"; };
+		FREFD9BD77B470D4459A9151 /* CachedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CachedAsyncImage.swift"; sourceTree = "<group>"; };
+		FREF9053D09DA30D45CE9F60 /* RatingBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RatingBadge.swift"; sourceTree = "<group>"; };
+		FREF1AE950EF35F44F13B572 /* StreamingProviderPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StreamingProviderPill.swift"; sourceTree = "<group>"; };
+		FREF436ADF57498A4B46B27A /* PosterCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PosterCardView.swift"; sourceTree = "<group>"; };
+		FREF6FA7145A614A42F380F9 /* BackdropCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BackdropCardView.swift"; sourceTree = "<group>"; };
+		FREF3FE49B00C82D41228ED1 /* AnodeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AnodeApp.swift"; sourceTree = "<group>"; };
+		FREF075B91A2BC614B1DA6D2 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MainTabView.swift"; sourceTree = "<group>"; };
+		FREF405D830AAA794ACE8173 /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DiscoverView.swift"; sourceTree = "<group>"; };
+		FREF8CCE7BD623FF40D99E64 /* StreamingPulseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StreamingPulseView.swift"; sourceTree = "<group>"; };
+		FREFD42FCAE564C9429191A5 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SearchView.swift"; sourceTree = "<group>"; };
+		FREF9350619CE4B1415D94B2 /* WatchlistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchlistView.swift"; sourceTree = "<group>"; };
+		FREF1FF222D49A004E3A96D1 /* MediaDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MediaDetailView.swift"; sourceTree = "<group>"; };
+		FREF885A2FDE6EB84C658607 /* AnodeTVApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AnodeTVApp.swift"; sourceTree = "<group>"; };
+		FREF0349D037F885438DB673 /* TVHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TVHomeView.swift"; sourceTree = "<group>"; };
+		FREF04A36A88DB0A4258A73A /* TVMediaCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TVMediaCardView.swift"; sourceTree = "<group>"; };
+		FREF53C29DD9E13D4A3D9014 /* TVMediaDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TVMediaDetailView.swift"; sourceTree = "<group>"; };
+		FREF72403AE3D1C941239A7E /* TVWatchlistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TVWatchlistView.swift"; sourceTree = "<group>"; };
+		FREF57557D139B1C439297ED /* TVSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TVSearchView.swift"; sourceTree = "<group>"; };
+		FREFF1475891B96645E78E18 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FREF634ED82D24514674B34E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FREFD2C8E8B06CE74D7B970F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		FREFF080C09EC8CD4A6BBB1C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		PRD13EB3C8498E8549F395EE /* Anode.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Anode.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		PRD27C34C7DFF02C47EC882A /* Anode-tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Anode-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		PHF19241B09B4944457B895C /* Frameworks (iOS) */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		PHF2AD14C613D2244158B19F /* Frameworks (tvOS) */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		MGRPE25F97B4D38444C88AFC = {
+			isa = PBXGroup;
+			children = (
+				SGRP97897EFAA4F8439EBBB8 /* Shared */,
+				IOGP9A8639FB4F674812B985 /* iOS */,
+				TVGPE441B68F050F4B038F40 /* tvOS */,
+				PRGP1E8C4D17437B403FA57B /* Products */,
+			);
+		sourceTree = "<group>";
+		};
+		SGRP97897EFAA4F8439EBBB8 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				MOGP13739F95CF734163828D /* Models */,
+				SRGP99B7B082AD5C4FE1A909 /* Services */,
+				CPGP0FFB47712BDF4D2C837F /* Components */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		MOGP13739F95CF734163828D /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				FREF4AF290C740A04EE78C7B /* MediaType.swift */,
+				FREF7BE68C83D9CC41EEB450 /* StreamingProvider.swift */,
+				FREFE6E3ECDEAE9B4083B642 /* VideoTrailer.swift */,
+				FREFA22841498FEF463B8F5E /* CastMember.swift */,
+				FREF4752D88BB09F4E89A98F /* MediaItem.swift */,
+				FREF48F979F8959F484FB975 /* WatchlistRecord.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		SRGP99B7B082AD5C4FE1A909 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				FREF3F002981C06948B4A1C9 /* TMDBService.swift */,
+				FREF44475670E65F42AEBC3C /* WatchlistStore.swift */,
+				FREF71D9F6136C08413AAB81 /* DiscoveryEngine.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		CPGP0FFB47712BDF4D2C837F /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				FREFD9BD77B470D4459A9151 /* CachedAsyncImage.swift */,
+				FREF9053D09DA30D45CE9F60 /* RatingBadge.swift */,
+				FREF1AE950EF35F44F13B572 /* StreamingProviderPill.swift */,
+				FREF436ADF57498A4B46B27A /* PosterCardView.swift */,
+				FREF6FA7145A614A42F380F9 /* BackdropCardView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		IOGP9A8639FB4F674812B985 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				FREF3FE49B00C82D41228ED1 /* AnodeApp.swift */,
+				IVGPD6573FD5C03948E8A284 /* Views */,
+				FREFF1475891B96645E78E18 /* Assets.xcassets */,
+				FREFD2C8E8B06CE74D7B970F /* Info.plist */,
+			);
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		IVGPD6573FD5C03948E8A284 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				FREF075B91A2BC614B1DA6D2 /* MainTabView.swift */,
+				FREF405D830AAA794ACE8173 /* DiscoverView.swift */,
+				FREF8CCE7BD623FF40D99E64 /* StreamingPulseView.swift */,
+				FREFD42FCAE564C9429191A5 /* SearchView.swift */,
+				FREF9350619CE4B1415D94B2 /* WatchlistView.swift */,
+				FREF1FF222D49A004E3A96D1 /* MediaDetailView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		TVGPE441B68F050F4B038F40 /* tvOS */ = {
+			isa = PBXGroup;
+			children = (
+				FREF885A2FDE6EB84C658607 /* AnodeTVApp.swift */,
+				TVVGE0526A6C3516487FB959 /* Views */,
+				FREF634ED82D24514674B34E /* Assets.xcassets */,
+				FREFF080C09EC8CD4A6BBB1C /* Info.plist */,
+			);
+			path = tvOS;
+			sourceTree = "<group>";
+		};
+		TVVGE0526A6C3516487FB959 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				FREF0349D037F885438DB673 /* TVHomeView.swift */,
+				FREF04A36A88DB0A4258A73A /* TVMediaCardView.swift */,
+				FREF53C29DD9E13D4A3D9014 /* TVMediaDetailView.swift */,
+				FREF72403AE3D1C941239A7E /* TVWatchlistView.swift */,
+				FREF57557D139B1C439297ED /* TVSearchView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		PRGP1E8C4D17437B403FA57B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				PRD13EB3C8498E8549F395EE /* Anode.app */,
+				PRD27C34C7DFF02C47EC882A /* Anode-tvOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		TRG1745A6D15EF3A47D38BF4 /* Anode-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ICL13A4D25ADE4544A66ACFF /* Build configuration list for PBXNativeTarget "Anode-iOS" */;
+			buildPhases = (
+				PHS1DE8B118B0EDC4ECA9BE1 /* Sources */,
+				PHF19241B09B4944457B895C /* Frameworks */,
+				PHR1FDEA2BD7D1274C29BD00 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Anode-iOS";
+			productName = "Anode";
+			productReference = PRD13EB3C8498E8549F395EE /* Anode.app */;
+			productType = "com.apple.product-type.application";
+		};
+		TRG291FFCBEA5187448AB3CF /* Anode-tvOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = TCL235F81C6BE92C4A9F9B5E /* Build configuration list for PBXNativeTarget "Anode-tvOS" */;
+			buildPhases = (
+				PHS28D337BB8590A49A3B25E /* Sources */,
+				PHF2AD14C613D2244158B19F /* Frameworks */,
+				PHR28FE543F9C66349F29FA4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Anode-tvOS";
+			productName = "Anode-tvOS";
+			productReference = PRD27C34C7DFF02C47EC882A /* Anode-tvOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		PROJD072AC5527694B388463 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					TRG1745A6D15EF3A47D38BF4 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					TRG291FFCBEA5187448AB3CF = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = PCLF18DC844CCF154F4D91BB /* Build configuration list for PBXProject "Anode" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = MGRPE25F97B4D38444C88AFC;
+			productRefGroup = PRGP1E8C4D17437B403FA57B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				TRG1745A6D15EF3A47D38BF4 /* Anode-iOS */,
+				TRG291FFCBEA5187448AB3CF /* Anode-tvOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		PHR1FDEA2BD7D1274C29BD00 /* Resources (iOS) */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				IOSBB16B5E9AD42640378803 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		PHR28FE543F9C66349F29FA4 /* Resources (tvOS) */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				TVOB6F884B11F0AC4AC9B887 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		PHS1DE8B118B0EDC4ECA9BE1 /* Sources (iOS) */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				IOSB8D80D753CE864D9DA7AA /* MediaType.swift in Sources */,
+				IOSBB23E84DA056C4674B184 /* StreamingProvider.swift in Sources */,
+				IOSB7E55AC878AAA4B6F8CFE /* VideoTrailer.swift in Sources */,
+				IOSB760E407B079F422DB6C0 /* CastMember.swift in Sources */,
+				IOSB6A6972ED7CBE497EBED1 /* MediaItem.swift in Sources */,
+				IOSB7EF720D544354789911C /* WatchlistRecord.swift in Sources */,
+				IOSB6D764426B0404BCD89D7 /* TMDBService.swift in Sources */,
+				IOSB5D1E27901C554216A87F /* WatchlistStore.swift in Sources */,
+				IOSBEF21AEE420AB4E9B8F70 /* DiscoveryEngine.swift in Sources */,
+				IOSBFBBA81011DCD491DA373 /* CachedAsyncImage.swift in Sources */,
+				IOSB6CC3AACACC7341BBB8D8 /* RatingBadge.swift in Sources */,
+				IOSB76805F13BBA24C3084A9 /* StreamingProviderPill.swift in Sources */,
+				IOSB317783FA9DF34C1FA808 /* PosterCardView.swift in Sources */,
+				IOSB1E49803C8CE04F49B530 /* BackdropCardView.swift in Sources */,
+				IOSB6093BAE21FEE4BBEB431 /* AnodeApp.swift in Sources */,
+				IOSB0E0D96BC447949528A99 /* MainTabView.swift in Sources */,
+				IOSB3960E75DB86F4A069765 /* DiscoverView.swift in Sources */,
+				IOSB3388CF56380145BDB109 /* StreamingPulseView.swift in Sources */,
+				IOSBDCDD5F20EA294F018513 /* SearchView.swift in Sources */,
+				IOSBCD9CD69AC3AA49FCB72E /* WatchlistView.swift in Sources */,
+				IOSB185B97E062484FCF8A2B /* MediaDetailView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		PHS28D337BB8590A49A3B25E /* Sources (tvOS) */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				TVOBDD820269C3194B68BFD4 /* MediaType.swift in Sources */,
+				TVOB33A837B2121840F08F07 /* StreamingProvider.swift in Sources */,
+				TVOBE57329F92C854981BDA3 /* VideoTrailer.swift in Sources */,
+				TVOB999A8718F55846CC96F9 /* CastMember.swift in Sources */,
+				TVOB39A6D6CF0B7D4170B402 /* MediaItem.swift in Sources */,
+				TVOBABB0C5D14994421F9609 /* WatchlistRecord.swift in Sources */,
+				TVOB42F90A511AA74593BA85 /* TMDBService.swift in Sources */,
+				TVOB78AD6C03D3ED4EC1B9F0 /* WatchlistStore.swift in Sources */,
+				TVOBF444E190525547B6805A /* DiscoveryEngine.swift in Sources */,
+				TVOBDB139CB158BE4BCF8DEE /* CachedAsyncImage.swift in Sources */,
+				TVOB322E8E41728D423DBC13 /* RatingBadge.swift in Sources */,
+				TVOBEDC364C0470046ECBE3B /* StreamingProviderPill.swift in Sources */,
+				TVOB132B2CBE50A0471AA369 /* PosterCardView.swift in Sources */,
+				TVOB3E6D6AB7874B4B8F93E1 /* BackdropCardView.swift in Sources */,
+				TVOB78B117D57DE3419E9240 /* AnodeTVApp.swift in Sources */,
+				TVOBB7E4C9DF7EF84DDB9666 /* TVHomeView.swift in Sources */,
+				TVOB809E29F0516B4A0FAF6A /* TVMediaCardView.swift in Sources */,
+				TVOBD0B7304CED364DFF9409 /* TVMediaDetailView.swift in Sources */,
+				TVOBCCADC128F02C41789812 /* TVWatchlistView.swift in Sources */,
+				TVOBD9A4D76E195C4897B542 /* TVSearchView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		PDCF10E178C169A14E2BA72C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		PRCF20FF629ACB344A478404 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SWIFT_COMPILATION_MODE = "wholemodule";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		IDC14F7064088C2E468CA380 /* Debug (iOS) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "iOS/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.anode.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		IRC1FEAE80C9BF614D0F9CF6 /* Release (iOS) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "iOS/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.anode.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		TDC21AEC0E20964C4A6DAAC1 /* Debug (tvOS) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "tvOS/Info.plist";
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.anode.tvos;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = appletvos;
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "3";
+			};
+			name = Debug;
+		};
+		TRC2DFE82B1A460946F68B4A /* Release (tvOS) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "tvOS/Info.plist";
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.anode.tvos;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = appletvos;
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "3";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		PCLF18DC844CCF154F4D91BB /* Build configuration list for PBXProject "Anode" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				PDCF10E178C169A14E2BA72C /* Debug */,
+				PRCF20FF629ACB344A478404 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		ICL13A4D25ADE4544A66ACFF /* Build configuration list for PBXNativeTarget "Anode-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				IDC14F7064088C2E468CA380 /* Debug */,
+				IRC1FEAE80C9BF614D0F9CF6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		TCL235F81C6BE92C4A9F9B5E /* Build configuration list for PBXNativeTarget "Anode-tvOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				TDC21AEC0E20964C4A6DAAC1 /* Debug */,
+				TRC2DFE82B1A460946F68B4A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = PROJD072AC5527694B388463 /* Project object */;
+}

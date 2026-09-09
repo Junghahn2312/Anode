@@ -1,0 +1,91 @@
+import Foundation
+
+public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
+    public let id: Int
+    public let title: String
+    public let originalTitle: String?
+    public let mediaType: MediaType
+    public let overview: String
+    public let posterPath: String?
+    public let backdropPath: String?
+    public let voteAverage: Double
+    public let voteCount: Int
+    public let releaseDateString: String?
+    public let genreNames: [String]
+    public let runtimeMinutes: Int?
+    public let tagline: String?
+    public let certification: String?
+    public var streamingProviders: [StreamingProvider]
+    public var trailers: [VideoTrailer]
+    public var cast: [CastMember]
+    
+    public init(
+        id: Int,
+        title: String,
+        originalTitle: String? = nil,
+        mediaType: MediaType,
+        overview: String,
+        posterPath: String? = nil,
+        backdropPath: String? = nil,
+        voteAverage: Double = 0.0,
+        voteCount: Int = 0,
+        releaseDateString: String? = nil,
+        genreNames: [String] = [],
+        runtimeMinutes: Int? = nil,
+        tagline: String? = nil,
+        certification: String? = nil,
+        streamingProviders: [StreamingProvider] = [],
+        trailers: [VideoTrailer] = [],
+        cast: [CastMember] = []
+    ) {
+        self.id = id
+        self.title = title
+        self.originalTitle = originalTitle
+        self.mediaType = mediaType
+        self.overview = overview
+        self.posterPath = posterPath
+        self.backdropPath = backdropPath
+        self.voteAverage = voteAverage
+        self.voteCount = voteCount
+        self.releaseDateString = releaseDateString
+        self.genreNames = genreNames
+        self.runtimeMinutes = runtimeMinutes
+        self.tagline = tagline
+        self.certification = certification
+        self.streamingProviders = streamingProviders
+        self.trailers = trailers
+        self.cast = cast
+    }
+    
+    public var formattedRating: String {
+        guard voteAverage > 0 else { return "NR" }
+        return String(format: "%.1f", voteAverage)
+    }
+    
+    public var yearString: String {
+        guard let releaseDateString, releaseDateString.count >= 4 else { return "" }
+        return String(releaseDateString.prefix(4))
+    }
+    
+    public var formattedRuntime: String {
+        guard let runtimeMinutes, runtimeMinutes > 0 else { return "" }
+        let hours = runtimeMinutes / 60
+        let minutes = runtimeMinutes % 60
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        }
+        return "\(minutes)m"
+    }
+    
+    public func posterURL(size: String = "w500") -> URL? {
+        guard let posterPath else { return nil }
+        if posterPath.hasPrefix("http") { return URL(string: posterPath) }
+        return URL(string: "https://image.tmdb.org/t/p/\(size)\(posterPath)")
+    }
+    
+    public func backdropURL(size: String = "w1280") -> URL? {
+        guard let backdropPath else { return nil }
+        if backdropPath.hasPrefix("http") { return URL(string: backdropPath) }
+        return URL(string: "https://image.tmdb.org/t/p/\(size)\(backdropPath)")
+    }
+}

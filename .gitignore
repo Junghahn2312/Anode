@@ -1,3 +1,22 @@
-._*
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+project.xcworkspace/xcuserdata/
+*.xcuserdatad/
+*.moved-aside
+*.hmap
+*.xccheckout
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# macOS
 .DS_Store
-*.lock
+._*
+.Spotlight-V100
+.Trashes
+
+# Python tools / cache
+__pycache__/
+*.pyc
