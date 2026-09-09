@@ -75,11 +75,7 @@
 
   document.querySelectorAll('.hero, .sec').forEach(s => io.observe(s));
 
-  /* ---------- 3D Striped Sphere Particle Engine ---------- */
-  // The dots THEMSELVES form the ball logo.
-  // There is NO static image underneath. When the dots disperse, the ball disappears.
-  // When you scroll to the bottom, the dots assemble to form the bottom ball logo.
-
+  /* ---------- Solid Logo Images + Particle Dispersion Engine ---------- */
   const cv = document.getElementById('dust');
   const ctx = cv.getContext('2d');
   const stage1 = document.getElementById('stage');
@@ -90,12 +86,30 @@
   let ready = false, t0 = 0;
   let markOn = false;
 
+  // Render solid logos inside the stages
+  const createSolidLogo = st => {
+    const im = new Image();
+    im.src = 'logo-alpha.png';
+    im.alt = 'Anode';
+    im.width = 1254;
+    im.height = 1254;
+    im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;will-change:opacity;pointer-events:none;';
+    st.style.position = 'relative';
+    st.appendChild(im);
+    return {
+      setOpacity: o => { im.style.opacity = o; }
+    };
+  };
+
+  const L1 = createSolidLogo(stage1);
+  const L2 = createSolidLogo(stage2);
+
   const maskImg = new Image();
   maskImg.src = 'logo-mask.png';
   const alphaImg = new Image();
   alphaImg.src = 'logo-alpha.png';
 
-  // Smooth circular dot sprite for calm, high-precision antialiased rendering
+  // Soft circular antialiased dot sprite
   const makeDotSprite = size => {
     const c = document.createElement('canvas');
     c.width = size;
@@ -104,7 +118,7 @@
     const r = size / 2;
     const grad = cx.createRadialGradient(r, r, 0, r, r, r);
     grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    grad.addColorStop(0.72, 'rgba(255, 255, 255, 0.95)');
+    grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.85)');
     grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
     cx.fillStyle = grad;
     cx.beginPath();
@@ -114,7 +128,7 @@
   };
   const dotSprite = makeDotSprite(32);
 
-  const N = () => innerWidth < 700 ? 96 : 116;
+  const N = () => innerWidth < 700 ? 90 : 110;
 
   /* Hover state on logo stages */
   let M = 0, Mt = 0;
@@ -149,7 +163,7 @@
     off.height = n;
     const o = off.getContext('2d', { willReadFrequently: true });
     
-    // Sample mask for lattice points
+    // Sample mask for points inside bands
     o.drawImage(maskImg, 0, 0, n, n);
     const m = o.getImageData(0, 0, n, n).data;
 
@@ -165,32 +179,51 @@
         const inside = m[idx + 3] > 120;
         if (!inside) continue;
 
-        // Normalized coordinate relative to sphere center (-0.5 to 0.5)
+        // Normalized coordinate inside the sphere (-0.5 to 0.5)
         const u = (x + 0.5) / n - 0.5;
         const v = (y + 0.5) / n - 0.5;
 
-        // 3D brightness from alpha channel
+        // 3D brightness
         const lum = aData[idx + 3] / 255;
-
-        // Calm, elegant dispersion angles and outward spread
-        const ang = Math.random() * Math.PI * 2;
-        const dist = 0.5 + Math.random() * 0.85;
 
         P.push({
           u,
           v,
-          lum: Math.max(0.45, lum),
-          sx: Math.cos(ang) * dist,
-          sy: Math.sin(ang) * dist * 0.8,
+          lum: Math.max(0.5, lum),
           x: 0,
           y: 0,
           vx: 0,
           vy: 0,
           seed: Math.random() * 100,
-          spin: (Math.random() - 0.5) * 0.8,
           phase: Math.random() * Math.PI * 2
         });
       }
+    }
+
+    // Assign every particle an EVEN target across the screen
+    // Low-discrepancy 2D grid covering [0.03*W, 0.97*W] and [0.03*H, 0.97*H]
+    const count = P.length;
+    const aspect = (W || innerWidth) / (H || innerHeight);
+    const cols = Math.ceil(Math.sqrt(count * aspect));
+    const rows = Math.ceil(count / cols);
+
+    // Shuffle indices slightly so adjacent sphere points disperse across different areas
+    const indices = Array.from({ length: count }, (_, i) => i);
+    for (let i = count - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+
+    for (let i = 0; i < count; i++) {
+      const pIdx = indices[i];
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      // Normalized grid positions evenly across the viewport
+      P[pIdx].gx = 0.03 + 0.94 * ((col + 0.5) / cols);
+      P[pIdx].gy = 0.03 + 0.94 * ((row + 0.5) / rows);
+      // Subtle organic jitter
+      P[pIdx].jx = (Math.random() - 0.5) * (1.0 / cols) * 0.7;
+      P[pIdx].jy = (Math.random() - 0.5) * (1.0 / rows) * 0.7;
     }
 
     // Initialize positions at top stage
@@ -228,7 +261,6 @@
       resize();
     }
 
-    // Stage bounding boxes in current viewport
     const r1 = stage1.getBoundingClientRect();
     const r2 = stage2.getBoundingClientRect();
 
@@ -240,92 +272,87 @@
     const c2x = r2.left + S2 / 2;
     const c2y = r2.top + S2 / 2;
 
-    // --- CONTINUOUS SCROLL-BASED DISPERSAL & ASSEMBLY ---
-    // 1) Top assembly: 1 at scrollY=0 (dots form top ball), smoothly drops to 0 as you scroll down
-    const topAssembly = smooth(clamp(1 - scrollY / 260, 0, 1));
+    // --- TRANSITION LOGIC ---
+    // At scrollY == 0: Solid logo is 100% visible (no dots).
+    // The moment scrolling begins (0 -> 70px): Solid logo cross-fades into individual dots, which disperse evenly.
+    const topSolidOpacity = smooth(clamp(1 - scrollY / 65, 0, 1));
+    const topDotReveal = smooth(clamp(scrollY / 35, 0, 1));
 
-    // 2) Bottom assembly: 0 until stage2 approaches viewport, smoothly rises to 1 as it centers
-    const bottomAssembly = smooth(clamp((H * 0.86 - c2y) / (H * 0.42), 0, 1));
+    // Top dispersion factor: 0 at top, ramps to 1 as you scroll past hero
+    const topAssembly = smooth(clamp(1 - scrollY / 240, 0, 1));
 
-    // Dock mini mark in navbar when hero ball dissolves
-    const shouldDock = topAssembly < 0.4;
+    // Bottom assembly factor: 0 in mid-page, rises to 1 as stage2 centers in viewport
+    const bottomAssembly = smooth(clamp((H * 0.88 - c2y) / (H * 0.42), 0, 1));
+    const bottomSolidOpacity = smooth(clamp((bottomAssembly - 0.78) / 0.22, 0, 1));
+
+    // Update solid logo elements opacity
+    L1.setOpacity(topSolidOpacity);
+    L2.setOpacity(bottomSolidOpacity);
+
+    // Mini mark in navbar
+    const shouldDock = topSolidOpacity < 0.2;
     if (shouldDock !== markOn) {
       markOn = shouldDock;
       mark.classList.toggle('is-on', shouldDock);
     }
 
-    // Hover state easing
-    M += (Mt - M) * 0.06;
-    const ME = smooth(M);
-
-    // Dynamic Swarm Target Center
-    const midX = W * 0.5;
-    const midY = H * 0.5;
-
-    let targetCx, targetCy, targetS, assembly;
+    // Swarm target assembly & center
+    let assembly, targetCx, targetCy, targetS;
     if (bottomAssembly > 0.01) {
-      // Transitioning toward bottom stage or fully assembled at bottom
       assembly = bottomAssembly;
-      const tMid = smooth(bottomAssembly);
-      targetCx = lerp(midX, c2x, tMid);
-      targetCy = lerp(midY, c2y, tMid);
-      targetS = lerp(S1, S2, tMid);
-    } else if (topAssembly > 0.01) {
-      // Transitioning from top stage into dispersion
-      assembly = topAssembly;
-      const tMid = smooth(topAssembly);
-      targetCx = lerp(midX, c1x, tMid);
-      targetCy = lerp(midY, c1y, tMid);
-      targetS = S1;
+      targetCx = c2x;
+      targetCy = c2y;
+      targetS = S2;
     } else {
-      // Fully dispersed in mid-page viewport
-      assembly = 0;
-      targetCx = midX;
-      targetCy = midY;
+      assembly = topAssembly;
+      targetCx = c1x;
+      targetCy = c1y;
       targetS = S1;
     }
 
-    // Dispersion factor: 0 when assembled at either stage, 1 when floating in mid-page
+    // Dispersion factor: 0 when assembled at either stage, 1 when freely floating in mid-page
     const disp = 1 - assembly;
-    const spreadX = targetS * 0.55 + W * 0.32;
-    const spreadY = targetS * 0.55 + H * 0.28;
 
     ctx.clearRect(0, 0, W, H);
 
-    // Calmer dot sizing: ~1.4px when assembled, ~1.8px when floating
-    const baseRadius = Math.max(1.3, (targetS / N()) * 0.52);
+    // If completely at top and solid logo is 100% visible, skip drawing dots
+    if (topSolidOpacity >= 0.999 && scrollY === 0) {
+      return;
+    }
+
+    // Dot sizing: delicate stardust points (~1.1px radius on high-DPR)
+    const baseRadius = Math.max(1.1, (targetS / N()) * 0.46);
 
     for (let i = 0; i < P.length; i++) {
       const p = P[i];
 
-      // Exact assembled home coordinate inside the 3D striped sphere
+      // Assembled slot in the 3D striped sphere
       const hx = targetCx + p.u * targetS;
       const hy = targetCy + p.v * targetS;
 
-      // Calm, organic floating drift when dispersed across viewport
-      const driftX = Math.sin(t * 0.35 + p.seed) * 8 * disp;
-      const driftY = Math.cos(t * 0.30 + p.seed * 1.2) * 8 * disp;
-      const scx = targetCx + p.sx * spreadX + driftX;
-      const scy = targetCy + p.sy * spreadY + driftY + t * p.spin * 3.5;
+      // Evenly distributed screen position across the viewport
+      const driftX = Math.sin(t * 0.25 + p.seed) * 6 * disp;
+      const driftY = Math.cos(t * 0.20 + p.seed * 1.3) * 6 * disp;
+      const sx = (p.gx + p.jx) * W + driftX;
+      const sy = (p.gy + p.jy) * H + driftY;
 
-      // Target position blends smoothly between assembled sphere lattice and floating stardust
-      const tx = hx * (1 - disp) + scx * disp;
-      const ty = hy * (1 - disp) + scy * disp;
+      // Smoothly blend between assembled sphere and even screen distribution
+      const tx = hx * (1 - disp) + sx * disp;
+      const ty = hy * (1 - disp) + sy * disp;
 
-      // Smooth, calm spring physics
-      const spring = 0.038 + 0.07 * assembly;
-      p.vx = (p.vx + (tx - p.x) * spring) * 0.82;
-      p.vy = (p.vy + (ty - p.y) * spring) * 0.82;
+      // Calm spring dynamics
+      const spring = 0.04 + 0.06 * assembly;
+      p.vx = (p.vx + (tx - p.x) * spring) * 0.84;
+      p.vy = (p.vy + (ty - p.y) * spring) * 0.84;
 
-      // Calmer, gentle pointer interaction: soft repulsion without violent snapping
+      // Gentle, serene mouse interaction (parts the dots softly like zero-g air)
       const ddx = p.x - px;
       const ddy = p.y - py;
       const dd = ddx * ddx + ddy * ddy;
-      const repelDist = 120;
+      const repelDist = 110;
       if (dd < repelDist * repelDist) {
         const d = Math.sqrt(dd) || 1;
-        // Soft quadratic falloff for serene, fluid gliding
-        const factor = Math.pow(1 - d / repelDist, 1.8) * 2.2 * (0.35 + 0.65 * disp);
+        const factor = Math.pow(1 - d / repelDist, 2.0) * 1.6 * (0.3 + 0.7 * disp);
         p.vx += (ddx / d) * factor;
         p.vy += (ddy / d) * factor;
       }
@@ -333,33 +360,25 @@
       p.x += p.vx;
       p.y += p.vy;
 
-      if (p.x < -30 || p.x > W + 30 || p.y < -30 || p.y > H + 30) continue;
+      if (p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) continue;
 
-      // Calmer, soothing luminosity:
-      // When assembled: steady 3D volume lighting (0.75-0.95 alpha), no harsh flickering
-      // When dispersed: soft, ambient floating glow (0.50-0.70 alpha) with calm breathing
-      let dotAlpha;
+      // Light, calm dot opacity:
+      // When dispersed: soft, airy, serene stardust (~0.32 - 0.44 alpha)
+      // When assembling at bottom: blends with solid bottom logo
+      let alpha;
       if (assembly > 0.8) {
-        // Assembled ball: 3D shaded by surface normal
-        dotAlpha = p.lum * 0.88 + 0.12;
+        // Assembling at bottom: 3D normal shading, fades as solid logo takes over
+        alpha = (p.lum * 0.85 + 0.15) * (1 - bottomSolidOpacity * 0.95);
       } else {
-        // Dispersed / transitioning: calm, soft stardust
-        const calmPulse = 0.58 + 0.12 * Math.sin(t * 0.5 + p.phase);
-        dotAlpha = lerp(calmPulse, p.lum * 0.88 + 0.12, assembly);
+        // Dispersed in mid-page: calm, light, weightless breathing
+        const calmBreath = 0.35 + 0.08 * Math.sin(t * 0.4 + p.phase);
+        alpha = calmBreath * topDotReveal;
       }
 
-      // Gentle hover static glow over the assembled ball
-      if (ME > 0.01 && assembly > 0.7) {
-        const R = targetS * 0.38;
-        const dpx = p.x - px;
-        const dpy = p.y - py;
-        if (dpx * dpx + dpy * dpy < R * R) {
-          dotAlpha = Math.min(1.0, dotAlpha + ME * 0.25);
-        }
-      }
+      if (alpha < 0.02) continue;
 
-      ctx.globalAlpha = clamp(dotAlpha, 0.05, 1.0);
-      const rad = baseRadius * (assembly > 0.5 ? 1.0 : 1.15);
+      ctx.globalAlpha = clamp(alpha, 0.02, 0.9);
+      const rad = baseRadius;
       ctx.drawImage(dotSprite, p.x - rad, p.y - rad, rad * 2, rad * 2);
     }
 
