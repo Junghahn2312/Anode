@@ -13,6 +13,7 @@
 		IOSB60326FBE27934323A25C /* CastMember.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREFFA19E252C0A44804BF6D /* CastMember.swift */; };
 		IOSBDCBB57F043C74797B20A /* MediaItem.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF212616034B9045AA8807 /* MediaItem.swift */; };
 		IOSB5C47DF0898584BDB9D8B /* WatchlistRecord.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF17FDC0105116478C84B0 /* WatchlistRecord.swift */; };
+		IOSB5C47DF0898584BDB9D8C /* TVEpisode.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF17FDC0105116478C84B1 /* TVEpisode.swift */; };
 		IOSB4E828CBA143A48B1B02C /* GenreCategory.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF64BBF282F6CA412B910A /* GenreCategory.swift */; };
 		IOSBAB1C6797B9E2425DA2E9 /* WatchAvailability.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF24D1169AEADC4C1E8454 /* WatchAvailability.swift */; };
 		IOSBED9B53FFB3704EEBB70C /* ContentProvider.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF19E336AD5B27415A91E8 /* ContentProvider.swift */; };
@@ -41,6 +42,7 @@
 		TVOB2BE7B6811D6C44E3A02F /* CastMember.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREFFA19E252C0A44804BF6D /* CastMember.swift */; };
 		TVOB4CC2D569B73E4E55BAE2 /* MediaItem.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF212616034B9045AA8807 /* MediaItem.swift */; };
 		TVOBD04E6C606CFC4D1BA80F /* WatchlistRecord.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF17FDC0105116478C84B0 /* WatchlistRecord.swift */; };
+		TVOBD04E6C606CFC4D1BA80E /* TVEpisode.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF17FDC0105116478C84B1 /* TVEpisode.swift */; };
 		TVOB0503B0644C824C44BD36 /* GenreCategory.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF64BBF282F6CA412B910A /* GenreCategory.swift */; };
 		TVOBAE0FA8FF77904E70A46C /* WatchAvailability.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF24D1169AEADC4C1E8454 /* WatchAvailability.swift */; };
 		TVOB5B512F1159774BB4B472 /* ContentProvider.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF19E336AD5B27415A91E8 /* ContentProvider.swift */; };
@@ -78,6 +80,7 @@
 		FREFFA19E252C0A44804BF6D /* CastMember.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CastMember.swift"; sourceTree = "<group>"; };
 		FREF212616034B9045AA8807 /* MediaItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MediaItem.swift"; sourceTree = "<group>"; };
 		FREF17FDC0105116478C84B0 /* WatchlistRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchlistRecord.swift"; sourceTree = "<group>"; };
+		FREF17FDC0105116478C84B1 /* TVEpisode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TVEpisode.swift"; sourceTree = "<group>"; };
 		FREF64BBF282F6CA412B910A /* GenreCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GenreCategory.swift"; sourceTree = "<group>"; };
 		FREF24D1169AEADC4C1E8454 /* WatchAvailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchAvailability.swift"; sourceTree = "<group>"; };
 		FREF19E336AD5B27415A91E8 /* ContentProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentProvider.swift"; sourceTree = "<group>"; };
@@ -155,6 +158,7 @@
 				FREFFA19E252C0A44804BF6D /* CastMember.swift */,
 				FREF212616034B9045AA8807 /* MediaItem.swift */,
 				FREF17FDC0105116478C84B0 /* WatchlistRecord.swift */,
+				FREF17FDC0105116478C84B1 /* TVEpisode.swift */,
 				FREF64BBF282F6CA412B910A /* GenreCategory.swift */,
 				FREF24D1169AEADC4C1E8454 /* WatchAvailability.swift */,
 			);
@@ -353,6 +357,7 @@
 				IOSB60326FBE27934323A25C /* CastMember.swift in Sources */,
 				IOSBDCBB57F043C74797B20A /* MediaItem.swift in Sources */,
 				IOSB5C47DF0898584BDB9D8B /* WatchlistRecord.swift in Sources */,
+				IOSB5C47DF0898584BDB9D8C /* TVEpisode.swift in Sources */,
 				IOSB4E828CBA143A48B1B02C /* GenreCategory.swift in Sources */,
 				IOSBAB1C6797B9E2425DA2E9 /* WatchAvailability.swift in Sources */,
 				IOSBED9B53FFB3704EEBB70C /* ContentProvider.swift in Sources */,
@@ -387,6 +392,7 @@
 				TVOB2BE7B6811D6C44E3A02F /* CastMember.swift in Sources */,
 				TVOB4CC2D569B73E4E55BAE2 /* MediaItem.swift in Sources */,
 				TVOBD04E6C606CFC4D1BA80F /* WatchlistRecord.swift in Sources */,
+				TVOBD04E6C606CFC4D1BA80E /* TVEpisode.swift in Sources */,
 				TVOB0503B0644C824C44BD36 /* GenreCategory.swift in Sources */,
 				TVOBAE0FA8FF77904E70A46C /* WatchAvailability.swift in Sources */,
 				TVOB5B512F1159774BB4B472 /* ContentProvider.swift in Sources */,

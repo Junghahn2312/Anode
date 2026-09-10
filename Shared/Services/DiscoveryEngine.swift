@@ -112,6 +112,16 @@ public final class DiscoveryEngine: ObservableObject {
         await tmdb.fetchRecommendations(id: item.id, mediaType: item.mediaType)
     }
     
+    public func fetchSeasons(for item: MediaItem) async -> [TVSeason] {
+        guard item.mediaType == .tvShow else { return [] }
+        return await tmdb.fetchSeasons(tvShowId: item.id)
+    }
+    
+    public func fetchEpisodes(for item: MediaItem, seasonNumber: Int) async -> [TVEpisode] {
+        guard item.mediaType == .tvShow else { return [] }
+        return await tmdb.fetchEpisodes(tvShowId: item.id, seasonNumber: seasonNumber)
+    }
+    
     public func search(query: String) async {
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             self.searchResults = []

@@ -101,6 +101,15 @@ public struct TVHomeView: View {
                                 )
                             }
                             
+                            // Popular (16:9 Landscape - Image 2)
+                            let popularItems = Array((engine.popularMovies + engine.popularTV).prefix(10))
+                            if !popularItems.isEmpty {
+                                landscapeRow(
+                                    title: "Popular",
+                                    items: popularItems
+                                )
+                            }
+                            
                             // Top 10 Today (Large Numeral Row)
                             if !engine.topTen.isEmpty {
                                 VStack(alignment: .leading, spacing: 14) {
@@ -321,48 +330,54 @@ public struct TVHomeView: View {
                 .frame(maxWidth: 820, alignment: .leading)
                 .shadow(color: Color.black.opacity(0.7), radius: 4, x: 0, y: 2)
             
-            // Action Buttons
-            HStack(spacing: 20) {
+            // Action Buttons (Matching Image 2)
+            HStack(spacing: 16) {
                 Button {
                     selectedItem = hero
                 } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "info.circle")
+                    HStack(spacing: 8) {
+                        Text(hero.mediaType == .tvShow ? "Go to Series" : "View Details")
                             .font(.system(size: 17, weight: .bold))
-                        Text("View Details")
-                            .font(.system(size: 17, weight: .bold))
+                            .foregroundColor(.black)
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, 28)
                     .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.white)
+                    )
                 }
+                .buttonStyle(.plain)
                 
                 Button {
                     watchlist.toggleWatchlist(item: hero)
                 } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: watchlist.contains(id: hero.id) ? "checkmark" : "plus")
-                            .font(.system(size: 17, weight: .bold))
-                        Text(watchlist.contains(id: hero.id) ? "In My List" : "Add to My List")
-                            .font(.system(size: 17, weight: .bold))
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 14)
+                    Image(systemName: watchlist.contains(id: hero.id) ? "bookmark.fill" : "bookmark")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color.white.opacity(0.18))
+                        )
                 }
-                
-                if let trailer = hero.trailers.first, let url = trailer.youtubeURL {
-                    Link(destination: url) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 17, weight: .bold))
-                            Text("Watch Trailer")
-                                .font(.system(size: 17, weight: .bold))
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-                    }
-                }
+                .buttonStyle(.plain)
             }
             .padding(.top, 4)
+            
+            // Carousel Page Indicator Dots (Matching Image 2)
+            let totalDots = min(heroPool.count, 8)
+            let currentIndex = focusedItem == nil ? (heroIndex % max(1, heroPool.count)) : (heroPool.firstIndex(where: { $0.id == focusedItem?.id }) ?? 0)
+            HStack(spacing: 8) {
+                ForEach(0..<totalDots, id: \.self) { idx in
+                    let isActive = (currentIndex % totalDots) == idx
+                    Capsule()
+                        .fill(isActive ? Color.white : Color.white.opacity(0.3))
+                        .frame(width: isActive ? 22 : 6, height: 6)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: isActive)
+                }
+            }
+            .padding(.top, 6)
         }
         .frame(alignment: .bottomLeading)
     }
