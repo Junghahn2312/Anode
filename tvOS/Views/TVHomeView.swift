@@ -33,14 +33,22 @@ public struct TVHomeView: View {
     public var body: some View {
         GeometryReader { screenGeo in
             ZStack(alignment: .topLeading) {
-                // Ambient Pure Black Background
+                // Ambient Pure Black Base
                 Color.black.ignoresSafeArea()
                 
-                // 4K Backdrop in top 70% of the screen with top alignment so heads and faces are never cut off
+                // Full-Bleed Atmospheric Backdrop & Fluid Color Bleed
                 if let hero = currentHero {
                     ZStack(alignment: .topLeading) {
+                        // Ambient blurred color bleed extending smoothly underneath the rows
+                        CachedAsyncImage(url: hero.backdropURL(size: "w780"), contentMode: .fill)
+                            .frame(width: screenGeo.size.width, height: screenGeo.size.height)
+                            .blur(radius: 80)
+                            .opacity(0.38)
+                            .clipped()
+                        
+                        // Crisp Full-Bleed 4K Backdrop Image
                         CachedAsyncImage(url: hero.backdropURL(size: "original"), contentMode: .fill)
-                            .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.70, alignment: .top)
+                            .frame(width: screenGeo.size.width, height: screenGeo.size.height, alignment: .top)
                             .clipped()
                             .id(hero.id)
                             .transition(.opacity)
@@ -49,30 +57,32 @@ public struct TVHomeView: View {
                         LinearGradient(
                             stops: [
                                 .init(color: Color.black.opacity(0.96), location: 0.0),
-                                .init(color: Color.black.opacity(0.82), location: 0.40),
-                                .init(color: Color.black.opacity(0.35), location: 0.68),
+                                .init(color: Color.black.opacity(0.85), location: 0.36),
+                                .init(color: Color.black.opacity(0.38), location: 0.65),
                                 .init(color: Color.clear, location: 0.90)
                             ],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
-                        .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.70)
+                        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
                         
-                        // Top-to-bottom gradient fading cleanly into solid black
+                        // Top-to-bottom fluid fade blending seamlessly into rows underneath
                         LinearGradient(
                             stops: [
-                                .init(color: Color.clear, location: 0.25),
-                                .init(color: Color.black.opacity(0.38), location: 0.55),
-                                .init(color: Color.black.opacity(0.85), location: 0.85),
-                                .init(color: Color.black, location: 1.0)
+                                .init(color: Color.clear, location: 0.0),
+                                .init(color: Color.clear, location: 0.30),
+                                .init(color: Color.black.opacity(0.20), location: 0.44),
+                                .init(color: Color.black.opacity(0.65), location: 0.58),
+                                .init(color: Color.black.opacity(0.92), location: 0.76),
+                                .init(color: Color.black, location: 0.98)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
-                        .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.70)
+                        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
                     }
                     .ignoresSafeArea()
-                    .animation(.easeInOut(duration: 0.32), value: hero.id)
+                    .animation(.easeInOut(duration: 0.35), value: hero.id)
                 }
                 
                 // Foreground Vertical Layout:
@@ -216,7 +226,9 @@ public struct TVHomeView: View {
                     .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.52)
                 }
             }
+            .ignoresSafeArea()
         }
+        .ignoresSafeArea()
         .onReceive(timer) { _ in
             if !isUserInteracting && focusedItem == nil && !heroPool.isEmpty {
                 withAnimation(.easeInOut(duration: 0.8)) {
@@ -238,37 +250,63 @@ public struct TVHomeView: View {
     
     private func heroMetadataView(_ hero: MediaItem) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Category & Availability Pill
+            // Category & Availability Frosted Glass Pills
             HStack(spacing: 12) {
-                Text("ANODE SPOTLIGHT")
-                    .font(.system(size: 12, weight: .black))
-                    .tracking(2.2)
-                    .foregroundColor(.red)
+                HStack(spacing: 6) {
+                    Text("ANODE SPOTLIGHT")
+                        .font(.system(size: 11, weight: .black))
+                        .tracking(2.0)
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                )
                 
                 if hero.inCinemas {
                     Text("IN CINEMAS NOW")
                         .font(.system(size: 11, weight: .black))
                         .tracking(1.0)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.red.opacity(0.85)))
+                        .foregroundColor(.red)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.red.opacity(0.4), lineWidth: 1)
+                        )
                 } else if let avail = heroAvailability, let primarySub = avail.subscriptions.first {
-                    Text("STREAMING ON \(primarySub.name.uppercased())")
-                        .font(.system(size: 11, weight: .bold))
-                        .tracking(0.8)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(primarySub.brandColor.opacity(0.65)))
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(primarySub.brandColor)
+                            .frame(width: 7, height: 7)
+                        Text("STREAMING ON \(primarySub.name.uppercased())")
+                            .font(.system(size: 11, weight: .bold))
+                            .tracking(0.8)
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(primarySub.brandColor.opacity(0.45), lineWidth: 1)
+                    )
                 } else if let avail = heroAvailability, let rent = avail.rentOptions.first {
                     Text("RENT FROM \(rent.price)")
                         .font(.system(size: 11, weight: .bold))
                         .tracking(0.8)
                         .foregroundColor(.white.opacity(0.9))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.white.opacity(0.18)))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                        )
                 }
             }
             
@@ -335,48 +373,38 @@ public struct TVHomeView: View {
                 Button {
                     selectedItem = hero
                 } label: {
-                    HStack(spacing: 8) {
-                        Text(hero.mediaType == .tvShow ? "Go to Series" : "View Details")
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundColor(.black)
-                    }
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.white)
-                    )
+                    TVHomePrimaryHeroButtonLabel(title: hero.mediaType == .tvShow ? "Go to Series" : "View Details")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tvCard)
                 
                 Button {
                     watchlist.toggleWatchlist(item: hero)
                 } label: {
-                    Image(systemName: watchlist.contains(id: hero.id) ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(Color.white.opacity(0.18))
-                        )
+                    TVHomeSecondaryBookmarkButtonLabel(isBookmarked: watchlist.contains(id: hero.id))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tvCard)
             }
             .padding(.top, 4)
             
-            // Carousel Page Indicator Dots (Matching Image 2)
+            // Frosted Glass Carousel Page Indicator Dots (Matching Image 2)
             let totalDots = min(heroPool.count, 8)
             let currentIndex = focusedItem == nil ? (heroIndex % max(1, heroPool.count)) : (heroPool.firstIndex(where: { $0.id == focusedItem?.id }) ?? 0)
             HStack(spacing: 8) {
                 ForEach(0..<totalDots, id: \.self) { idx in
                     let isActive = (currentIndex % totalDots) == idx
                     Capsule()
-                        .fill(isActive ? Color.white : Color.white.opacity(0.3))
+                        .fill(isActive ? Color.white : Color.white.opacity(0.35))
                         .frame(width: isActive ? 22 : 6, height: 6)
                         .animation(.spring(response: 0.3, dampingFraction: 0.75), value: isActive)
                 }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+            )
             .padding(.top, 6)
         }
         .frame(alignment: .bottomLeading)
@@ -453,5 +481,52 @@ public struct TVHomeView: View {
                 focusedItem = item
             }
         }
+    }
+}
+
+// MARK: - Dedicated Focusable Hero Button Labels
+
+private struct TVHomePrimaryHeroButtonLabel: View {
+    let title: String
+    @Environment(\.isFocused) private var isFocused: Bool
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(.black)
+        }
+        .padding(.horizontal, 28)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.white)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(isFocused ? Color(white: 0.85) : Color.clear, lineWidth: 3)
+        )
+        .scaleEffect(isFocused ? 1.05 : 1.0)
+        .shadow(color: Color.white.opacity(isFocused ? 0.35 : 0.0), radius: isFocused ? 12 : 0, x: 0, y: 0)
+        .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
+    }
+}
+
+private struct TVHomeSecondaryBookmarkButtonLabel: View {
+    let isBookmarked: Bool
+    @Environment(\.isFocused) private var isFocused: Bool
+    
+    var body: some View {
+        Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
+            .font(.system(size: 18, weight: .bold))
+            .foregroundColor(.white)
+            .padding(14)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(isFocused ? Color(white: 0.85) : Color.white.opacity(0.2), lineWidth: isFocused ? 2 : 1)
+            )
+            .scaleEffect(isFocused ? 1.05 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
     }
 }

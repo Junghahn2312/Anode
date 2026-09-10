@@ -33,22 +33,35 @@ public struct TVMediaDetailView: View {
             // Ambient Pure Black Background
             Color.black.ignoresSafeArea()
             
-            // Full-bleed Backdrop Hero
-            CachedAsyncImage(url: item.backdropURL(size: "original"), contentMode: .fill)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .overlay(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.black.opacity(0.35), location: 0.0),
-                            .init(color: Color.black.opacity(0.70), location: 0.45),
-                            .init(color: Color.black.opacity(0.96), location: 0.75),
-                            .init(color: Color.black, location: 1.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
+            // Full-bleed Ambient Color Bleed & 4K Backdrop
+            ZStack {
+                // Ambient blurred color bleed
+                CachedAsyncImage(url: item.backdropURL(size: "w780"), contentMode: .fill)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .blur(radius: 80)
+                    .opacity(0.38)
+                    .clipped()
+                
+                // Crisp 4K Backdrop
+                CachedAsyncImage(url: item.backdropURL(size: "original"), contentMode: .fill)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .clipped()
+                
+                // Fluid multi-stop gradient fade blending into lower content
+                LinearGradient(
+                    stops: [
+                        .init(color: Color.clear, location: 0.0),
+                        .init(color: Color.clear, location: 0.25),
+                        .init(color: Color.black.opacity(0.30), location: 0.45),
+                        .init(color: Color.black.opacity(0.70), location: 0.65),
+                        .init(color: Color.black.opacity(0.95), location: 0.85),
+                        .init(color: Color.black, location: 1.0)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
-                .ignoresSafeArea()
+            }
+            .ignoresSafeArea()
             
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 38) {
@@ -350,11 +363,15 @@ public struct TVMediaDetailView: View {
                 .foregroundColor(.white.opacity(0.35))
                 .padding(.top, 2)
         }
-        .padding(18)
+        .padding(20)
         .frame(maxWidth: 820, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(white: 0.1).opacity(0.65))
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                )
         )
     }
     
@@ -402,7 +419,14 @@ public struct TVMediaDetailView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color(white: 0.12)))
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 0.8)
+                )
+        )
     }
     
     // MARK: - More Like This Section
@@ -455,6 +479,17 @@ private struct TVBackButtonLabel: View {
         .background(
             Capsule()
                 .fill(isFocused ? Color.white : Color.white.opacity(0.18))
+                .background(
+                    Group {
+                        if !isFocused {
+                            Capsule().fill(.ultraThinMaterial)
+                        }
+                    }
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(isFocused ? Color.clear : Color.white.opacity(0.25), lineWidth: 1)
+                )
         )
         .scaleEffect(isFocused ? 1.05 : 1.0)
         .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
@@ -500,10 +535,17 @@ private struct TVBookmarkButtonLabel: View {
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(isFocused ? Color(white: 0.35) : Color.white.opacity(0.18))
+                    .background(
+                        Group {
+                            if !isFocused {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.ultraThinMaterial)
+                            }
+                        }
+                    )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(isFocused ? Color(white: 0.85) : Color.clear, lineWidth: 2)
+                    .stroke(isFocused ? Color(white: 0.85) : Color.white.opacity(0.18), lineWidth: 1.5)
             )
             .scaleEffect(isFocused ? 1.06 : 1.0)
             .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
@@ -524,10 +566,17 @@ private struct SeasonTabLabel: View {
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(isFocused ? Color(white: 0.35) : (isSelected ? Color(white: 0.24) : Color.clear))
+                    .background(
+                        Group {
+                            if !isFocused && !isSelected {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.ultraThinMaterial)
+                            }
+                        }
+                    )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(isFocused ? Color(white: 0.65).opacity(0.8) : Color.clear, lineWidth: 1.5)
+                    .stroke(isFocused ? Color(white: 0.65).opacity(0.8) : Color.white.opacity(0.14), lineWidth: 1.2)
             )
             .scaleEffect(isFocused ? 1.04 : 1.0)
             .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)

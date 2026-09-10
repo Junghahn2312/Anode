@@ -19,7 +19,14 @@ public struct TVSettingsView: View {
                             .foregroundColor(.cyan)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
-                            .background(Capsule().fill(Color.cyan.opacity(0.18)))
+                            .background(
+                                Capsule()
+                                    .fill(Color.cyan.opacity(0.18))
+                                    .background(.ultraThinMaterial, in: Capsule())
+                                    .overlay(
+                                        Capsule().stroke(Color.cyan.opacity(0.35), lineWidth: 1)
+                                    )
+                            )
                         
                         Text("ANODE")
                             .font(.system(size: 13, weight: .bold))
@@ -146,7 +153,11 @@ public struct TVSettingsView: View {
             .padding(22)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color(white: 0.10))
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    )
             )
         }
         .frame(maxWidth: 1000)

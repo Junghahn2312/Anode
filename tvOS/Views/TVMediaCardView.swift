@@ -51,7 +51,12 @@ public struct TVMediaCardView: View {
                             .padding(.vertical, 3)
                             .background(
                                 Capsule()
-                                    .fill(Color.red.opacity(0.85))
+                                    .fill(Color.red.opacity(0.80))
+                                    .background(.ultraThinMaterial, in: Capsule())
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
+                                    )
                             )
                     }
                 }
@@ -64,7 +69,14 @@ public struct TVMediaCardView: View {
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundColor(.white)
                                 .padding(7)
-                                .background(Circle().fill(Color.black.opacity(0.75)))
+                                .background(
+                                    Circle()
+                                        .fill(.ultraThinMaterial)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
+                                        )
+                                )
                             Spacer()
                         }
                         Spacer()

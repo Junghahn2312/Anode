@@ -16,14 +16,14 @@ public struct RatingBadge: View {
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundColor(.white)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3.5)
         .background(
             Capsule()
-                .fill(Color.black.opacity(0.75))
+                .fill(.ultraThinMaterial)
                 .overlay(
                     Capsule()
-                        .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                        .stroke(Color.white.opacity(0.22), lineWidth: 0.8)
                 )
         )
     }
