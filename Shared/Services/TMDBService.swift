@@ -86,9 +86,22 @@ public actor TMDBService {
         var results = [MediaItem]()
         for item in all {
             if !seen.contains(item.id) {
-                if item.title.lowercased().contains(q) || item.genreNames.contains(where: { $0.lowercased().contains(q) }) {
+                let matchesTitle = item.title.lowercased().contains(q)
+                let matchesGenre = item.genreNames.contains(where: { $0.lowercased().contains(q) })
+                let matchesCast = item.cast.contains(where: { $0.name.lowercased().contains(q) || $0.character.lowercased().contains(q) })
+                let matchesOverview = item.overview.lowercased().contains(q)
+                if matchesTitle || matchesGenre || matchesCast || matchesOverview {
                     seen.insert(item.id)
                     results.append(item)
+                }
+            }
+        }
+        if results.isEmpty {
+            for item in all {
+                if !seen.contains(item.id) {
+                    seen.insert(item.id)
+                    results.append(item)
+                    if results.count >= 8 { break }
                 }
             }
         }
@@ -227,7 +240,7 @@ public enum MockData {
             title: "Furiosa: A Mad Max Saga",
             mediaType: .movie,
             overview: "As the world fell, young Furiosa is snatched from the Green Place of Many Mothers and falls into the hands of a great Biker Horde led by the Warlord Dementus.",
-            posterPath: "/iADOJ8Zymht2JPMoy3R7xUMZqaC.jpg",
+            posterPath: "/iADOJ8Zymht2JPMoy3R7xceZprc.jpg",
             backdropPath: "/wNAhuOZ3Zf84jCIpkRw8vFaEN8i.jpg",
             voteAverage: 7.8,
             voteCount: 3100,
@@ -251,8 +264,8 @@ public enum MockData {
             title: "Severance",
             mediaType: .tvShow,
             overview: "Mark leads a team of office workers whose memories have been surgically divided between their work and personal lives. When a mysterious colleague appears outside of work, it begins a journey to discover the truth about their jobs.",
-            posterPath: "/8cslhV3pC1V2W1o9lX5oI4zXy7s.jpg",
-            backdropPath: "/o7v2j9u82L4x6Z9V5z0e7Q1r3w.jpg",
+            posterPath: "/pPHpeI2X1qEd1CS1SeyrdhZ4qnT.jpg",
+            backdropPath: "/ixgFmf1X59PUZam2qbAfskx2gQr.jpg",
             voteAverage: 8.7,
             voteCount: 3900,
             releaseDateString: "2022-02-18",
@@ -273,8 +286,8 @@ public enum MockData {
             title: "Slow Horses",
             mediaType: .tvShow,
             overview: "This quick-witted espionage drama follows a dysfunctional team of MI5 agents—and their obnoxious boss, the notorious Jackson Lamb—as they navigate the espionage world's smoke and mirrors to defend England from sinister forces.",
-            posterPath: "/2RkVlH6W3hR4D5o9wE8s1x2Y3z.jpg",
-            backdropPath: "/3s2j9u82L4x6Z9V5z0e7Q1r3w.jpg",
+            posterPath: "/1g1eT3Kw8C57AnQdZIcLyRU4xkw.jpg",
+            backdropPath: "/wPJgjOfsFUny1WBo53Q9xtIMSs.jpg",
             voteAverage: 8.3,
             voteCount: 1980,
             releaseDateString: "2022-04-01",
@@ -295,8 +308,8 @@ public enum MockData {
             title: "The Penguin",
             mediaType: .tvShow,
             overview: "Following the events of The Batman, Oswald Cobblepot begins his ruthless climb to seize control of Gotham City's criminal underworld as an all-out turf war brews.",
-            posterPath: "/aRbp1v3L5W6X7Y8Z9a0b1c2d3e.jpg",
-            backdropPath: "/4c4k2j9u82L4x6Z9V5z0e7Q1r3w.jpg",
+            posterPath: "/u7xqyWcJXL0LejV6PQrkYPQbfD2.jpg",
+            backdropPath: "/7tGvH4PYRbzO9W6wcGxqyU2FZJd.jpg",
             voteAverage: 8.8,
             voteCount: 3400,
             releaseDateString: "2024-09-19",
@@ -316,8 +329,8 @@ public enum MockData {
             title: "Shōgun",
             mediaType: .tvShow,
             overview: "When a mysterious European ship is found marooned in a nearby fishing village, Lord Yoshii Toranaga discovers secrets that could tip the scales of power and devastate his formidable enemies in 17th-century feudal Japan.",
-            posterPath: "/7O4iVfOMQmdCSxhOg1WNzG1AgYT.jpg",
-            backdropPath: "/5vF6F7x8X9Y0Z1a2b3c4d5e6f.jpg",
+            posterPath: "/7O4iVfOMQmdCSxhOg1WnzG1AgYT.jpg",
+            backdropPath: "/bwSmgmd90hCWwqOKQYTEraeOZhJ.jpg",
             voteAverage: 8.9,
             voteCount: 5200,
             releaseDateString: "2024-02-27",
@@ -342,7 +355,7 @@ public enum MockData {
                 title: "Ripley",
                 mediaType: .tvShow,
                 overview: "A grifter drawn into a world of wealth and privilege after taking a unique job in Italy finds himself entangled in a complex web of deception, fraud, and murder.",
-                posterPath: "/2RkVlH6W3hR4D5o9wE8s1x2Y3z.jpg",
+                posterPath: "/zU0htwkhNvBQdVSIKB9s6hgVeFK.jpg",
                 backdropPath: "/3s2j9u82L4x6Z9V5z0e7Q1r3w.jpg",
                 voteAverage: 8.1,
                 voteCount: 1420,
@@ -358,7 +371,7 @@ public enum MockData {
                 title: "Baby Reindeer",
                 mediaType: .tvShow,
                 overview: "When a struggling comedian shows one kind gesture to a vulnerable woman, an obsessive stalking nightmare erupts that forces both to confront deeply buried trauma.",
-                posterPath: "/sh7Rg8Er3tFcN9BpKIPOMvALgZd.jpg",
+                posterPath: "/pylL2yER1E23rq60imU9GVYusxu.jpg",
                 backdropPath: "/z121mtTxg5v9whDjy9spvBjeTeO.jpg",
                 voteAverage: 7.9,
                 voteCount: 2890,
@@ -466,7 +479,7 @@ public enum MockData {
             title: "Nosferatu",
             mediaType: .movie,
             overview: "A gothic tale of obsession between a haunted young woman in 19th-century Germany and the ancient Transylvanian vampire who stalks her, bringing untold horror in his wake.",
-            posterPath: "/5vF6F7x8X9Y0Z1a2b3c4d5e6f.jpg",
+            posterPath: "/5qGIxdEO841C0tdY8vOdLoRVrr0.jpg",
             backdropPath: "/4c4k2j9u82L4x6Z9V5z0e7Q1r3w.jpg",
             voteAverage: 7.9,
             voteCount: 1200,

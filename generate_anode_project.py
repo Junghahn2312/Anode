@@ -12,7 +12,8 @@ shared_models = [
     "Shared/Models/VideoTrailer.swift",
     "Shared/Models/CastMember.swift",
     "Shared/Models/MediaItem.swift",
-    "Shared/Models/WatchlistRecord.swift"
+    "Shared/Models/WatchlistRecord.swift",
+    "Shared/Models/GenreCategory.swift"
 ]
 
 shared_services = [
@@ -26,7 +27,10 @@ shared_components = [
     "Shared/Components/RatingBadge.swift",
     "Shared/Components/StreamingProviderPill.swift",
     "Shared/Components/PosterCardView.swift",
-    "Shared/Components/BackdropCardView.swift"
+    "Shared/Components/BackdropCardView.swift",
+    "Shared/Components/TopTenCardView.swift",
+    "Shared/Components/StreamingPlatformTileView.swift",
+    "Shared/Components/GenrePhotoCardView.swift"
 ]
 
 shared_all = shared_models + shared_services + shared_components

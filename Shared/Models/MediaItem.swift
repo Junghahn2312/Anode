@@ -18,6 +18,7 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
     public var streamingProviders: [StreamingProvider]
     public var trailers: [VideoTrailer]
     public var cast: [CastMember]
+    public var rank: Int?
     
     public init(
         id: Int,
@@ -36,7 +37,8 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
         certification: String? = nil,
         streamingProviders: [StreamingProvider] = [],
         trailers: [VideoTrailer] = [],
-        cast: [CastMember] = []
+        cast: [CastMember] = [],
+        rank: Int? = nil
     ) {
         self.id = id
         self.title = title

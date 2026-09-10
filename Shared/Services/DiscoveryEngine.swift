@@ -11,6 +11,8 @@ public final class DiscoveryEngine: ObservableObject {
     @Published public var newReleases: [MediaItem] = []
     @Published public var topRated: [MediaItem] = []
     @Published public var upcoming: [MediaItem] = []
+    @Published public var topTen: [MediaItem] = []
+    @Published public var genres: [GenreCategory] = GenreCategory.allCurated
     
     @Published public var selectedProvider: StreamingProvider = .netflix {
         didSet {
@@ -47,6 +49,21 @@ public final class DiscoveryEngine: ObservableObject {
         self.newReleases = await newReleasesTask
         self.topRated = await topRatedTask
         self.upcoming = await upcomingTask
+        
+        // Build Top 10 List
+        var candidates = self.trendingItems + self.cinemaMovies + self.topRated
+        var unique: [MediaItem] = []
+        var seen = Set<Int>()
+        for item in candidates {
+            if !seen.contains(item.id) {
+                seen.insert(item.id)
+                var ranked = item
+                ranked.rank = unique.count + 1
+                unique.append(ranked)
+                if unique.count == 10 { break }
+            }
+        }
+        self.topTen = unique
     }
     
     public func loadStreamingItems() async {
