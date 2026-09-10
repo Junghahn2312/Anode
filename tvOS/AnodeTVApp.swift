@@ -9,21 +9,45 @@ struct AnodeTVApp: App {
             TabView(selection: $selectedTab) {
                 TVHomeView()
                     .tabItem {
-                        Label("Discover", systemImage: "sparkles")
+                        Label("Home", systemImage: "house")
                     }
                     .tag(0)
                 
-                TVWatchlistView()
+                TVCategoryBrowseView(mediaType: .movie)
                     .tabItem {
-                        Label("Watchlist", systemImage: "bookmark")
+                        Label("Movies", systemImage: "film")
                     }
                     .tag(1)
+                
+                TVCategoryBrowseView(mediaType: .tvShow)
+                    .tabItem {
+                        Label("TV Shows", systemImage: "tv")
+                    }
+                    .tag(2)
+                
+                TVCinemaView()
+                    .tabItem {
+                        Label("Cinema", systemImage: "ticket")
+                    }
+                    .tag(3)
+                
+                TVStreamingHubView()
+                    .tabItem {
+                        Label("Streaming", systemImage: "play.rectangle.on.rectangle")
+                    }
+                    .tag(4)
                 
                 TVSearchView()
                     .tabItem {
                         Label("Search", systemImage: "magnifyingglass")
                     }
-                    .tag(2)
+                    .tag(5)
+                
+                TVWatchlistView()
+                    .tabItem {
+                        Label("My List", systemImage: "bookmark")
+                    }
+                    .tag(6)
             }
             .preferredColorScheme(.dark)
         }

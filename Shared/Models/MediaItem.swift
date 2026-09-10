@@ -19,6 +19,8 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
     public var trailers: [VideoTrailer]
     public var cast: [CastMember]
     public var rank: Int?
+    public var availability: WatchAvailability?
+    public var inCinemas: Bool
     
     public init(
         id: Int,
@@ -38,7 +40,9 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
         streamingProviders: [StreamingProvider] = [],
         trailers: [VideoTrailer] = [],
         cast: [CastMember] = [],
-        rank: Int? = nil
+        rank: Int? = nil,
+        availability: WatchAvailability? = nil,
+        inCinemas: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -57,6 +61,17 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
         self.streamingProviders = streamingProviders
         self.trailers = trailers
         self.cast = cast
+        self.rank = rank
+        self.availability = availability
+        self.inCinemas = inCinemas
+    }
+    
+    public var rating: Double {
+        voteAverage
+    }
+    
+    public var releaseDate: String? {
+        releaseDateString
     }
     
     public var formattedRating: String {

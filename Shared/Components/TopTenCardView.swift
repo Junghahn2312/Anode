@@ -49,14 +49,9 @@ public struct TopTenCardView: View {
                 CachedAsyncImage(url: item.posterURL(size: "w500"))
                     .frame(width: width, height: height)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            #if os(tvOS)
-                            .stroke(isFocused ? Color.white : Color.white.opacity(0.15), lineWidth: isFocused ? 3 : 0.5)
-                            #else
-                            .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
-                            #endif
-                    )
+                    #if os(tvOS)
+                    .colorMultiply(isFocused ? Color(white: 1.06) : Color(white: 0.92))
+                    #endif
                 
                 if !item.formattedRating.isEmpty {
                     RatingBadge(rating: item.formattedRating)
@@ -65,9 +60,9 @@ public struct TopTenCardView: View {
             }
             .zIndex(1)
             #if os(tvOS)
-            .scaleEffect(isFocused ? 1.08 : 1.0)
-            .shadow(color: isFocused ? Color.white.opacity(0.25) : Color.black.opacity(0.6), radius: isFocused ? 20 : 8, x: 0, y: isFocused ? 10 : 4)
-            .animation(.easeInOut(duration: 0.2), value: isFocused)
+            .scaleEffect(isFocused ? 1.07 : 1.0)
+            .shadow(color: Color.black.opacity(isFocused ? 0.75 : 0.35), radius: isFocused ? 26 : 8, x: 0, y: isFocused ? 14 : 4)
+            .animation(.spring(response: 0.28, dampingFraction: 0.78), value: isFocused)
             #else
             .shadow(color: Color.black.opacity(0.5), radius: 8, x: 0, y: 4)
             #endif

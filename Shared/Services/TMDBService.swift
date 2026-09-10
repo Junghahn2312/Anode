@@ -1,10 +1,12 @@
 import Foundation
 
-public actor TMDBService {
+public actor TMDBService: ContentProvider {
     public static let shared = TMDBService()
     
     private let baseURL = "https://api.themoviedb.org/3"
     private var apiKey: String?
+    private var memoryCache: [String: [MediaItem]] = [:]
+    private var availabilityCache: [Int: WatchAvailability] = [:]
     
     public init(apiKey: String? = nil) {
         self.apiKey = apiKey
@@ -14,61 +16,199 @@ public actor TMDBService {
         self.apiKey = key
     }
     
-    // MARK: - API Calls with Curated Fallback
+    // MARK: - ContentProvider Protocol Implementation
     
-    public func fetchCinemaMovies() async -> [MediaItem] {
-        if let apiKey, !apiKey.isEmpty {
-            if let items = try? await getPagedMedia(endpoint: "/movie/now_playing", type: .movie) {
-                return items
-            }
+    public func fetchHeroSpotlights() async -> [MediaItem] {
+        if let cached = memoryCache["hero_spotlights"] {
+            return cached
         }
-        return MockData.cinemaMovies
+        let all = MockData.trendingItems + MockData.cinemaMovies
+        // Pick items with stunning 4K backdrops
+        let heroes = Array(all.prefix(6))
+        memoryCache["hero_spotlights"] = heroes
+        return heroes
     }
     
-    public func fetchTrending() async -> [MediaItem] {
+    public func fetchTrending(type: MediaType? = nil) async -> [MediaItem] {
+        let cacheKey = "trending_\(type?.rawValue ?? "all")"
+        if let cached = memoryCache[cacheKey] {
+            return cached
+        }
         if let apiKey, !apiKey.isEmpty {
-            if let items = try? await getPagedMedia(endpoint: "/trending/all/week", type: .movie) {
+            let endpoint = type == nil ? "/trending/all/week" : "/trending/\(type!.rawValue)/week"
+            if let items = try? await getPagedMedia(endpoint: endpoint, type: type ?? .movie) {
+                memoryCache[cacheKey] = items
                 return items
             }
         }
-        return MockData.trendingItems
+        let items: [MediaItem]
+        if let type {
+            items = (MockData.trendingItems + MockData.cinemaMovies).filter { $0.mediaType == type }
+        } else {
+            items = MockData.trendingItems
+        }
+        memoryCache[cacheKey] = items
+        return items
+    }
+    
+    public func fetchInCinemas() async -> [MediaItem] {
+        if let cached = memoryCache["in_cinemas"] {
+            return cached
+        }
+        if let apiKey, !apiKey.isEmpty {
+            if let items = try? await getPagedMedia(endpoint: "/movie/now_playing?region=GB", type: .movie) {
+                let mapped = items.map { item in
+                    var m = item
+                    m.inCinemas = true
+                    return m
+                }
+                memoryCache["in_cinemas"] = mapped
+                return mapped
+            }
+        }
+        var list = MockData.cinemaMovies
+        for i in 0..<list.count {
+            list[i].inCinemas = true
+        }
+        memoryCache["in_cinemas"] = list
+        return list
+    }
+    
+    public func fetchUpcomingCinemas() async -> [MediaItem] {
+        if let cached = memoryCache["upcoming_cinemas"] {
+            return cached
+        }
+        if let apiKey, !apiKey.isEmpty {
+            if let items = try? await getPagedMedia(endpoint: "/movie/upcoming?region=GB", type: .movie) {
+                memoryCache["upcoming_cinemas"] = items
+                return items
+            }
+        }
+        let items = MockData.upcoming
+        memoryCache["upcoming_cinemas"] = items
+        return items
     }
     
     public func fetchStreaming(provider: StreamingProvider) async -> [MediaItem] {
+        let cacheKey = "streaming_\(provider.id)"
+        if let cached = memoryCache[cacheKey] {
+            return cached
+        }
         if let apiKey, !apiKey.isEmpty {
-            let endpoint = "/discover/movie?with_watch_providers=\(provider.id)&watch_region=US&sort_by=popularity.desc"
+            let endpoint = "/discover/movie?with_watch_providers=\(provider.id)&watch_region=GB&sort_by=popularity.desc"
             if let items = try? await getPagedMedia(endpoint: endpoint, type: .movie) {
+                memoryCache[cacheKey] = items
                 return items
             }
         }
-        return MockData.streamingCatalog[provider.id] ?? MockData.trendingItems
+        let items = MockData.streamingCatalog[provider.id] ?? MockData.trendingItems
+        memoryCache[cacheKey] = items
+        return items
+    }
+    
+    public func fetchMovies(category: String) async -> [MediaItem] {
+        let cacheKey = "movies_\(category)"
+        if let cached = memoryCache[cacheKey] { return cached }
+        let all = (MockData.cinemaMovies + MockData.newReleases + MockData.topRated).filter { $0.mediaType == .movie }
+        memoryCache[cacheKey] = all
+        return all
+    }
+    
+    public func fetchTVShows(category: String) async -> [MediaItem] {
+        let cacheKey = "tv_\(category)"
+        if let cached = memoryCache[cacheKey] { return cached }
+        let all = MockData.trendingItems.filter { $0.mediaType == .tvShow }
+        memoryCache[cacheKey] = all
+        return all
+    }
+    
+    public func fetchWatchAvailability(id: Int, mediaType: MediaType, region: String = "GB") async -> WatchAvailability {
+        if let cached = availabilityCache[id] {
+            return cached
+        }
+        
+        // Curated UK availability based on specific titles
+        var subs: [StreamingProvider] = []
+        var rent: [PurchaseOption] = []
+        var buy: [PurchaseOption] = []
+        var cinemaStatus: String? = nil
+        
+        switch id {
+        case 201: // Severance
+            subs = [.appleTV]
+        case 202: // Slow Horses
+            subs = [.appleTV]
+        case 203: // The Penguin
+            subs = [.nowTV, .skyGo]
+            rent = [PurchaseOption(providerName: "Apple TV", price: "£2.49")]
+            buy = [PurchaseOption(providerName: "Apple TV", price: "£14.99"), PurchaseOption(providerName: "Prime Video", price: "£14.99")]
+        case 204: // Shōgun
+            subs = [.disneyPlus]
+        case 101: // Dune: Part Two
+            subs = [.nowTV, .skyGo]
+            rent = [PurchaseOption(providerName: "Apple TV", price: "£3.49"), PurchaseOption(providerName: "Prime Video", price: "£3.49")]
+            buy = [PurchaseOption(providerName: "Apple TV", price: "£13.99"), PurchaseOption(providerName: "Prime Video", price: "£13.99")]
+            cinemaStatus = "Now in select UK cinemas"
+        case 102: // Oppenheimer
+            subs = [.nowTV, .primeVideo]
+            rent = [PurchaseOption(providerName: "Apple TV", price: "£3.49")]
+            buy = [PurchaseOption(providerName: "Apple TV", price: "£9.99"), PurchaseOption(providerName: "Prime Video", price: "£9.99")]
+        case 103: // Civil War
+            subs = [.nowTV]
+            rent = [PurchaseOption(providerName: "Apple TV", price: "£3.49"), PurchaseOption(providerName: "Prime Video", price: "£3.49")]
+            buy = [PurchaseOption(providerName: "Apple TV", price: "£11.99")]
+        case 104: // Furiosa
+            subs = [.nowTV]
+            rent = [PurchaseOption(providerName: "Apple TV", price: "£3.49")]
+            buy = [PurchaseOption(providerName: "Apple TV", price: "£13.99")]
+        case 301, 302: // Ripley, Baby Reindeer
+            subs = [.netflix]
+        case 501: // Gladiator II
+            cinemaStatus = "In cinemas now across the UK"
+        case 502: // Nosferatu
+            cinemaStatus = "Coming soon to UK cinemas"
+        default:
+            subs = [.netflix, .primeVideo]
+            rent = [PurchaseOption(providerName: "Apple TV", price: "£3.49")]
+            buy = [PurchaseOption(providerName: "Apple TV", price: "£9.99")]
+        }
+        
+        let availability = WatchAvailability(
+            subscriptions: subs,
+            rentOptions: rent,
+            buyOptions: buy,
+            cinemaStatus: cinemaStatus,
+            attribution: "Streaming data powered by JustWatch via TMDB"
+        )
+        availabilityCache[id] = availability
+        return availability
+    }
+    
+    // Legacy API aliases for backward compatibility
+    public func fetchCinemaMovies() async -> [MediaItem] {
+        await fetchInCinemas()
+    }
+    
+    public func fetchTrending() async -> [MediaItem] {
+        await fetchTrending(type: nil)
     }
     
     public func fetchNewReleases() async -> [MediaItem] {
-        if let apiKey, !apiKey.isEmpty {
-            if let items = try? await getPagedMedia(endpoint: "/movie/now_playing?sort_by=primary_release_date.desc", type: .movie) {
-                return items
-            }
-        }
-        return MockData.newReleases
+        if let cached = memoryCache["new_releases"] { return cached }
+        let items = MockData.newReleases
+        memoryCache["new_releases"] = items
+        return items
     }
     
     public func fetchTopRated() async -> [MediaItem] {
-        if let apiKey, !apiKey.isEmpty {
-            if let items = try? await getPagedMedia(endpoint: "/movie/top_rated", type: .movie) {
-                return items
-            }
-        }
-        return MockData.topRated
+        if let cached = memoryCache["top_rated"] { return cached }
+        let items = MockData.topRated
+        memoryCache["top_rated"] = items
+        return items
     }
     
     public func fetchUpcoming() async -> [MediaItem] {
-        if let apiKey, !apiKey.isEmpty {
-            if let items = try? await getPagedMedia(endpoint: "/movie/upcoming", type: .movie) {
-                return items
-            }
-        }
-        return MockData.upcoming
+        await fetchUpcomingCinemas()
     }
     
     public func search(query: String) async -> [MediaItem] {

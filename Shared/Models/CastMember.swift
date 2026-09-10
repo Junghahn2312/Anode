@@ -12,4 +12,10 @@ public struct CastMember: Identifiable, Codable, Hashable, Sendable {
         self.character = character
         self.profilePath = profilePath
     }
+    
+    public var profileURL: URL? {
+        guard let profilePath else { return nil }
+        if profilePath.hasPrefix("http") { return URL(string: profilePath) }
+        return URL(string: "https://image.tmdb.org/t/p/w185\(profilePath)")
+    }
 }

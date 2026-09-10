@@ -145,7 +145,7 @@ public struct TVSearchView: View {
                 await engine.search(query: query)
             }
         }
-        .sheet(item: $selectedItem) { item in
+        .fullScreenCover(item: $selectedItem) { item in
             TVMediaDetailView(item: item)
         }
     }

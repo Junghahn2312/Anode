@@ -13,10 +13,12 @@ shared_models = [
     "Shared/Models/CastMember.swift",
     "Shared/Models/MediaItem.swift",
     "Shared/Models/WatchlistRecord.swift",
-    "Shared/Models/GenreCategory.swift"
+    "Shared/Models/GenreCategory.swift",
+    "Shared/Models/WatchAvailability.swift"
 ]
 
 shared_services = [
+    "Shared/Services/ContentProvider.swift",
     "Shared/Services/TMDBService.swift",
     "Shared/Services/WatchlistStore.swift",
     "Shared/Services/DiscoveryEngine.swift"
@@ -51,6 +53,11 @@ tvos_files = [
     "tvOS/AnodeTVApp.swift",
     "tvOS/Views/TVHomeView.swift",
     "tvOS/Views/TVMediaCardView.swift",
+    "tvOS/Views/TVLandscapeCardView.swift",
+    "tvOS/Views/TVSkeletonCardView.swift",
+    "tvOS/Views/TVCinemaView.swift",
+    "tvOS/Views/TVStreamingHubView.swift",
+    "tvOS/Views/TVCategoryBrowseView.swift",
     "tvOS/Views/TVMediaDetailView.swift",
     "tvOS/Views/TVWatchlistView.swift",
     "tvOS/Views/TVSearchView.swift"
