@@ -2,7 +2,7 @@
 
 A polished movie and TV discovery application built natively for iOS and Apple TV (tvOS).
 
-Anode is inspired by the simplicity of Fusion, but focused entirely on entertainment discovery. It requires no addons, no plugins, no external accounts, and no complex setup. Its sole purpose is to give you one beautiful place to answer:
+Anode is focused entirely on entertainment discovery. It requires no addons, no plugins, no external accounts, and no complex setup. Its sole purpose is to give you one beautiful place to answer:
 
 > "What should I watch?"
 
