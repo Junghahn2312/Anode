@@ -31,11 +31,10 @@ public struct TVMediaCardView: View {
                 CachedAsyncImage(url: item.posterURL(size: "w500"))
                     .frame(width: width, height: height)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .colorMultiply(isFocused ? Color(white: 1.08) : Color(white: 0.90))
                 
-                // Subtle bright rim overlay on focus
+                // Very subtle grey outline over poster on focus
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.white.opacity(isFocused ? 0.45 : 0), lineWidth: 2.5)
+                    .stroke(isFocused ? Color(white: 0.55).opacity(0.7) : Color.clear, lineWidth: 1.5)
                 
                 // Badges overlay
                 VStack(alignment: .trailing, spacing: 6) {
@@ -73,14 +72,14 @@ public struct TVMediaCardView: View {
                     .padding(8)
                 }
             }
-            .scaleEffect(isFocused ? 1.08 : 1.0)
+            .scaleEffect(isFocused ? 1.05 : 1.0)
             .shadow(
-                color: Color.black.opacity(isFocused ? 0.8 : 0.35),
-                radius: isFocused ? 28 : 8,
+                color: Color.black.opacity(isFocused ? 0.6 : 0.25),
+                radius: isFocused ? 18 : 6,
                 x: 0,
-                y: isFocused ? 16 : 4
+                y: isFocused ? 8 : 2
             )
-            .animation(.spring(response: 0.22, dampingFraction: 0.82), value: isFocused)
+            .animation(.spring(response: 0.24, dampingFraction: 0.85), value: isFocused)
             
             // Metadata below card
             VStack(alignment: .leading, spacing: 3) {
@@ -112,4 +111,17 @@ public struct TVMediaCardView: View {
             }
         }
     }
+}
+
+public struct TVCardButtonStyle: ButtonStyle {
+    public init() {}
+    
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .focusEffectDisabled()
+    }
+}
+
+public extension ButtonStyle where Self == TVCardButtonStyle {
+    static var tvCard: TVCardButtonStyle { TVCardButtonStyle() }
 }

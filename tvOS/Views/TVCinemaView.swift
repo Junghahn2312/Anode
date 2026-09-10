@@ -95,7 +95,7 @@ public struct TVCinemaView: View {
             .padding(.horizontal, 60)
             
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 28) {
+                LazyHStack(spacing: 32) {
                     ForEach(items) { item in
                         Button {
                             selectedItem = item
@@ -114,11 +114,11 @@ public struct TVCinemaView: View {
                                 )
                             }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.tvCard)
                     }
                 }
                 .padding(.horizontal, 60)
-                .padding(.vertical, 16)
+                .padding(.vertical, 24)
             }
         }
     }

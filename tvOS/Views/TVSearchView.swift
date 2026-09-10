@@ -127,7 +127,7 @@ public struct TVSearchView: View {
                                     } label: {
                                         TVMediaCardView(item: item, width: 220)
                                     }
-                                    .buttonStyle(.plain)
+                                    .buttonStyle(.tvCard)
                                 }
                             }
                             .padding(.bottom, 60)

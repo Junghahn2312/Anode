@@ -36,11 +36,11 @@ public struct TVHomeView: View {
                 // Ambient Pure Black Background
                 Color.black.ignoresSafeArea()
                 
-                // 4K Backdrop in top 52% of the screen
+                // 4K Backdrop in top 70% of the screen with top alignment so heads and faces are never cut off
                 if let hero = currentHero {
-                    ZStack(alignment: .bottomLeading) {
-                        CachedAsyncImage(url: hero.backdropURL(size: "original"))
-                            .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.52)
+                    ZStack(alignment: .topLeading) {
+                        CachedAsyncImage(url: hero.backdropURL(size: "original"), contentMode: .fill)
+                            .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.70, alignment: .top)
                             .clipped()
                             .id(hero.id)
                             .transition(.opacity)
@@ -49,50 +49,58 @@ public struct TVHomeView: View {
                         LinearGradient(
                             stops: [
                                 .init(color: Color.black.opacity(0.96), location: 0.0),
-                                .init(color: Color.black.opacity(0.78), location: 0.38),
-                                .init(color: Color.black.opacity(0.32), location: 0.65),
-                                .init(color: Color.clear, location: 0.88)
+                                .init(color: Color.black.opacity(0.82), location: 0.40),
+                                .init(color: Color.black.opacity(0.35), location: 0.68),
+                                .init(color: Color.clear, location: 0.90)
                             ],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
-                        .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.52)
+                        .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.70)
                         
                         // Top-to-bottom gradient fading cleanly into solid black
                         LinearGradient(
                             stops: [
-                                .init(color: Color.clear, location: 0.20),
-                                .init(color: Color.black.opacity(0.40), location: 0.55),
-                                .init(color: Color.black.opacity(0.85), location: 0.82),
+                                .init(color: Color.clear, location: 0.25),
+                                .init(color: Color.black.opacity(0.38), location: 0.55),
+                                .init(color: Color.black.opacity(0.85), location: 0.85),
                                 .init(color: Color.black, location: 1.0)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
-                        .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.52)
+                        .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.70)
                     }
                     .ignoresSafeArea()
                     .animation(.easeInOut(duration: 0.32), value: hero.id)
                 }
                 
                 // Foreground Vertical Layout:
-                // 1. Pinned Hero Section (stationary at top, height ~42% of screen)
-                // 2. Scrollable Rows (scrolls vertically beneath hero, height ~58% of screen)
+                // 1. Pinned Hero Section (stationary at top, grand height ~48% of screen)
+                // 2. Scrollable Rows (scrolls vertically beneath hero, height ~52% of screen)
                 VStack(alignment: .leading, spacing: 0) {
                     if let hero = currentHero {
                         heroMetadataView(hero)
                             .padding(.horizontal, 60)
-                            .padding(.top, 36)
-                            .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.42, alignment: .bottomLeading)
+                            .padding(.top, 44)
+                            .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.48, alignment: .bottomLeading)
                             .animation(.easeInOut(duration: 0.28), value: hero.id)
                     } else {
                         Color.clear
-                            .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.42)
+                            .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.48)
                     }
                     
                     // Scrollable Rows Section
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 34) {
+                        VStack(alignment: .leading, spacing: 36) {
+                            // My Watchlist (if populated)
+                            if !watchlist.items.isEmpty {
+                                contentRow(
+                                    title: "My List",
+                                    items: watchlist.items
+                                )
+                            }
+                            
                             // Top 10 Today (Large Numeral Row)
                             if !engine.topTen.isEmpty {
                                 VStack(alignment: .leading, spacing: 14) {
@@ -111,11 +119,11 @@ public struct TVHomeView: View {
                                                         handleCardFocus(focused)
                                                     }
                                                 }
-                                                .buttonStyle(.plain)
+                                                .buttonStyle(.tvCard)
                                             }
                                         }
                                         .padding(.horizontal, 60)
-                                        .padding(.vertical, 16)
+                                        .padding(.vertical, 24)
                                     }
                                 }
                             }
@@ -196,7 +204,7 @@ public struct TVHomeView: View {
                         .padding(.top, 14)
                         .padding(.bottom, 90)
                     }
-                    .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.58)
+                    .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.52)
                 }
             }
         }
@@ -257,7 +265,7 @@ public struct TVHomeView: View {
             
             // Hero Title
             Text(hero.title)
-                .font(.system(size: 42, weight: .heavy))
+                .font(.system(size: 50, weight: .heavy))
                 .foregroundColor(.white)
                 .lineLimit(2)
                 .shadow(color: Color.black.opacity(0.8), radius: 6, x: 0, y: 3)
@@ -266,7 +274,7 @@ public struct TVHomeView: View {
             HStack(spacing: 12) {
                 if let genre = hero.genreNames.first {
                     Text(genre)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white.opacity(0.9))
                 }
                 
@@ -274,7 +282,7 @@ public struct TVHomeView: View {
                     Text("•")
                         .foregroundColor(.white.opacity(0.4))
                     Text(hero.yearString)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white.opacity(0.9))
                 }
                 
@@ -282,7 +290,7 @@ public struct TVHomeView: View {
                     Text("•")
                         .foregroundColor(.white.opacity(0.4))
                     Text(hero.formattedRuntime)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white.opacity(0.9))
                 }
                 
@@ -290,7 +298,7 @@ public struct TVHomeView: View {
                     Text("•")
                         .foregroundColor(.white.opacity(0.4))
                     Text(cert)
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.white)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -306,26 +314,26 @@ public struct TVHomeView: View {
             
             // Synopsis
             Text(hero.overview)
-                .font(.system(size: 15, weight: .regular))
-                .foregroundColor(.white.opacity(0.82))
-                .lineLimit(2)
-                .lineSpacing(3)
-                .frame(maxWidth: 760, alignment: .leading)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundColor(.white.opacity(0.84))
+                .lineLimit(3)
+                .lineSpacing(4)
+                .frame(maxWidth: 820, alignment: .leading)
                 .shadow(color: Color.black.opacity(0.7), radius: 4, x: 0, y: 2)
             
             // Action Buttons
-            HStack(spacing: 18) {
+            HStack(spacing: 20) {
                 Button {
                     selectedItem = hero
                 } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "info.circle")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: 17, weight: .bold))
                         Text("View Details")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: 17, weight: .bold))
                     }
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 14)
                 }
                 
                 Button {
@@ -333,28 +341,28 @@ public struct TVHomeView: View {
                 } label: {
                     HStack(spacing: 10) {
                         Image(systemName: watchlist.contains(id: hero.id) ? "checkmark" : "plus")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: 17, weight: .bold))
                         Text(watchlist.contains(id: hero.id) ? "In My List" : "Add to My List")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: 17, weight: .bold))
                     }
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 14)
                 }
                 
                 if let trailer = hero.trailers.first, let url = trailer.youtubeURL {
                     Link(destination: url) {
                         HStack(spacing: 10) {
                             Image(systemName: "play.fill")
-                                .font(.system(size: 16, weight: .bold))
+                                .font(.system(size: 17, weight: .bold))
                             Text("Watch Trailer")
-                                .font(.system(size: 16, weight: .bold))
+                                .font(.system(size: 17, weight: .bold))
                         }
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 12)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 14)
                     }
                 }
             }
-            .padding(.top, 2)
+            .padding(.top, 4)
         }
         .frame(alignment: .bottomLeading)
     }
@@ -369,7 +377,7 @@ public struct TVHomeView: View {
                 .padding(.horizontal, 60)
             
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 28) {
+                LazyHStack(spacing: 32) {
                     ForEach(items) { item in
                         Button {
                             selectedItem = item
@@ -382,11 +390,11 @@ public struct TVHomeView: View {
                                 handleCardFocus(focused)
                             }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.tvCard)
                     }
                 }
                 .padding(.horizontal, 60)
-                .padding(.vertical, 16)
+                .padding(.vertical, 24)
             }
         }
     }
@@ -401,7 +409,7 @@ public struct TVHomeView: View {
                 .padding(.horizontal, 60)
             
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 28) {
+                LazyHStack(spacing: 32) {
                     ForEach(items) { item in
                         Button {
                             selectedItem = item
@@ -414,11 +422,11 @@ public struct TVHomeView: View {
                                 handleCardFocus(focused)
                             }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.tvCard)
                     }
                 }
                 .padding(.horizontal, 60)
-                .padding(.vertical, 16)
+                .padding(.vertical, 24)
             }
         }
     }

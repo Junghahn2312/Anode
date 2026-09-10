@@ -13,41 +13,29 @@ struct AnodeTVApp: App {
                     }
                     .tag(0)
                 
-                TVCategoryBrowseView(mediaType: .movie)
+                TVDiscoveryView()
                     .tabItem {
-                        Label("Movies", systemImage: "film")
+                        Label("Discovery", systemImage: "sparkles")
                     }
                     .tag(1)
-                
-                TVCategoryBrowseView(mediaType: .tvShow)
-                    .tabItem {
-                        Label("TV Shows", systemImage: "tv")
-                    }
-                    .tag(2)
                 
                 TVCinemaView()
                     .tabItem {
                         Label("Cinema", systemImage: "ticket")
                     }
-                    .tag(3)
-                
-                TVStreamingHubView()
-                    .tabItem {
-                        Label("Streaming", systemImage: "play.rectangle.on.rectangle")
-                    }
-                    .tag(4)
+                    .tag(2)
                 
                 TVSearchView()
                     .tabItem {
                         Label("Search", systemImage: "magnifyingglass")
                     }
-                    .tag(5)
+                    .tag(3)
                 
-                TVWatchlistView()
+                TVSettingsView()
                     .tabItem {
-                        Label("My List", systemImage: "bookmark")
+                        Label("Settings", systemImage: "gearshape")
                     }
-                    .tag(6)
+                    .tag(4)
             }
             .preferredColorScheme(.dark)
         }

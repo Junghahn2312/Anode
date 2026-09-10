@@ -42,6 +42,15 @@ public final class WatchlistStore: ObservableObject {
         save()
     }
     
+    public var items: [MediaItem] {
+        records.map(\.mediaItem)
+    }
+    
+    public func clear() {
+        records.removeAll()
+        save()
+    }
+    
     public var unwatchedItems: [MediaItem] {
         records.filter { !$0.isWatched }.map(\.mediaItem)
     }
