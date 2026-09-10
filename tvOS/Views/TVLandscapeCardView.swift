@@ -6,7 +6,7 @@ public struct TVLandscapeCardView: View {
     let subtitle: String?
     let onFocus: ((MediaItem) -> Void)?
     
-    @FocusState private var isFocused: Bool
+    @Environment(\.isFocused) private var isFocused: Bool
     @ObservedObject private var watchlist = WatchlistStore.shared
     
     public init(
@@ -31,7 +31,11 @@ public struct TVLandscapeCardView: View {
                 CachedAsyncImage(url: item.backdropURL(size: "w780"))
                     .frame(width: width, height: height)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .colorMultiply(isFocused ? Color(white: 1.06) : Color(white: 0.90))
+                    .colorMultiply(isFocused ? Color(white: 1.08) : Color(white: 0.90))
+                
+                // Subtle bright rim overlay on focus
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.white.opacity(isFocused ? 0.45 : 0), lineWidth: 2.5)
                 
                 // Subtle bottom gradient for readability
                 LinearGradient(
@@ -74,17 +78,16 @@ public struct TVLandscapeCardView: View {
                 }
                 .padding(10)
             }
-            .scaleEffect(isFocused ? 1.07 : 1.0)
+            .scaleEffect(isFocused ? 1.08 : 1.0)
             .shadow(
-                color: Color.black.opacity(isFocused ? 0.75 : 0.35),
-                radius: isFocused ? 26 : 8,
+                color: Color.black.opacity(isFocused ? 0.8 : 0.35),
+                radius: isFocused ? 28 : 8,
                 x: 0,
-                y: isFocused ? 14 : 4
+                y: isFocused ? 16 : 4
             )
-            .animation(.spring(response: 0.28, dampingFraction: 0.78), value: isFocused)
+            .animation(.spring(response: 0.22, dampingFraction: 0.82), value: isFocused)
         }
         .frame(width: width)
-        .focused($isFocused)
         .onChange(of: isFocused) { _, focused in
             if focused {
                 onFocus?(item)

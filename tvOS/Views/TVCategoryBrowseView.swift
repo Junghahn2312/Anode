@@ -20,7 +20,7 @@ public struct TVCategoryBrowseView: View {
     
     private var subtitle: String {
         isMovie
-            ? "Discover films currently showing in theatres and streaming across UK services."
+            ? "Discover films currently showing in theatres and streaming worldwide."
             : "Explore series, limited dramas, and television across on-demand platforms."
     }
     
@@ -76,7 +76,7 @@ public struct TVCategoryBrowseView: View {
                 let upcoming = (isMovie ? engine.upcoming : engine.newReleases).filter { $0.mediaType == mediaType }
                 if !upcoming.isEmpty {
                     categoryRow(
-                        title: isMovie ? "Coming Soon to UK" : "New Seasons & Releases",
+                        title: isMovie ? "Coming Soon to Theatres" : "New Seasons & Releases",
                         items: upcoming
                     )
                 }

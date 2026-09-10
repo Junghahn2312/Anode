@@ -100,7 +100,7 @@ public actor TMDBService: ContentProvider {
         if let cached = memoryCache["in_cinemas"], !cached.isEmpty {
             return cached
         }
-        if let items = try? await getPagedMedia(endpoint: "/movie/now_playing?region=GB", type: .movie) {
+        if let items = try? await getPagedMedia(endpoint: "/movie/now_playing", type: .movie) {
             let mapped = items.map { item in
                 var m = item
                 m.inCinemas = true
@@ -123,7 +123,7 @@ public actor TMDBService: ContentProvider {
         if let cached = memoryCache["upcoming_cinemas"], !cached.isEmpty {
             return cached
         }
-        if let items = try? await getPagedMedia(endpoint: "/movie/upcoming?region=GB", type: .movie), !items.isEmpty {
+        if let items = try? await getPagedMedia(endpoint: "/movie/upcoming", type: .movie), !items.isEmpty {
             memoryCache["upcoming_cinemas"] = items
             return items
         }
@@ -139,11 +139,11 @@ public actor TMDBService: ContentProvider {
         }
         
         async let moviesTask = try? getPagedMedia(
-            endpoint: "/discover/movie?with_watch_providers=\(provider.id)&watch_region=GB&sort_by=popularity.desc",
+            endpoint: "/discover/movie?with_watch_providers=\(provider.id)&sort_by=popularity.desc",
             type: .movie
         )
         async let tvTask = try? getPagedMedia(
-            endpoint: "/discover/tv?with_watch_providers=\(provider.id)&watch_region=GB&sort_by=popularity.desc",
+            endpoint: "/discover/tv?with_watch_providers=\(provider.id)&sort_by=popularity.desc",
             type: .tvShow
         )
         
@@ -174,8 +174,8 @@ public actor TMDBService: ContentProvider {
         let endpoint: String
         switch category {
         case "top_rated": endpoint = "/movie/top_rated"
-        case "now_playing": endpoint = "/movie/now_playing?region=GB"
-        case "upcoming": endpoint = "/movie/upcoming?region=GB"
+        case "now_playing": endpoint = "/movie/now_playing"
+        case "upcoming": endpoint = "/movie/upcoming"
         default: endpoint = "/movie/popular"
         }
         
@@ -204,7 +204,7 @@ public actor TMDBService: ContentProvider {
         return MockData.trendingItems.filter { $0.mediaType == .tvShow }
     }
     
-    public func fetchWatchAvailability(id: Int, mediaType: MediaType, region: String = "GB") async -> WatchAvailability {
+    public func fetchWatchAvailability(id: Int, mediaType: MediaType, region: String = "US") async -> WatchAvailability {
         if let cached = availabilityCache[id] {
             return cached
         }
@@ -215,43 +215,57 @@ public actor TMDBService: ContentProvider {
             if let (data, response) = try? await URLSession.shared.data(for: request),
                let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200,
                let decoded = try? JSONDecoder().decode(TMDBWatchProvidersResponse.self, from: data),
-               let regionData = decoded.results?[region] {
+               let results = decoded.results {
                 
-                var subs: [StreamingProvider] = []
-                var rent: [PurchaseOption] = []
-                var buy: [PurchaseOption] = []
+                let candidateRegions = [region, "US", "GB", "CA", "AU", "DE", "FR"]
+                var regionData: TMDBRegionProvidersDTO? = nil
+                for r in candidateRegions {
+                    if let found = results[r] {
+                        regionData = found
+                        break
+                    }
+                }
+                if regionData == nil {
+                    regionData = results.values.first
+                }
                 
-                if let flatrate = regionData.flatrate {
-                    for p in flatrate {
-                        if let known = StreamingProvider.allUK.first(where: { $0.id == p.provider_id }) {
-                            subs.append(known)
-                        } else {
-                            subs.append(StreamingProvider(id: p.provider_id, name: p.provider_name, logoPath: p.logo_path))
+                if let regionData = regionData {
+                    var subs: [StreamingProvider] = []
+                    var rent: [PurchaseOption] = []
+                    var buy: [PurchaseOption] = []
+                    
+                    if let flatrate = regionData.flatrate {
+                        for p in flatrate {
+                            if let known = StreamingProvider.allGlobal.first(where: { $0.id == p.provider_id }) {
+                                subs.append(known)
+                            } else {
+                                subs.append(StreamingProvider(id: p.provider_id, name: p.provider_name, logoPath: p.logo_path))
+                            }
                         }
                     }
-                }
-                
-                if let rentList = regionData.rent {
-                    for p in rentList {
-                        rent.append(PurchaseOption(providerName: p.provider_name, price: "£3.49"))
+                    
+                    if let rentList = regionData.rent {
+                        for p in rentList {
+                            rent.append(PurchaseOption(providerName: p.provider_name, price: "$3.99"))
+                        }
                     }
-                }
-                
-                if let buyList = regionData.buy {
-                    for p in buyList {
-                        buy.append(PurchaseOption(providerName: p.provider_name, price: "£9.99"))
+                    
+                    if let buyList = regionData.buy {
+                        for p in buyList {
+                            buy.append(PurchaseOption(providerName: p.provider_name, price: "$9.99"))
+                        }
                     }
+                    
+                    let result = WatchAvailability(
+                        subscriptions: subs,
+                        rentOptions: rent,
+                        buyOptions: buy,
+                        cinemaStatus: mediaType == .movie ? "Now in Theatres" : nil,
+                        attribution: "Streaming availability provided by JustWatch & TMDB"
+                    )
+                    availabilityCache[id] = result
+                    return result
                 }
-                
-                let result = WatchAvailability(
-                    subscriptions: subs,
-                    rentOptions: rent,
-                    buyOptions: buy,
-                    cinemaStatus: mediaType == .movie ? "Available in select UK theatres" : nil,
-                    attribution: "Streaming availability provided by JustWatch via TMDB for United Kingdom"
-                )
-                availabilityCache[id] = result
-                return result
             }
         }
         
@@ -412,24 +426,24 @@ public actor TMDBService: ContentProvider {
         case 201, 202:
             subs = [.appleTV]
         case 203:
-            subs = [.nowTV, .skyGo]
-            rent = [PurchaseOption(providerName: "Apple TV", price: "£2.49")]
-            buy = [PurchaseOption(providerName: "Apple TV", price: "£14.99")]
+            subs = [.max, .primeVideo]
+            rent = [PurchaseOption(providerName: "Apple TV", price: "$3.99")]
+            buy = [PurchaseOption(providerName: "Apple TV", price: "$14.99")]
         case 204:
             subs = [.disneyPlus]
         case 101:
-            subs = [.nowTV, .skyGo]
-            rent = [PurchaseOption(providerName: "Apple TV", price: "£3.49"), PurchaseOption(providerName: "Prime Video", price: "£3.49")]
-            buy = [PurchaseOption(providerName: "Apple TV", price: "£13.99")]
-            cinemaStatus = "Now in select UK cinemas"
+            subs = [.max, .primeVideo]
+            rent = [PurchaseOption(providerName: "Apple TV", price: "$3.99"), PurchaseOption(providerName: "Prime Video", price: "$3.99")]
+            buy = [PurchaseOption(providerName: "Apple TV", price: "$14.99")]
+            cinemaStatus = "Now in Theatres"
         case 102:
-            subs = [.nowTV, .primeVideo]
-            rent = [PurchaseOption(providerName: "Apple TV", price: "£3.49")]
-            buy = [PurchaseOption(providerName: "Apple TV", price: "£9.99")]
+            subs = [.paramountPlus, .primeVideo]
+            rent = [PurchaseOption(providerName: "Apple TV", price: "$3.99")]
+            buy = [PurchaseOption(providerName: "Apple TV", price: "$9.99")]
         default:
             subs = [.netflix, .primeVideo]
-            rent = [PurchaseOption(providerName: "Apple TV", price: "£3.49")]
-            buy = [PurchaseOption(providerName: "Apple TV", price: "£9.99")]
+            rent = [PurchaseOption(providerName: "Apple TV", price: "$3.99")]
+            buy = [PurchaseOption(providerName: "Apple TV", price: "$9.99")]
         }
         
         return WatchAvailability(
@@ -437,7 +451,7 @@ public actor TMDBService: ContentProvider {
             rentOptions: rent,
             buyOptions: buy,
             cinemaStatus: cinemaStatus,
-            attribution: "Streaming data provided by JustWatch via TMDB for United Kingdom (GB)"
+            attribution: "Streaming data provided by JustWatch & TMDB"
         )
     }
 }

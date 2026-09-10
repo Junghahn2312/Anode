@@ -25,7 +25,7 @@ public struct TVStreamingHubView: View {
                             .padding(.vertical, 4)
                             .background(Capsule().fill(Color.cyan.opacity(0.18)))
                         
-                        Text("UNITED KINGDOM CATALOGS")
+                        Text("STREAMING PLATFORMS")
                             .font(.system(size: 13, weight: .bold))
                             .tracking(1.4)
                             .foregroundColor(.white.opacity(0.5))
@@ -35,7 +35,7 @@ public struct TVStreamingHubView: View {
                         .font(.system(size: 40, weight: .bold))
                         .foregroundColor(.white)
                     
-                    Text("Browse what's currently streaming across popular UK on-demand platforms.")
+                    Text("Browse what's currently streaming across popular on-demand platforms.")
                         .font(.system(size: 16, weight: .regular))
                         .foregroundColor(.white.opacity(0.6))
                 }

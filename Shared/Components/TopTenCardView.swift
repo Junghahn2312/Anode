@@ -7,7 +7,7 @@ public struct TopTenCardView: View {
     let onFocus: ((MediaItem) -> Void)?
     
     #if os(tvOS)
-    @FocusState private var isFocused: Bool
+    @Environment(\.isFocused) private var isFocused: Bool
     #endif
     
     public init(rank: Int, item: MediaItem, width: CGFloat = 160, onFocus: ((MediaItem) -> Void)? = nil) {
@@ -50,7 +50,11 @@ public struct TopTenCardView: View {
                     .frame(width: width, height: height)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     #if os(tvOS)
-                    .colorMultiply(isFocused ? Color(white: 1.06) : Color(white: 0.92))
+                    .colorMultiply(isFocused ? Color(white: 1.08) : Color(white: 0.90))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.white.opacity(isFocused ? 0.45 : 0), lineWidth: 2.5)
+                    )
                     #endif
                 
                 if !item.formattedRating.isEmpty {
@@ -60,15 +64,14 @@ public struct TopTenCardView: View {
             }
             .zIndex(1)
             #if os(tvOS)
-            .scaleEffect(isFocused ? 1.07 : 1.0)
-            .shadow(color: Color.black.opacity(isFocused ? 0.75 : 0.35), radius: isFocused ? 26 : 8, x: 0, y: isFocused ? 14 : 4)
-            .animation(.spring(response: 0.28, dampingFraction: 0.78), value: isFocused)
+            .scaleEffect(isFocused ? 1.08 : 1.0)
+            .shadow(color: Color.black.opacity(isFocused ? 0.8 : 0.35), radius: isFocused ? 28 : 8, x: 0, y: isFocused ? 16 : 4)
+            .animation(.spring(response: 0.22, dampingFraction: 0.82), value: isFocused)
             #else
             .shadow(color: Color.black.opacity(0.5), radius: 8, x: 0, y: 4)
             #endif
         }
         #if os(tvOS)
-        .focused($isFocused)
         .onChange(of: isFocused) { _, focused in
             if focused {
                 onFocus?(item)

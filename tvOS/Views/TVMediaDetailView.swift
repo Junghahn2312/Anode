@@ -245,20 +245,14 @@ public struct TVMediaDetailView: View {
         }
     }
     
-    // MARK: - Where to Watch Section (UK)
+    // MARK: - Where to Watch Section
     
     private var whereToWatchSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Text("WHERE TO WATCH")
-                    .font(.system(size: 12, weight: .black))
-                    .tracking(1.4)
-                    .foregroundColor(.white.opacity(0.45))
-                
-                Text("(UK)")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(Color.cyan)
-            }
+            Text("WHERE TO WATCH")
+                .font(.system(size: 12, weight: .black))
+                .tracking(1.4)
+                .foregroundColor(.white.opacity(0.45))
             
             // Theatrical status
             if item.inCinemas || availability?.cinemaStatus != nil {
@@ -266,7 +260,7 @@ public struct TVMediaDetailView: View {
                     Circle()
                         .fill(Color.red)
                         .frame(width: 8, height: 8)
-                    Text(availability?.cinemaStatus ?? "In cinemas now across the UK")
+                    Text(availability?.cinemaStatus ?? "Now playing in cinemas")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.white)
                 }
@@ -351,7 +345,7 @@ public struct TVMediaDetailView: View {
             }
             
             // JustWatch attribution
-            Text("Streaming data provided by JustWatch & TMDB for United Kingdom (GB)")
+            Text(availability?.attribution ?? "Streaming data provided by JustWatch & TMDB")
                 .font(.system(size: 11, weight: .regular))
                 .foregroundColor(.white.opacity(0.35))
                 .padding(.top, 4)

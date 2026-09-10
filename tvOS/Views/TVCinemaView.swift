@@ -14,10 +14,10 @@ public struct TVCinemaView: View {
                     .padding(.horizontal, 60)
                     .padding(.top, 48)
                 
-                // Now in UK Cinemas Row
+                // Now in Cinemas Row
                 if !engine.cinemaNow.isEmpty {
                     cinemaRow(
-                        title: "Now in UK Cinemas",
+                        title: "Now in Cinemas",
                         subtitle: "Experience on the big screen this week",
                         items: engine.cinemaNow,
                         isLandscape: false
@@ -28,7 +28,7 @@ public struct TVCinemaView: View {
                 if !engine.cinemaUpcoming.isEmpty {
                     cinemaRow(
                         title: "Coming Soon to Cinemas",
-                        subtitle: "Upcoming theatrical releases across the United Kingdom",
+                        subtitle: "Upcoming theatrical releases hitting the big screen worldwide",
                         items: engine.cinemaUpcoming,
                         isLandscape: true
                     )
@@ -62,7 +62,7 @@ public struct TVCinemaView: View {
                     .padding(.vertical, 4)
                     .background(Capsule().fill(Color.red.opacity(0.2)))
                 
-                Text("UNITED KINGDOM")
+                Text("GLOBAL THEATRES")
                     .font(.system(size: 13, weight: .bold))
                     .tracking(1.4)
                     .foregroundColor(.white.opacity(0.5))
@@ -72,7 +72,7 @@ public struct TVCinemaView: View {
                 .font(.system(size: 42, weight: .bold))
                 .foregroundColor(.white)
             
-            Text("Discover theatrical releases currently showing across UK cinema chains, including Odeon, Vue, Cineworld, and Picturehouse.")
+            Text("Discover theatrical releases currently showing in cinemas worldwide.")
                 .font(.system(size: 17, weight: .regular))
                 .foregroundColor(.white.opacity(0.65))
                 .frame(maxWidth: 800, alignment: .leading)

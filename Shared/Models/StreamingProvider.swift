@@ -28,23 +28,28 @@ public struct StreamingProvider: Identifiable, Codable, Hashable, Sendable {
     public static let max = StreamingProvider(id: 1899, name: "Max", brandColorHex: "#002BE7")
     
     public static var allCases: [StreamingProvider] {
-        allUK
+        allGlobal
     }
     
-    public static let allUK: [StreamingProvider] = [
+    public static let allGlobal: [StreamingProvider] = [
         .netflix,
         .primeVideo,
         .disneyPlus,
         .appleTV,
+        .max,
         .paramountPlus,
+        .mubi,
+        .crunchyroll,
         .nowTV,
         .bbcIPlayer,
         .itvx,
         .channel4,
-        .skyGo,
-        .mubi,
-        .crunchyroll
+        .skyGo
     ]
+    
+    public static var allUK: [StreamingProvider] {
+        allGlobal
+    }
     
     public static let allMajor: [StreamingProvider] = [
         .netflix,
