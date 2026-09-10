@@ -14,15 +14,12 @@ public struct CachedAsyncImage: View {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .empty:
-                    ZStack {
-                        Color(white: 0.12)
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white.opacity(0.6)))
-                    }
+                    Color(white: 0.12)
                 case .success(let image):
                     image
                         .resizable()
                         .aspectRatio(contentMode: contentMode)
+                        .clipped()
                 case .failure:
                     ZStack {
                         Color(white: 0.10)

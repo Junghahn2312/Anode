@@ -40,7 +40,7 @@ public struct TVStreamingHubView: View {
                         .foregroundColor(.white.opacity(0.6))
                 }
                 .padding(.horizontal, 60)
-                .padding(.top, 24)
+                .padding(.top, 48)
                 
                 // Provider Selector Bar
                 ScrollView(.horizontal, showsIndicators: false) {

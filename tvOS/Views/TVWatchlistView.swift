@@ -68,7 +68,7 @@ public struct TVWatchlistView: View {
                     }
                 }
                 .padding(.horizontal, 60)
-                .padding(.top, 36)
+                .padding(.top, 48)
                 
                 if store.records.isEmpty {
                     VStack(spacing: 18) {

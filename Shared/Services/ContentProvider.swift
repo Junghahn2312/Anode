@@ -10,4 +10,7 @@ public protocol ContentProvider: Sendable {
     func fetchMovies(category: String) async -> [MediaItem]
     func fetchTVShows(category: String) async -> [MediaItem]
     func search(query: String) async -> [MediaItem]
+    func fetchCredits(id: Int, mediaType: MediaType) async -> [CastMember]
+    func fetchVideos(id: Int, mediaType: MediaType) async -> [VideoTrailer]
+    func fetchRecommendations(id: Int, mediaType: MediaType) async -> [MediaItem]
 }

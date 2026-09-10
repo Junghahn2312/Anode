@@ -137,7 +137,7 @@ public struct TVSearchView: View {
                 }
                 .frame(maxWidth: .infinity)
             }
-            .padding(.top, 40)
+            .padding(.top, 48)
             .padding(.horizontal, 60)
         }
         .task {

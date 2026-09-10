@@ -100,6 +100,18 @@ public final class DiscoveryEngine: ObservableObject {
         await tmdb.fetchWatchAvailability(id: item.id, mediaType: item.mediaType, region: "GB")
     }
     
+    public func fetchCredits(for item: MediaItem) async -> [CastMember] {
+        await tmdb.fetchCredits(id: item.id, mediaType: item.mediaType)
+    }
+    
+    public func fetchVideos(for item: MediaItem) async -> [VideoTrailer] {
+        await tmdb.fetchVideos(id: item.id, mediaType: item.mediaType)
+    }
+    
+    public func fetchRecommendations(for item: MediaItem) async -> [MediaItem] {
+        await tmdb.fetchRecommendations(id: item.id, mediaType: item.mediaType)
+    }
+    
     public func search(query: String) async {
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             self.searchResults = []

@@ -80,7 +80,7 @@ public struct TVHomeView: View {
                     if let hero = currentHero {
                         heroMetadataView(hero)
                             .padding(.horizontal, 60)
-                            .padding(.top, 40)
+                            .padding(.top, 72)
                     }
                     
                     // Top 10 Today (Large Numeral Row)

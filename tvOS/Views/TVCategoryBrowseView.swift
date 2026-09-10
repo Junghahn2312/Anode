@@ -49,7 +49,7 @@ public struct TVCategoryBrowseView: View {
                         .frame(maxWidth: 800, alignment: .leading)
                 }
                 .padding(.horizontal, 60)
-                .padding(.top, 24)
+                .padding(.top, 48)
                 
                 // Featured Hero for this Category
                 if let featured = filteredItems.first {

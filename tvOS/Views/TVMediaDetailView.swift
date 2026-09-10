@@ -7,15 +7,18 @@ public struct TVMediaDetailView: View {
     @ObservedObject private var engine = DiscoveryEngine.shared
     
     @State private var availability: WatchAvailability?
+    @State private var castMembers: [CastMember] = []
+    @State private var trailers: [VideoTrailer] = []
+    @State private var liveRecommendations: [MediaItem] = []
     @State private var selectedRecommendation: MediaItem?
     
     public init(item: MediaItem) {
         self.item = item
     }
     
-    private var recommendations: [MediaItem] {
+    private var fallbackRecommendations: [MediaItem] {
         let pool = engine.trendingItems + engine.cinemaNow + engine.popularMovies
-        return pool.filter { $0.id != item.id && $0.mediaType == item.mediaType }.prefix(6).map { $0 }
+        return pool.filter { $0.id != item.id && $0.mediaType == item.mediaType }.prefix(8).map { $0 }
     }
     
     public var body: some View {
@@ -136,7 +139,7 @@ public struct TVMediaDetailView: View {
                                     .padding(.vertical, 14)
                                 }
                                 
-                                if let trailer = item.trailers.first, let url = trailer.youtubeURL {
+                                if let trailer = (trailers.first ?? item.trailers.first), let url = trailer.youtubeURL {
                                     Link(destination: url) {
                                         HStack(spacing: 10) {
                                             Image(systemName: "play.fill")
@@ -173,8 +176,9 @@ public struct TVMediaDetailView: View {
                     }
                     .padding(.horizontal, 60)
                     
-                    // Cast Section (if available)
-                    if !item.cast.isEmpty {
+                    // Cast Section (Live from TMDB)
+                    let activeCast = castMembers.isEmpty ? item.cast : castMembers
+                    if !activeCast.isEmpty {
                         VStack(alignment: .leading, spacing: 14) {
                             Text("Cast")
                                 .font(.system(size: 24, weight: .bold))
@@ -183,7 +187,7 @@ public struct TVMediaDetailView: View {
                             
                             ScrollView(.horizontal, showsIndicators: false) {
                                 LazyHStack(spacing: 24) {
-                                    ForEach(item.cast) { member in
+                                    ForEach(activeCast) { member in
                                         castCard(member)
                                     }
                                 }
@@ -193,8 +197,9 @@ public struct TVMediaDetailView: View {
                         }
                     }
                     
-                    // More Like This
-                    if !recommendations.isEmpty {
+                    // More Like This (Live from TMDB)
+                    let activeRecs = liveRecommendations.isEmpty ? fallbackRecommendations : liveRecommendations
+                    if !activeRecs.isEmpty {
                         VStack(alignment: .leading, spacing: 14) {
                             Text("More Like This")
                                 .font(.system(size: 24, weight: .bold))
@@ -203,7 +208,7 @@ public struct TVMediaDetailView: View {
                             
                             ScrollView(.horizontal, showsIndicators: false) {
                                 LazyHStack(spacing: 28) {
-                                    ForEach(recommendations) { rec in
+                                    ForEach(activeRecs) { rec in
                                         Button {
                                             selectedRecommendation = rec
                                         } label: {
@@ -221,8 +226,19 @@ public struct TVMediaDetailView: View {
                 .padding(.bottom, 80)
             }
         }
-        .task {
-            availability = await engine.fetchAvailability(for: item)
+        .task(id: item.id) {
+            async let availTask = engine.fetchAvailability(for: item)
+            async let castTask = engine.fetchCredits(for: item)
+            async let videoTask = engine.fetchVideos(for: item)
+            async let recTask = engine.fetchRecommendations(for: item)
+            
+            self.availability = await availTask
+            let c = await castTask
+            if !c.isEmpty { self.castMembers = c }
+            let v = await videoTask
+            if !v.isEmpty { self.trailers = v }
+            let r = await recTask
+            if !r.isEmpty { self.liveRecommendations = r }
         }
         .fullScreenCover(item: $selectedRecommendation) { rec in
             TVMediaDetailView(item: rec)

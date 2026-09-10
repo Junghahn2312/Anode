@@ -12,7 +12,7 @@ public struct TVCinemaView: View {
                 // Header Banner
                 cinemaHeader
                     .padding(.horizontal, 60)
-                    .padding(.top, 24)
+                    .padding(.top, 48)
                 
                 // Now in UK Cinemas Row
                 if !engine.cinemaNow.isEmpty {
