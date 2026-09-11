@@ -85,6 +85,129 @@ public struct TVRowInfoPanel: View {
     }
 }
 
+// MARK: - Dynamic Expanding Media Card (Matching Image 2)
+
+public struct TVExpandingMediaCardView: View {
+    let item: MediaItem
+    let normalWidth: CGFloat
+    let showCinemaBadge: Bool
+    let onFocus: ((MediaItem) -> Void)?
+    
+    @Environment(\.isFocused) private var isFocused: Bool
+    @ObservedObject private var watchlist = WatchlistStore.shared
+    
+    public init(
+        item: MediaItem,
+        normalWidth: CGFloat = 190,
+        showCinemaBadge: Bool = false,
+        onFocus: ((MediaItem) -> Void)? = nil
+    ) {
+        self.item = item
+        self.normalWidth = normalWidth
+        self.showCinemaBadge = showCinemaBadge
+        self.onFocus = onFocus
+    }
+    
+    private var cardHeight: CGFloat {
+        normalWidth * 1.5
+    }
+    
+    private var expandedWidth: CGFloat {
+        cardHeight * 16.0 / 9.0
+    }
+    
+    public var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            // Unfocused: Portrait Poster | Focused: 16:9 Backdrop (Image 2)
+            if isFocused {
+                CachedAsyncImage(url: item.backdropURL(size: "w780"))
+                    .frame(width: expandedWidth, height: cardHeight)
+                    .clipped()
+            } else {
+                CachedAsyncImage(url: item.posterURL(size: "w500"))
+                    .frame(width: normalWidth, height: cardHeight)
+                    .clipped()
+            }
+            
+            // Expanded Card Overlays (Image 2: Title & Badges on artwork)
+            if isFocused {
+                LinearGradient(
+                    colors: [Color.clear, Color.black.opacity(0.85)],
+                    startPoint: .center,
+                    endPoint: .bottom
+                )
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    Spacer()
+                    
+                    Text(item.title)
+                        .font(.system(size: 20, weight: .black))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .shadow(color: .black.opacity(0.8), radius: 4, x: 0, y: 2)
+                    
+                    HStack(spacing: 8) {
+                        if item.inCinemas || showCinemaBadge {
+                            Text("IN CINEMAS")
+                                .font(.system(size: 10, weight: .black))
+                                .tracking(0.8)
+                                .foregroundColor(.red)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(.ultraThinMaterial, in: Capsule())
+                        }
+                        
+                        if !item.formattedRating.isEmpty {
+                            RatingBadge(rating: item.formattedRating)
+                        }
+                        
+                        if let genre = item.genreNames.first {
+                            Text(genre)
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.white.opacity(0.85))
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(.ultraThinMaterial, in: Capsule())
+                        }
+                    }
+                }
+                .padding(14)
+                .transition(.opacity)
+            } else {
+                VStack {
+                    HStack {
+                        Spacer()
+                        if !item.formattedRating.isEmpty {
+                            RatingBadge(rating: item.formattedRating)
+                                .padding(8)
+                        }
+                    }
+                    Spacer()
+                }
+            }
+            
+            // Crisp White Outline on Focus
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(isFocused ? Color.white.opacity(0.95) : Color.clear, lineWidth: 2.5)
+        }
+        .frame(width: isFocused ? expandedWidth : normalWidth, height: cardHeight)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .zIndex(isFocused ? 10 : 1)
+        .shadow(
+            color: Color.black.opacity(isFocused ? 0.8 : 0.25),
+            radius: isFocused ? 24 : 6,
+            x: 0,
+            y: isFocused ? 10 : 2
+        )
+        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: isFocused)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                onFocus?(item)
+            }
+        }
+    }
+}
+
 // MARK: - Standard Content Row with Expanding Cards & Inline Info Strip
 
 public struct TVContentRowView: View {
@@ -115,16 +238,16 @@ public struct TVContentRowView: View {
                 .foregroundColor(.white)
                 .padding(.horizontal, 60)
             
-            // Horizontal Card Carousel
+            // Horizontal Card Carousel with Dynamic Expansion (Image 2)
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 34) {
+                LazyHStack(spacing: 24) {
                     ForEach(items) { item in
                         Button {
                             onSelect(item)
                         } label: {
-                            TVMediaCardView(
+                            TVExpandingMediaCardView(
                                 item: item,
-                                width: 210,
+                                normalWidth: 190,
                                 showCinemaBadge: showCinemaBadge
                             ) { focused in
                                 withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {

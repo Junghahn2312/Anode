@@ -30,15 +30,18 @@ public struct TVCinemaView: View {
                         .animation(.easeInOut(duration: 0.5), value: hero.id)
                 }
                 
-                // Unified Root Vertical ScrollView
+                // Unified Root Vertical ScrollView (Zero Black Bars)
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 20) {
-                        // 1. Theatrical Premiere Hero Section (~820pt, peeking first row below)
+                    VStack(alignment: .leading, spacing: 0) {
+                        // 1. Full-Screen Theatrical Premiere Hero Section
                         if let hero = theatricalHero {
                             cinemaHeroSection(hero: hero, screenGeo: screenGeo)
+                        } else {
+                            Color.clear
+                                .frame(width: screenGeo.size.width, height: screenGeo.size.height)
                         }
                         
-                        // 2. Theatrical Content Rows with Expanding Cards & Inline Detail Strips
+                        // 2. Theatrical Content Rows with Dynamic Expanding Cards (Image 2)
                         VStack(alignment: .leading, spacing: 32) {
                             // Now in Cinemas Row
                             if !engine.cinemaNow.isEmpty {
@@ -71,6 +74,7 @@ public struct TVCinemaView: View {
                                 }
                             }
                         }
+                        .offset(y: -260)
                         .padding(.bottom, 120)
                     }
                 }
@@ -87,30 +91,41 @@ public struct TVCinemaView: View {
     
     private func cinemaHeroSection(hero: MediaItem, screenGeo: GeometryProxy) -> some View {
         ZStack(alignment: .bottomLeading) {
-            // Full-Bleed 4K Backdrop Artwork
+            // Full-Bleed 4K Backdrop Artwork (Spanning 100% Screen Height)
             CachedAsyncImage(url: hero.backdropURL(size: "original"), contentMode: .fill)
-                .frame(width: screenGeo.size.width, height: 820, alignment: .top)
+                .frame(width: screenGeo.size.width, height: screenGeo.size.height, alignment: .top)
                 .clipped()
                 .overlay(
+                    // Soft left vignette for typography readability
                     LinearGradient(
                         stops: [
-                            .init(color: Color.black.opacity(0.96), location: 0.0),
-                            .init(color: Color.black.opacity(0.82), location: 0.38),
-                            .init(color: Color.black.opacity(0.32), location: 0.68),
-                            .init(color: Color.clear, location: 0.94)
+                            .init(color: Color.black.opacity(0.80), location: 0.0),
+                            .init(color: Color.black.opacity(0.35), location: 0.35),
+                            .init(color: Color.clear, location: 0.65)
                         ],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .overlay(
+                    // Soft top vignette for tab bar readability
+                    LinearGradient(
+                        stops: [
+                            .init(color: Color.black.opacity(0.70), location: 0.0),
+                            .init(color: Color.clear, location: 0.20)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .overlay(
+                    // Bottom fluid translucent fade allowing artwork to shine through bottom row
                     LinearGradient(
                         stops: [
                             .init(color: Color.clear, location: 0.0),
-                            .init(color: Color.clear, location: 0.45),
-                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.35), location: 0.65),
-                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.80), location: 0.84),
-                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05), location: 1.0)
+                            .init(color: Color.clear, location: 0.52),
+                            .init(color: Color.black.opacity(0.40), location: 0.72),
+                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.85), location: 1.0)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -218,13 +233,14 @@ public struct TVCinemaView: View {
                         }
                         .buttonStyle(.tvCard)
                     }
+                    .focusSection()
                     .padding(.top, 4)
                 }
             }
             .padding(.horizontal, 60)
-            .padding(.bottom, 24)
+            .padding(.bottom, 280)
         }
-        .frame(width: screenGeo.size.width, height: 820)
+        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
         .animation(.easeInOut(duration: 0.35), value: hero.id)
     }
 }

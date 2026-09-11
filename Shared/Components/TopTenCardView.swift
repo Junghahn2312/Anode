@@ -52,7 +52,7 @@ public struct TopTenCardView: View {
                     #if os(tvOS)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(isFocused ? Color.white.opacity(0.85) : Color.clear, lineWidth: 2)
+                            .stroke(isFocused ? Color.white.opacity(0.95) : Color.clear, lineWidth: 2.5)
                     )
                     #endif
                 
@@ -63,7 +63,8 @@ public struct TopTenCardView: View {
             }
             .zIndex(1)
             #if os(tvOS)
-            .scaleEffect(isFocused ? 1.14 : 1.0)
+            .scaleEffect(isFocused ? 1.10 : 1.0)
+            .zIndex(isFocused ? 10 : 1)
             .shadow(color: Color.black.opacity(isFocused ? 0.75 : 0.25), radius: isFocused ? 24 : 6, x: 0, y: isFocused ? 10 : 2)
             .animation(.spring(response: 0.24, dampingFraction: 0.85), value: isFocused)
             #else

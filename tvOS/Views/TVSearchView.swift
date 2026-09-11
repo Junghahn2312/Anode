@@ -4,6 +4,7 @@ public struct TVSearchView: View {
     @ObservedObject private var engine = DiscoveryEngine.shared
     @State private var query: String = "Tom"
     @State private var selectedItem: MediaItem?
+    @State private var focusedSearchItem: MediaItem?
     
     private let suggestions: [String] = [
         "Tom Cruise",
@@ -34,7 +35,7 @@ public struct TVSearchView: View {
     public init() {}
     
     private var ambientBackdropItem: MediaItem? {
-        engine.searchResults.first ?? engine.cinemaMovies.first ?? engine.trendingItems.first
+        focusedSearchItem ?? engine.searchResults.first ?? engine.cinemaMovies.first ?? engine.trendingItems.first
     }
     
     public var body: some View {
@@ -113,7 +114,7 @@ public struct TVSearchView: View {
                     
                     // Right Content Area: 5-Column Full-Width Poster Grid (Zero Black Bars)
                     VStack(alignment: .leading, spacing: 16) {
-                        HStack {
+                        HStack(alignment: .firstTextBaseline) {
                             if !query.isEmpty {
                                 Text("Results for \"\(query)\"")
                                     .font(.system(size: 24, weight: .bold))
@@ -129,6 +130,61 @@ public struct TVSearchView: View {
                         let displayItems = engine.searchResults.isEmpty && query.isEmpty
                             ? engine.cinemaMovies + engine.trendingItems
                             : engine.searchResults
+                        
+                        // Live Hover Inspection Preview Banner
+                        if let inspected = focusedSearchItem ?? displayItems.first {
+                            HStack(alignment: .center, spacing: 20) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack(spacing: 12) {
+                                        Text(inspected.title)
+                                            .font(.system(size: 24, weight: .heavy))
+                                            .foregroundColor(.white)
+                                            .lineLimit(1)
+                                        
+                                        if !inspected.formattedRating.isEmpty {
+                                            RatingBadge(rating: inspected.formattedRating)
+                                        }
+                                        
+                                        if !inspected.yearString.isEmpty {
+                                            Text(inspected.yearString)
+                                                .font(.system(size: 14, weight: .semibold))
+                                                .foregroundColor(.white.opacity(0.75))
+                                        }
+                                        
+                                        if let genre = inspected.genreNames.first {
+                                            Text("•")
+                                                .foregroundColor(.white.opacity(0.4))
+                                            Text(genre)
+                                                .font(.system(size: 14, weight: .semibold))
+                                                .foregroundColor(.white.opacity(0.75))
+                                        }
+                                    }
+                                    
+                                    if !inspected.overview.isEmpty {
+                                        Text(inspected.overview)
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.white.opacity(0.85))
+                                            .lineLimit(2)
+                                            .lineSpacing(2)
+                                            .frame(maxWidth: 1100, alignment: .leading)
+                                    }
+                                }
+                                
+                                Spacer()
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                                    )
+                            )
+                            .id(inspected.id)
+                            .transition(.opacity)
+                        }
                         
                         if displayItems.isEmpty {
                             VStack(spacing: 14) {
@@ -152,12 +208,17 @@ public struct TVSearchView: View {
                                         Button {
                                             selectedItem = item
                                         } label: {
-                                            TVMediaCardView(item: item, width: 220)
+                                            TVMediaCardView(item: item, width: 220) { focusedItem in
+                                                withAnimation(.easeInOut(duration: 0.2)) {
+                                                    self.focusedSearchItem = focusedItem
+                                                }
+                                            }
                                         }
                                         .buttonStyle(.tvCard)
+                                        .zIndex(focusedSearchItem?.id == item.id ? 10 : 1)
                                     }
                                 }
-                                .padding(.top, 4)
+                                .padding(.top, 8)
                                 .padding(.bottom, 100)
                                 .padding(.trailing, 10)
                             }

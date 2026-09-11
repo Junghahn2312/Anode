@@ -46,17 +46,18 @@ public struct TVHomeView: View {
                 
                 // Unified Root Vertical ScrollView (Continuous Natural Flow)
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 20) {
-                        // 1. Massive Hero Spotlight Section (~840pt height, ~78-80% screen)
+                    VStack(alignment: .leading, spacing: 0) {
+                        // 1. Full-Screen Hero Spotlight Section (100% Viewport, Zero Black Bars)
                         if let hero = spotlightHero {
                             heroShowcaseSection(hero: hero, screenGeo: screenGeo)
                         } else {
                             Color.clear
-                                .frame(width: screenGeo.size.width, height: 840)
+                                .frame(width: screenGeo.size.width, height: screenGeo.size.height)
                         }
                         
-                        // 2. Content Rows with Expanding Cards & Inline Detail Strips (Image 2)
+                        // 2. Content Rows with Dynamic Expanding Cards & Inline Detail Strips (Image 2)
                         contentRowsSection
+                            .offset(y: -260)
                     }
                     .padding(.bottom, 120)
                 }
@@ -85,32 +86,41 @@ public struct TVHomeView: View {
     
     private func heroShowcaseSection(hero: MediaItem, screenGeo: GeometryProxy) -> some View {
         ZStack(alignment: .bottomLeading) {
-            // Full-Bleed 4K Backdrop Artwork
+            // Full-Bleed 4K Backdrop Artwork (Spanning 100% Screen Height)
             CachedAsyncImage(url: hero.backdropURL(size: "original"), contentMode: .fill)
-                .frame(width: screenGeo.size.width, height: 840, alignment: .top)
+                .frame(width: screenGeo.size.width, height: screenGeo.size.height, alignment: .top)
                 .clipped()
                 .overlay(
-                    // Left-to-right gradient for typography readability
+                    // Soft left vignette for typography readability
                     LinearGradient(
                         stops: [
-                            .init(color: Color.black.opacity(0.96), location: 0.0),
-                            .init(color: Color.black.opacity(0.82), location: 0.38),
-                            .init(color: Color.black.opacity(0.32), location: 0.68),
-                            .init(color: Color.clear, location: 0.94)
+                            .init(color: Color.black.opacity(0.80), location: 0.0),
+                            .init(color: Color.black.opacity(0.35), location: 0.35),
+                            .init(color: Color.clear, location: 0.65)
                         ],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .overlay(
-                    // Bottom fluid fade seamlessly dissolving into first row below
+                    // Soft top vignette for tab bar readability
+                    LinearGradient(
+                        stops: [
+                            .init(color: Color.black.opacity(0.70), location: 0.0),
+                            .init(color: Color.clear, location: 0.20)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .overlay(
+                    // Bottom fluid translucent fade allowing artwork to shine through bottom row
                     LinearGradient(
                         stops: [
                             .init(color: Color.clear, location: 0.0),
-                            .init(color: Color.clear, location: 0.45),
-                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.35), location: 0.65),
-                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.80), location: 0.84),
-                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05), location: 1.0)
+                            .init(color: Color.clear, location: 0.52),
+                            .init(color: Color.black.opacity(0.40), location: 0.72),
+                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.85), location: 1.0)
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -229,6 +239,7 @@ public struct TVHomeView: View {
                     }
                     .buttonStyle(.tvCard)
                 }
+                .focusSection()
                 .padding(.top, 4)
                 
                 // Carousel Page Indicator Dots
@@ -254,9 +265,9 @@ public struct TVHomeView: View {
             .id(hero.id)
             .transition(.opacity)
             .padding(.horizontal, 60)
-            .padding(.bottom, 24)
+            .padding(.bottom, 280)
         }
-        .frame(width: screenGeo.size.width, height: 840)
+        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
         .animation(.easeInOut(duration: 0.35), value: hero.id)
     }
     

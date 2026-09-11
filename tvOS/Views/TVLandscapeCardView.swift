@@ -34,7 +34,7 @@ public struct TVLandscapeCardView: View {
                 
                 // Crisp white outline over card on focus
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(isFocused ? Color.white.opacity(0.85) : Color.clear, lineWidth: 2)
+                    .stroke(isFocused ? Color.white.opacity(0.95) : Color.clear, lineWidth: 2.5)
                 
                 // Subtle bottom gradient for readability
                 LinearGradient(
@@ -77,7 +77,8 @@ public struct TVLandscapeCardView: View {
                 }
                 .padding(10)
             }
-            .scaleEffect(isFocused ? 1.12 : 1.0)
+            .scaleEffect(isFocused ? 1.10 : 1.0)
+            .zIndex(isFocused ? 10 : 1)
             .shadow(
                 color: Color.black.opacity(isFocused ? 0.75 : 0.25),
                 radius: isFocused ? 24 : 6,
