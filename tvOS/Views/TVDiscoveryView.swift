@@ -10,7 +10,7 @@ public struct TVDiscoveryView: View {
     @State private var selectedItem: MediaItem?
     @State private var isLoadingProvider: Bool = false
     @State private var hoveredItem: MediaItem? = nil
-    @State private var isHeroGone: Bool = false
+    @State private var activeRowIndex: Int = -1
     
     private let tmdb = TMDBService.shared
     
@@ -38,12 +38,12 @@ public struct TVDiscoveryView: View {
         }
     }
     
+    private var isCarouselOutOfView: Bool {
+        activeRowIndex >= 1
+    }
+    
     private var activeBackgroundItem: MediaItem? {
-        if isHeroGone {
-            return hoveredItem ?? categoryHero
-        } else {
-            return categoryHero
-        }
+        hoveredItem ?? categoryHero
     }
     
     public var body: some View {
@@ -56,51 +56,55 @@ public struct TVDiscoveryView: View {
                 rootBackground(screenWidth: screenWidth, screenHeight: screenHeight)
                 
                 // Unified Root Vertical ScrollView (Zero Black Bars)
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // 1. Full-Screen Category Featured Hero Section
-                        if let hero = categoryHero {
-                            discoveryHeroSection(hero: hero, screenWidth: screenWidth, screenHeight: screenHeight)
-                                .background(
-                                    GeometryReader { heroGeo in
-                                        Color.clear.preference(
-                                            key: TVDiscoveryHeroScrollOffsetPreferenceKey.self,
-                                            value: heroGeo.frame(in: .named("discoveryScroll")).maxY
-                                        )
-                                    }
-                                )
-                        } else {
-                            Color.clear
-                                .frame(width: screenWidth, height: screenHeight)
+                ScrollViewReader { scrollProxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            // 1. Full-Screen Category Featured Hero Section
+                            if let hero = categoryHero {
+                                discoveryHeroSection(hero: hero, screenWidth: screenWidth, screenHeight: screenHeight)
+                                    .id("discoveryHeroSection")
+                            } else {
+                                Color.clear
+                                    .frame(width: screenWidth, height: screenHeight)
+                                    .id("discoveryHeroSection")
+                            }
+                            
+                            // 2. Dynamic Content Rows with Dynamic Expanding Cards (Image 2)
+                            VStack(alignment: .leading, spacing: 32) {
+                                switch selectedFilter {
+                                case .all:
+                                    allDiscoverySections
+                                case .movies:
+                                    moviesDiscoverySections
+                                case .tvShows:
+                                    tvShowsDiscoverySections
+                                case .streaming:
+                                    streamingDiscoverySections
+                                }
+                            }
+                            .offset(y: -260)
+                            .padding(.bottom, 260)
                         }
-                        
-                        // 2. Dynamic Content Rows with Dynamic Expanding Cards (Image 2)
-                        VStack(alignment: .leading, spacing: 32) {
-                            switch selectedFilter {
-                            case .all:
-                                allDiscoverySections
-                            case .movies:
-                                moviesDiscoverySections
-                            case .tvShows:
-                                tvShowsDiscoverySections
-                            case .streaming:
-                                streamingDiscoverySections
+                    }
+                    .coordinateSpace(name: "discoveryScroll")
+                    .onChange(of: activeRowIndex) { _, newIndex in
+                        if newIndex == 0 {
+                            withAnimation(.easeInOut(duration: 0.50)) {
+                                scrollProxy.scrollTo("discovery-row-0", anchor: UnitPoint(x: 0.5, y: 0.76))
+                            }
+                        } else if newIndex > 0 {
+                            // Selected row sits higher on screen (not at top, but higher - Y ~ 260)
+                            withAnimation(.easeInOut(duration: 0.50)) {
+                                scrollProxy.scrollTo("discovery-row-\(newIndex)", anchor: UnitPoint(x: 0.5, y: 0.48))
+                            }
+                        } else if newIndex == -1 {
+                            withAnimation(.easeInOut(duration: 0.50)) {
+                                scrollProxy.scrollTo("discoveryHeroSection", anchor: .top)
                             }
                         }
-                        .offset(y: -260)
-                        .padding(.bottom, 120)
                     }
+                    .ignoresSafeArea()
                 }
-                .coordinateSpace(name: "discoveryScroll")
-                .onPreferenceChange(TVDiscoveryHeroScrollOffsetPreferenceKey.self) { maxY in
-                    let gone = maxY <= 200
-                    if gone != isHeroGone {
-                        withAnimation(.easeInOut(duration: 0.55)) {
-                            self.isHeroGone = gone
-                        }
-                    }
-                }
-                .ignoresSafeArea()
             }
             .frame(width: screenWidth, height: screenHeight)
             .ignoresSafeArea()
@@ -126,27 +130,21 @@ public struct TVDiscoveryView: View {
             if let bgItem = activeBackgroundItem {
                 let backdropURL = bgItem.backdropURL(size: "w1280") ?? bgItem.posterURL(size: "original")
                 ZStack {
-                    if isHeroGone {
-                        // When carousel hero has scrolled off screen:
-                        // Background transitions to currently hovered movie's blurred art
-                        CachedAsyncImage(
-                            url: backdropURL,
-                            contentMode: .fill
-                        )
-                        .frame(width: screenWidth, height: screenHeight)
-                        .clipped()
-                        .blur(radius: 40)
-                        
-                        Color.black.opacity(0.42)
-                    } else {
-                        // Sharp unblurred hero image at the top on the carousel
-                        CachedAsyncImage(
-                            url: backdropURL,
-                            contentMode: .fill
-                        )
-                        .frame(width: screenWidth, height: screenHeight)
-                        .clipped()
-                        
+                    CachedAsyncImage(
+                        url: backdropURL,
+                        contentMode: .fill
+                    )
+                    .frame(width: screenWidth, height: screenHeight)
+                    .clipped()
+                    .blur(radius: isCarouselOutOfView ? 40 : 0)
+                    .id(bgItem.id)
+                    .transition(.opacity)
+                    
+                    // Dark scrim for list contrast when carousel is out of view
+                    Color.black.opacity(isCarouselOutOfView ? 0.42 : 0.0)
+                    
+                    // Subtle vignettes active when carousel hero is in view
+                    Group {
                         // Soft left vignette for typography readability
                         LinearGradient(
                             stops: [
@@ -179,10 +177,10 @@ public struct TVDiscoveryView: View {
                             endPoint: .bottom
                         )
                     }
+                    .opacity(isCarouselOutOfView ? 0.0 : 1.0)
                 }
-                .id(isHeroGone ? (hoveredItem?.id ?? bgItem.id) : (categoryHero?.id ?? bgItem.id))
-                .transition(.opacity)
-                .animation(.easeInOut(duration: 0.55), value: isHeroGone ? hoveredItem?.id : categoryHero?.id)
+                .animation(.easeInOut(duration: 0.55), value: bgItem.id)
+                .animation(.easeInOut(duration: 0.55), value: isCarouselOutOfView)
             }
         }
         .frame(width: screenWidth, height: screenHeight)
@@ -227,12 +225,19 @@ public struct TVDiscoveryView: View {
                             Button {
                                 withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
                                     selectedFilter = filter
+                                    activeRowIndex = -1
+                                    hoveredItem = nil
                                 }
                             } label: {
                                 DiscoveryFilterPillLabel(
                                     title: filter.rawValue,
                                     isSelected: selectedFilter == filter
-                                )
+                                ) {
+                                    withAnimation(.easeInOut(duration: 0.45)) {
+                                        self.activeRowIndex = -1
+                                        self.hoveredItem = nil
+                                    }
+                                }
                             }
                             .buttonStyle(.tvCard)
                         }
@@ -246,13 +251,20 @@ public struct TVDiscoveryView: View {
                                     Button {
                                         withAnimation(.easeInOut(duration: 0.2)) {
                                             selectedProvider = provider
+                                            activeRowIndex = -1
+                                            hoveredItem = nil
                                         }
                                         Task { await loadProviderContent(provider) }
                                     } label: {
                                         StreamingProviderPillLabel(
                                             provider: provider,
                                             isSelected: selectedProvider == provider
-                                        )
+                                        ) {
+                                            withAnimation(.easeInOut(duration: 0.45)) {
+                                                self.activeRowIndex = -1
+                                                self.hoveredItem = nil
+                                            }
+                                        }
                                     }
                                     .buttonStyle(.tvCard)
                                 }
@@ -320,8 +332,9 @@ public struct TVDiscoveryView: View {
                             selectedItem = hero
                         } label: {
                             DiscoveryHeroPrimaryButtonLabel {
-                                withAnimation(.easeInOut(duration: 0.55)) {
+                                withAnimation(.easeInOut(duration: 0.45)) {
                                     self.hoveredItem = nil
+                                    self.activeRowIndex = -1
                                 }
                             }
                         }
@@ -331,8 +344,9 @@ public struct TVDiscoveryView: View {
                             watchlist.toggleWatchlist(item: hero)
                         } label: {
                             DiscoveryHeroBookmarkButtonLabel(isBookmarked: watchlist.contains(id: hero.id)) {
-                                withAnimation(.easeInOut(duration: 0.55)) {
+                                withAnimation(.easeInOut(duration: 0.45)) {
                                     self.hoveredItem = nil
+                                    self.activeRowIndex = -1
                                 }
                             }
                         }
@@ -349,9 +363,12 @@ public struct TVDiscoveryView: View {
         .animation(.easeInOut(duration: 0.45), value: hero.id)
     }
     
-    private func handleRowHover(_ item: MediaItem) {
-        withAnimation(.easeInOut(duration: 0.55)) {
+    private func handleRowHover(_ item: MediaItem, rowIndex: Int) {
+        withAnimation(.easeInOut(duration: 0.45)) {
             self.hoveredItem = item
+        }
+        if activeRowIndex != rowIndex {
+            self.activeRowIndex = rowIndex
         }
     }
     
@@ -360,24 +377,28 @@ public struct TVDiscoveryView: View {
     @ViewBuilder
     private var allDiscoverySections: some View {
         if !engine.trendingItems.isEmpty {
-            TVContentRowView(title: "Trending Worldwide", items: engine.trendingItems, onHover: handleRowHover) { item in
+            TVContentRowView(title: "Trending Worldwide", items: engine.trendingItems, onHover: { handleRowHover($0, rowIndex: 0) }) { item in
                 selectedItem = item
             }
+            .id("discovery-row-0")
         }
         if !engine.popularMovies.isEmpty {
-            TVContentRowView(title: "Popular Movies", items: engine.popularMovies, onHover: handleRowHover) { item in
+            TVContentRowView(title: "Popular Movies", items: engine.popularMovies, onHover: { handleRowHover($0, rowIndex: 1) }) { item in
                 selectedItem = item
             }
+            .id("discovery-row-1")
         }
         if !engine.popularTV.isEmpty {
-            TVContentRowView(title: "Popular TV Series", items: engine.popularTV, onHover: handleRowHover) { item in
+            TVContentRowView(title: "Popular TV Series", items: engine.popularTV, onHover: { handleRowHover($0, rowIndex: 2) }) { item in
                 selectedItem = item
             }
+            .id("discovery-row-2")
         }
         if !engine.topRated.isEmpty {
-            TVContentRowView(title: "Critically Acclaimed", items: engine.topRated, onHover: handleRowHover) { item in
+            TVContentRowView(title: "Critically Acclaimed", items: engine.topRated, onHover: { handleRowHover($0, rowIndex: 3) }) { item in
                 selectedItem = item
             }
+            .id("discovery-row-3")
         }
     }
     
@@ -386,27 +407,31 @@ public struct TVDiscoveryView: View {
     @ViewBuilder
     private var moviesDiscoverySections: some View {
         if !engine.popularMovies.isEmpty {
-            TVContentRowView(title: "Trending Movies", items: engine.popularMovies, onHover: handleRowHover) { item in
+            TVContentRowView(title: "Trending Movies", items: engine.popularMovies, onHover: { handleRowHover($0, rowIndex: 0) }) { item in
                 selectedItem = item
             }
+            .id("discovery-row-0")
         }
         let topMovies = engine.topRated.filter { $0.mediaType == .movie }
         if !topMovies.isEmpty {
-            TVContentRowView(title: "Highest Rated Movies", items: topMovies, onHover: handleRowHover) { item in
+            TVContentRowView(title: "Highest Rated Movies", items: topMovies, onHover: { handleRowHover($0, rowIndex: 1) }) { item in
                 selectedItem = item
             }
+            .id("discovery-row-1")
         }
         if !engine.cinemaNow.isEmpty {
-            TVContentRowView(title: "Now in Theatres", items: engine.cinemaNow, showCinemaBadge: true, onHover: handleRowHover) { item in
+            TVContentRowView(title: "Now in Theatres", items: engine.cinemaNow, showCinemaBadge: true, onHover: { handleRowHover($0, rowIndex: 2) }) { item in
                 selectedItem = item
             }
+            .id("discovery-row-2")
         }
         if !engine.newReleases.isEmpty {
             let newMovies = engine.newReleases.filter { $0.mediaType == .movie }
             if !newMovies.isEmpty {
-                TVContentRowView(title: "New Releases", items: newMovies, onHover: handleRowHover) { item in
+                TVContentRowView(title: "New Releases", items: newMovies, onHover: { handleRowHover($0, rowIndex: 3) }) { item in
                     selectedItem = item
                 }
+                .id("discovery-row-3")
             }
         }
     }
@@ -416,30 +441,35 @@ public struct TVDiscoveryView: View {
     @ViewBuilder
     private var tvShowsDiscoverySections: some View {
         if !engine.popularTV.isEmpty {
-            TVContentRowView(title: "Popular TV Series", items: engine.popularTV, onHover: handleRowHover) { item in
+            TVContentRowView(title: "Popular TV Series", items: engine.popularTV, onHover: { handleRowHover($0, rowIndex: 0) }) { item in
                 selectedItem = item
             }
+            .id("discovery-row-0")
         }
         let topTV = engine.topRated.filter { $0.mediaType == .tvShow }
         if !topTV.isEmpty {
-            TVContentRowView(title: "Critically Acclaimed Series", items: topTV, onHover: handleRowHover) { item in
+            TVContentRowView(title: "Critically Acclaimed Series", items: topTV, onHover: { handleRowHover($0, rowIndex: 1) }) { item in
                 selectedItem = item
             }
+            .id("discovery-row-1")
         }
         if !engine.netflixTrending.isEmpty {
-            TVContentRowView(title: "Trending on Netflix", items: engine.netflixTrending.filter { $0.mediaType == .tvShow }, onHover: handleRowHover) { item in
+            TVContentRowView(title: "Trending on Netflix", items: engine.netflixTrending.filter { $0.mediaType == .tvShow }, onHover: { handleRowHover($0, rowIndex: 2) }) { item in
                 selectedItem = item
             }
+            .id("discovery-row-2")
         }
         if !engine.disneyTrending.isEmpty {
-            TVContentRowView(title: "Trending on Disney+", items: engine.disneyTrending.filter { $0.mediaType == .tvShow }, onHover: handleRowHover) { item in
+            TVContentRowView(title: "Trending on Disney+", items: engine.disneyTrending.filter { $0.mediaType == .tvShow }, onHover: { handleRowHover($0, rowIndex: 3) }) { item in
                 selectedItem = item
             }
+            .id("discovery-row-3")
         }
         if !engine.appleTVTrending.isEmpty {
-            TVContentRowView(title: "Trending on Apple TV+", items: engine.appleTVTrending.filter { $0.mediaType == .tvShow }, onHover: handleRowHover) { item in
+            TVContentRowView(title: "Trending on Apple TV+", items: engine.appleTVTrending.filter { $0.mediaType == .tvShow }, onHover: { handleRowHover($0, rowIndex: 4) }) { item in
                 selectedItem = item
             }
+            .id("discovery-row-4")
         }
     }
     
@@ -448,15 +478,17 @@ public struct TVDiscoveryView: View {
     @ViewBuilder
     private var streamingDiscoverySections: some View {
         let displayItems = providerItems.isEmpty ? engine.streamingItems : providerItems
-        TVContentRowView(title: "Trending on \(selectedProvider.name)", items: displayItems, onHover: handleRowHover) { item in
+        TVContentRowView(title: "Trending on \(selectedProvider.name)", items: displayItems, onHover: { handleRowHover($0, rowIndex: 0) }) { item in
             selectedItem = item
         }
+        .id("discovery-row-0")
         
         let topRated = displayItems.filter { $0.rating >= 7.8 }
         if !topRated.isEmpty {
-            TVContentRowView(title: "Highest Rated on \(selectedProvider.name)", items: topRated, onHover: handleRowHover) { item in
+            TVContentRowView(title: "Highest Rated on \(selectedProvider.name)", items: topRated, onHover: { handleRowHover($0, rowIndex: 1) }) { item in
                 selectedItem = item
             }
+            .id("discovery-row-1")
         }
     }
     
@@ -472,6 +504,7 @@ public struct TVDiscoveryView: View {
 private struct DiscoveryFilterPillLabel: View {
     let title: String
     let isSelected: Bool
+    var onFocus: (() -> Void)? = nil
     @Environment(\.isFocused) private var isFocused: Bool
     
     var body: some View {
@@ -497,12 +530,18 @@ private struct DiscoveryFilterPillLabel: View {
             )
             .scaleEffect(isFocused ? 1.05 : 1.0)
             .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+            .onChange(of: isFocused) { _, focused in
+                if focused {
+                    onFocus?()
+                }
+            }
     }
 }
 
 private struct StreamingProviderPillLabel: View {
     let provider: StreamingProvider
     let isSelected: Bool
+    var onFocus: (() -> Void)? = nil
     @Environment(\.isFocused) private var isFocused: Bool
     
     var body: some View {
@@ -520,20 +559,25 @@ private struct StreamingProviderPillLabel: View {
         .background(
             Capsule()
                 .fill(isFocused ? Color.white : (isSelected ? provider.brandColor.opacity(0.40) : Color.clear))
-                .background(
-                    Group {
-                        if !isFocused && !isSelected {
-                            Capsule().fill(.ultraThinMaterial)
-                        }
+            .background(
+                Group {
+                    if !isFocused && !isSelected {
+                        Capsule().fill(.ultraThinMaterial)
                     }
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(isFocused ? Color.clear : (isSelected ? provider.brandColor.opacity(0.6) : Color.white.opacity(0.16)), lineWidth: 1)
-                )
+                }
+            )
+            .overlay(
+                Capsule()
+                    .stroke(isFocused ? Color.clear : (isSelected ? provider.brandColor.opacity(0.6) : Color.white.opacity(0.16)), lineWidth: 1)
+            )
         )
         .scaleEffect(isFocused ? 1.05 : 1.0)
         .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                onFocus?()
+            }
+        }
     }
 }
 
@@ -616,10 +660,4 @@ private struct DiscoveryHeroBookmarkButtonLabel: View {
     }
 }
 
-private struct TVDiscoveryHeroScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 1080
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
 

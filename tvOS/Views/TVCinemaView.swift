@@ -6,7 +6,7 @@ public struct TVCinemaView: View {
     
     @State private var selectedItem: MediaItem?
     @State private var hoveredItem: MediaItem? = nil
-    @State private var isHeroGone: Bool = false
+    @State private var activeRowIndex: Int = -1
     
     public init() {}
     
@@ -14,12 +14,12 @@ public struct TVCinemaView: View {
         engine.cinemaNow.first ?? engine.cinemaMovies.first ?? engine.trendingItems.first
     }
     
+    private var isCarouselOutOfView: Bool {
+        activeRowIndex >= 1
+    }
+    
     private var activeBackgroundItem: MediaItem? {
-        if isHeroGone {
-            return hoveredItem ?? theatricalHero
-        } else {
-            return theatricalHero
-        }
+        hoveredItem ?? theatricalHero
     }
     
     public var body: some View {
@@ -32,74 +32,81 @@ public struct TVCinemaView: View {
                 rootBackground(screenWidth: screenWidth, screenHeight: screenHeight)
                 
                 // Unified Root Vertical ScrollView (Zero Black Bars)
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // 1. Full-Screen Theatrical Premiere Hero Section
-                        if let hero = theatricalHero {
-                            cinemaHeroSection(hero: hero, screenWidth: screenWidth, screenHeight: screenHeight)
-                                .background(
-                                    GeometryReader { heroGeo in
-                                        Color.clear.preference(
-                                            key: TVCinemaHeroScrollOffsetPreferenceKey.self,
-                                            value: heroGeo.frame(in: .named("cinemaScroll")).maxY
-                                        )
+                ScrollViewReader { scrollProxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            // 1. Full-Screen Theatrical Premiere Hero Section
+                            if let hero = theatricalHero {
+                                cinemaHeroSection(hero: hero, screenWidth: screenWidth, screenHeight: screenHeight)
+                                    .id("cinemaHeroSection")
+                            } else {
+                                Color.clear
+                                    .frame(width: screenWidth, height: screenHeight)
+                                    .id("cinemaHeroSection")
+                            }
+                            
+                            // 2. Theatrical Content Rows with Dynamic Expanding Cards (Image 2)
+                            VStack(alignment: .leading, spacing: 32) {
+                                // Now in Cinemas Row
+                                if !engine.cinemaNow.isEmpty {
+                                    TVContentRowView(
+                                        title: "Now in Cinemas",
+                                        items: engine.cinemaNow,
+                                        showCinemaBadge: true,
+                                        onHover: { handleRowHover($0, rowIndex: 0) }
+                                    ) { item in
+                                        selectedItem = item
                                     }
-                                )
-                        } else {
-                            Color.clear
-                                .frame(width: screenWidth, height: screenHeight)
-                        }
-                        
-                        // 2. Theatrical Content Rows with Dynamic Expanding Cards (Image 2)
-                        VStack(alignment: .leading, spacing: 32) {
-                            // Now in Cinemas Row
-                            if !engine.cinemaNow.isEmpty {
-                                TVContentRowView(
-                                    title: "Now in Cinemas",
-                                    items: engine.cinemaNow,
-                                    showCinemaBadge: true,
-                                    onHover: handleRowHover
-                                ) { item in
-                                    selectedItem = item
+                                    .id("cinema-row-0")
+                                }
+                                
+                                // Coming Soon to Cinemas Row (Landscape 16:9)
+                                if !engine.cinemaUpcoming.isEmpty {
+                                    TVLandscapeRowView(
+                                        title: "Coming Soon to Cinemas",
+                                        items: engine.cinemaUpcoming,
+                                        onHover: { handleRowHover($0, rowIndex: 1) }
+                                    ) { item in
+                                        selectedItem = item
+                                    }
+                                    .id("cinema-row-1")
+                                }
+                                
+                                // Critically Acclaimed Theatrical Releases
+                                if !engine.cinemaMovies.isEmpty {
+                                    TVContentRowView(
+                                        title: "Critically Acclaimed in Theatres",
+                                        items: engine.cinemaMovies.filter { $0.rating >= 7.5 },
+                                        onHover: { handleRowHover($0, rowIndex: 2) }
+                                    ) { item in
+                                        selectedItem = item
+                                    }
+                                    .id("cinema-row-2")
                                 }
                             }
-                            
-                            // Coming Soon to Cinemas Row (Landscape 16:9)
-                            if !engine.cinemaUpcoming.isEmpty {
-                                TVLandscapeRowView(
-                                    title: "Coming Soon to Cinemas",
-                                    items: engine.cinemaUpcoming,
-                                    onHover: handleRowHover
-                                ) { item in
-                                    selectedItem = item
-                                }
-                            }
-                            
-                            // Critically Acclaimed Theatrical Releases
-                            if !engine.cinemaMovies.isEmpty {
-                                TVContentRowView(
-                                    title: "Critically Acclaimed in Theatres",
-                                    items: engine.cinemaMovies.filter { $0.rating >= 7.5 },
-                                    onHover: handleRowHover
-                                ) { item in
-                                    selectedItem = item
-                                }
-                            }
-                        }
-                        .offset(y: -260)
-                        .padding(.bottom, 120)
-                    }
-                }
-                .coordinateSpace(name: "cinemaScroll")
-                .onPreferenceChange(TVCinemaHeroScrollOffsetPreferenceKey.self) { maxY in
-                    let gone = maxY <= 200
-                    if gone != isHeroGone {
-                        withAnimation(.easeInOut(duration: 0.55)) {
-                            self.isHeroGone = gone
+                            .offset(y: -260)
+                            .padding(.bottom, 260)
                         }
                     }
+                    .coordinateSpace(name: "cinemaScroll")
+                    .onChange(of: activeRowIndex) { _, newIndex in
+                        if newIndex == 0 {
+                            withAnimation(.easeInOut(duration: 0.50)) {
+                                scrollProxy.scrollTo("cinema-row-0", anchor: UnitPoint(x: 0.5, y: 0.76))
+                            }
+                        } else if newIndex > 0 {
+                            // Selected row sits higher on screen (not at top, but higher - Y ~ 260)
+                            withAnimation(.easeInOut(duration: 0.50)) {
+                                scrollProxy.scrollTo("cinema-row-\(newIndex)", anchor: UnitPoint(x: 0.5, y: 0.48))
+                            }
+                        } else if newIndex == -1 {
+                            withAnimation(.easeInOut(duration: 0.50)) {
+                                scrollProxy.scrollTo("cinemaHeroSection", anchor: .top)
+                            }
+                        }
+                    }
+                    .ignoresSafeArea()
                 }
-                .ignoresSafeArea()
             }
             .frame(width: screenWidth, height: screenHeight)
             .ignoresSafeArea()
@@ -121,27 +128,21 @@ public struct TVCinemaView: View {
             if let bgItem = activeBackgroundItem {
                 let backdropURL = bgItem.backdropURL(size: "w1280") ?? bgItem.posterURL(size: "original")
                 ZStack {
-                    if isHeroGone {
-                        // When carousel hero has scrolled off screen:
-                        // Background transitions to currently hovered movie's blurred art
-                        CachedAsyncImage(
-                            url: backdropURL,
-                            contentMode: .fill
-                        )
-                        .frame(width: screenWidth, height: screenHeight)
-                        .clipped()
-                        .blur(radius: 40)
-                        
-                        Color.black.opacity(0.42)
-                    } else {
-                        // Sharp unblurred hero image at the top on the carousel
-                        CachedAsyncImage(
-                            url: backdropURL,
-                            contentMode: .fill
-                        )
-                        .frame(width: screenWidth, height: screenHeight)
-                        .clipped()
-                        
+                    CachedAsyncImage(
+                        url: backdropURL,
+                        contentMode: .fill
+                    )
+                    .frame(width: screenWidth, height: screenHeight)
+                    .clipped()
+                    .blur(radius: isCarouselOutOfView ? 40 : 0)
+                    .id(bgItem.id)
+                    .transition(.opacity)
+                    
+                    // Dark scrim for list contrast when carousel is out of view
+                    Color.black.opacity(isCarouselOutOfView ? 0.42 : 0.0)
+                    
+                    // Subtle vignettes active when carousel hero is in view
+                    Group {
                         // Soft left vignette for typography readability
                         LinearGradient(
                             stops: [
@@ -174,19 +175,22 @@ public struct TVCinemaView: View {
                             endPoint: .bottom
                         )
                     }
+                    .opacity(isCarouselOutOfView ? 0.0 : 1.0)
                 }
-                .id(isHeroGone ? (hoveredItem?.id ?? bgItem.id) : (theatricalHero?.id ?? bgItem.id))
-                .transition(.opacity)
-                .animation(.easeInOut(duration: 0.55), value: isHeroGone ? hoveredItem?.id : theatricalHero?.id)
+                .animation(.easeInOut(duration: 0.55), value: bgItem.id)
+                .animation(.easeInOut(duration: 0.55), value: isCarouselOutOfView)
             }
         }
         .frame(width: screenWidth, height: screenHeight)
         .ignoresSafeArea()
     }
     
-    private func handleRowHover(_ item: MediaItem) {
-        withAnimation(.easeInOut(duration: 0.55)) {
+    private func handleRowHover(_ item: MediaItem, rowIndex: Int) {
+        withAnimation(.easeInOut(duration: 0.45)) {
             self.hoveredItem = item
+        }
+        if activeRowIndex != rowIndex {
+            self.activeRowIndex = rowIndex
         }
     }
     
@@ -286,8 +290,9 @@ public struct TVCinemaView: View {
                             selectedItem = hero
                         } label: {
                             CinemaHeroPrimaryButtonLabel {
-                                withAnimation(.easeInOut(duration: 0.55)) {
+                                withAnimation(.easeInOut(duration: 0.45)) {
                                     self.hoveredItem = nil
+                                    self.activeRowIndex = -1
                                 }
                             }
                         }
@@ -297,8 +302,9 @@ public struct TVCinemaView: View {
                             watchlist.toggleWatchlist(item: hero)
                         } label: {
                             CinemaHeroBookmarkButtonLabel(isBookmarked: watchlist.contains(id: hero.id)) {
-                                withAnimation(.easeInOut(duration: 0.55)) {
+                                withAnimation(.easeInOut(duration: 0.45)) {
                                     self.hoveredItem = nil
+                                    self.activeRowIndex = -1
                                 }
                             }
                         }
@@ -394,13 +400,6 @@ private struct CinemaHeroBookmarkButtonLabel: View {
                 onFocus?()
             }
         }
-    }
-}
-
-private struct TVCinemaHeroScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 1080
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
 

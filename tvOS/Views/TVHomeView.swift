@@ -10,7 +10,7 @@ public struct TVHomeView: View {
     @State private var selectedItem: MediaItem?
     @State private var heroAvailability: WatchAvailability?
     @State private var hoveredItem: MediaItem? = nil
-    @State private var isHeroGone: Bool = false
+    @State private var activeRowIndex: Int = -1
     
     private let timer = Timer.publish(every: 8.0, on: .main, in: .common).autoconnect()
     
@@ -28,12 +28,12 @@ public struct TVHomeView: View {
         return heroPool[heroIndex % heroPool.count]
     }
     
+    private var isCarouselOutOfView: Bool {
+        activeRowIndex >= 1
+    }
+    
     private var activeBackgroundItem: MediaItem? {
-        if isHeroGone {
-            return hoveredItem ?? spotlightHero
-        } else {
-            return spotlightHero
-        }
+        hoveredItem ?? spotlightHero
     }
     
     public var body: some View {
@@ -46,40 +46,44 @@ public struct TVHomeView: View {
                 rootBackground(screenWidth: screenWidth, screenHeight: screenHeight)
                 
                 // Unified Root Vertical ScrollView (Continuous Natural Flow)
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // 1. Full-Screen Hero Spotlight Section (100% Viewport, Zero Black Bars)
-                        if let hero = spotlightHero {
-                            heroShowcaseSection(hero: hero, screenWidth: screenWidth, screenHeight: screenHeight)
-                                .background(
-                                    GeometryReader { heroGeo in
-                                        Color.clear.preference(
-                                            key: TVHeroScrollOffsetPreferenceKey.self,
-                                            value: heroGeo.frame(in: .named("homeScroll")).maxY
-                                        )
-                                    }
-                                )
-                        } else {
-                            Color.clear
-                                .frame(width: screenWidth, height: screenHeight)
+                ScrollViewReader { scrollProxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            // 1. Full-Screen Hero Spotlight Section (100% Viewport, Zero Black Bars)
+                            if let hero = spotlightHero {
+                                heroShowcaseSection(hero: hero, screenWidth: screenWidth, screenHeight: screenHeight)
+                                    .id("heroSection")
+                            } else {
+                                Color.clear
+                                    .frame(width: screenWidth, height: screenHeight)
+                                    .id("heroSection")
+                            }
+                            
+                            // 2. Content Rows with Dynamic Expanding Cards & Inline Detail Strips (Image 2)
+                            contentRowsSection
+                                .offset(y: -260)
                         }
-                        
-                        // 2. Content Rows with Dynamic Expanding Cards & Inline Detail Strips (Image 2)
-                        contentRowsSection
-                            .offset(y: -260)
+                        .padding(.bottom, 260)
                     }
-                    .padding(.bottom, 120)
-                }
-                .coordinateSpace(name: "homeScroll")
-                .onPreferenceChange(TVHeroScrollOffsetPreferenceKey.self) { maxY in
-                    let gone = maxY <= 200
-                    if gone != isHeroGone {
-                        withAnimation(.easeInOut(duration: 0.55)) {
-                            self.isHeroGone = gone
+                    .coordinateSpace(name: "homeScroll")
+                    .onChange(of: activeRowIndex) { _, newIndex in
+                        if newIndex == 0 {
+                            withAnimation(.easeInOut(duration: 0.50)) {
+                                scrollProxy.scrollTo("row-0", anchor: UnitPoint(x: 0.5, y: 0.76))
+                            }
+                        } else if newIndex > 0 {
+                            // Selected row sits higher on screen (not at top, but higher - Y ~ 260)
+                            withAnimation(.easeInOut(duration: 0.50)) {
+                                scrollProxy.scrollTo("row-\(newIndex)", anchor: UnitPoint(x: 0.5, y: 0.48))
+                            }
+                        } else if newIndex == -1 {
+                            withAnimation(.easeInOut(duration: 0.50)) {
+                                scrollProxy.scrollTo("heroSection", anchor: .top)
+                            }
                         }
                     }
+                    .ignoresSafeArea()
                 }
-                .ignoresSafeArea()
             }
             .frame(width: screenWidth, height: screenHeight)
             .ignoresSafeArea()
@@ -113,29 +117,21 @@ public struct TVHomeView: View {
             if let bgItem = activeBackgroundItem {
                 let backdropURL = bgItem.backdropURL(size: "w1280") ?? bgItem.posterURL(size: "original")
                 ZStack {
-                    if isHeroGone {
-                        // When carousel hero has scrolled off screen:
-                        // Background transitions to currently hovered movie's blurred art
-                        CachedAsyncImage(
-                            url: backdropURL,
-                            contentMode: .fill
-                        )
-                        .frame(width: screenWidth, height: screenHeight)
-                        .clipped()
-                        .blur(radius: 40)
-                        
-                        // Scrim for perfect contrast with lists and typography
-                        Color.black.opacity(0.42)
-                    } else {
-                        // Hero image at the very top on the carousel:
-                        // MUST NOT BE BLURRED! Carousel hero remains sharp and present.
-                        CachedAsyncImage(
-                            url: backdropURL,
-                            contentMode: .fill
-                        )
-                        .frame(width: screenWidth, height: screenHeight)
-                        .clipped()
-                        
+                    CachedAsyncImage(
+                        url: backdropURL,
+                        contentMode: .fill
+                    )
+                    .frame(width: screenWidth, height: screenHeight)
+                    .clipped()
+                    .blur(radius: isCarouselOutOfView ? 40 : 0)
+                    .id(bgItem.id)
+                    .transition(.opacity)
+                    
+                    // Dark scrim for list contrast when carousel is out of view
+                    Color.black.opacity(isCarouselOutOfView ? 0.42 : 0.0)
+                    
+                    // Subtle vignettes active when carousel hero is in view
+                    Group {
                         // Soft left vignette for typography readability
                         LinearGradient(
                             stops: [
@@ -168,10 +164,10 @@ public struct TVHomeView: View {
                             endPoint: .bottom
                         )
                     }
+                    .opacity(isCarouselOutOfView ? 0.0 : 1.0)
                 }
-                .id(isHeroGone ? (hoveredItem?.id ?? bgItem.id) : (spotlightHero?.id ?? bgItem.id))
-                .transition(.opacity)
-                .animation(.easeInOut(duration: 0.55), value: isHeroGone ? hoveredItem?.id : spotlightHero?.id)
+                .animation(.easeInOut(duration: 0.55), value: bgItem.id)
+                .animation(.easeInOut(duration: 0.55), value: isCarouselOutOfView)
             }
         }
         .frame(width: screenWidth, height: screenHeight)
@@ -287,8 +283,9 @@ public struct TVHomeView: View {
                         TVHomePrimaryHeroButtonLabel(
                             title: hero.mediaType == .tvShow ? "Go to Series" : "View Details"
                         ) {
-                            withAnimation(.easeInOut(duration: 0.55)) {
+                            withAnimation(.easeInOut(duration: 0.45)) {
                                 self.hoveredItem = nil
+                                self.activeRowIndex = -1
                             }
                         }
                     }
@@ -300,8 +297,9 @@ public struct TVHomeView: View {
                         TVHomeSecondaryBookmarkButtonLabel(
                             isBookmarked: watchlist.contains(id: hero.id)
                         ) {
-                            withAnimation(.easeInOut(duration: 0.55)) {
+                            withAnimation(.easeInOut(duration: 0.45)) {
                                 self.hoveredItem = nil
+                                self.activeRowIndex = -1
                             }
                         }
                     }
@@ -341,9 +339,12 @@ public struct TVHomeView: View {
     
     // MARK: - Content Rows Section with Expanding Cards & Inline Detail Strips
     
-    private func handleRowHover(_ item: MediaItem) {
-        withAnimation(.easeInOut(duration: 0.55)) {
+    private func handleRowHover(_ item: MediaItem, rowIndex: Int) {
+        withAnimation(.easeInOut(duration: 0.45)) {
             self.hoveredItem = item
+        }
+        if activeRowIndex != rowIndex {
+            self.activeRowIndex = rowIndex
         }
     }
     
@@ -356,11 +357,12 @@ public struct TVHomeView: View {
                 TVLandscapeRowView(
                     title: "Popular",
                     items: popularItems,
-                    onHover: handleRowHover
+                    onHover: { handleRowHover($0, rowIndex: 0) }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
                 }
+                .id("row-0")
             }
             
             // My Watchlist (if populated)
@@ -368,11 +370,12 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "My List",
                     items: watchlist.items,
-                    onHover: handleRowHover
+                    onHover: { handleRowHover($0, rowIndex: 1) }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
                 }
+                .id("row-1")
             }
             
             // Top 10 Today (Large Numeral Row)
@@ -380,11 +383,12 @@ public struct TVHomeView: View {
                 TVTopTenRowView(
                     title: "Top 10 Today",
                     items: engine.topTen,
-                    onHover: handleRowHover
+                    onHover: { handleRowHover($0, rowIndex: 2) }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
                 }
+                .id("row-2")
             }
             
             // Trending Now
@@ -392,11 +396,12 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "Trending Now",
                     items: engine.trendingItems,
-                    onHover: handleRowHover
+                    onHover: { handleRowHover($0, rowIndex: 3) }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
                 }
+                .id("row-3")
             }
             
             // Now in Cinemas
@@ -405,11 +410,12 @@ public struct TVHomeView: View {
                     title: "Now in Cinemas",
                     items: engine.cinemaNow,
                     showCinemaBadge: true,
-                    onHover: handleRowHover
+                    onHover: { handleRowHover($0, rowIndex: 4) }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
                 }
+                .id("row-4")
             }
             
             // Trending on Netflix
@@ -417,11 +423,12 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "Trending on Netflix",
                     items: engine.netflixTrending,
-                    onHover: handleRowHover
+                    onHover: { handleRowHover($0, rowIndex: 5) }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
                 }
+                .id("row-5")
             }
             
             // Trending on Disney+
@@ -429,11 +436,12 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "Trending on Disney+",
                     items: engine.disneyTrending,
-                    onHover: handleRowHover
+                    onHover: { handleRowHover($0, rowIndex: 6) }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
                 }
+                .id("row-6")
             }
             
             // Trending on Prime Video
@@ -441,11 +449,12 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "Trending on Prime Video",
                     items: engine.primeTrending,
-                    onHover: handleRowHover
+                    onHover: { handleRowHover($0, rowIndex: 7) }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
                 }
+                .id("row-7")
             }
             
             // Trending on Apple TV+
@@ -453,11 +462,12 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "Trending on Apple TV+",
                     items: engine.appleTVTrending,
-                    onHover: handleRowHover
+                    onHover: { handleRowHover($0, rowIndex: 8) }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
                 }
+                .id("row-8")
             }
             
             // Popular Movies
@@ -465,11 +475,12 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "Popular Movies",
                     items: engine.popularMovies,
-                    onHover: handleRowHover
+                    onHover: { handleRowHover($0, rowIndex: 9) }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
                 }
+                .id("row-9")
             }
             
             // Coming Soon to Theatres (16:9 Landscape Variety Row)
@@ -477,11 +488,12 @@ public struct TVHomeView: View {
                 TVLandscapeRowView(
                     title: "Coming Soon to Theatres",
                     items: engine.cinemaUpcoming,
-                    onHover: handleRowHover
+                    onHover: { handleRowHover($0, rowIndex: 10) }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
                 }
+                .id("row-10")
             }
             
             // Critically Acclaimed
@@ -489,11 +501,12 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "Critically Acclaimed",
                     items: engine.topRated,
-                    onHover: handleRowHover
+                    onHover: { handleRowHover($0, rowIndex: 11) }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
                 }
+                .id("row-11")
             }
         }
     }
@@ -578,12 +591,5 @@ private struct TVHomeSecondaryBookmarkButtonLabel: View {
                 onFocus?()
             }
         }
-    }
-}
-
-private struct TVHeroScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 1080
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
