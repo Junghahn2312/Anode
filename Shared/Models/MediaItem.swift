@@ -73,6 +73,14 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
         voteAverage
     }
     
+    public var isTheatricalExclusive: Bool {
+        guard streamingProviders.isEmpty else { return false }
+        if let subs = availability?.subscriptions, !subs.isEmpty {
+            return false
+        }
+        return true
+    }
+    
     public var releaseDate: String? {
         releaseDateString
     }

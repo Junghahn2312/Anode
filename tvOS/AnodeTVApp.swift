@@ -1,12 +1,23 @@
 import SwiftUI
 
+@MainActor
+public final class AppNavigation: ObservableObject {
+    public static let shared = AppNavigation()
+    @Published public var selectedTab: Int
+    
+    public init() {
+        let initial = UserDefaults.standard.integer(forKey: "InitialTab")
+        self.selectedTab = initial
+    }
+}
+
 @main
 struct AnodeTVApp: App {
-    @State private var selectedTab: Int = 0
+    @StateObject private var nav = AppNavigation.shared
     
     var body: some Scene {
         WindowGroup {
-            TabView(selection: $selectedTab) {
+            TabView(selection: $nav.selectedTab) {
                 TVHomeView()
                     .ignoresSafeArea()
                     .tabItem {

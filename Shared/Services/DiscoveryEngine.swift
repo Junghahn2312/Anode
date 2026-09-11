@@ -9,6 +9,9 @@ public final class DiscoveryEngine: ObservableObject {
     @Published public var cinemaMovies: [MediaItem] = []
     @Published public var cinemaNow: [MediaItem] = []
     @Published public var cinemaUpcoming: [MediaItem] = []
+    @Published public var exclusiveCinemaNow: [MediaItem] = []
+    @Published public var exclusiveCinemaUpcoming: [MediaItem] = []
+    @Published public var freshFromTheatres: [MediaItem] = []
     @Published public var trendingItems: [MediaItem] = []
     @Published public var streamingItems: [MediaItem] = []
     @Published public var popularMovies: [MediaItem] = []
@@ -48,6 +51,7 @@ public final class DiscoveryEngine: ObservableObject {
         async let heroesTask = tmdb.fetchHeroSpotlights()
         async let cinemaTask = tmdb.fetchInCinemas()
         async let cinemaUpTask = tmdb.fetchUpcomingCinemas()
+        async let freshTask = tmdb.fetchFreshFromTheatres()
         async let trendingTask = tmdb.fetchTrending(type: nil)
         async let streamingTask = tmdb.fetchStreaming(provider: selectedProvider)
         async let netflixTask = tmdb.fetchStreaming(provider: .netflix)
@@ -61,9 +65,20 @@ public final class DiscoveryEngine: ObservableObject {
         async let upcomingTask = tmdb.fetchUpcoming()
         
         self.heroSpotlights = await heroesTask
-        self.cinemaNow = await cinemaTask
-        self.cinemaMovies = self.cinemaNow
-        self.cinemaUpcoming = await cinemaUpTask
+        
+        // Strict theatrical exclusivity: zero streaming availability
+        let rawCinema = await cinemaTask
+        let rawCinemaUp = await cinemaUpTask
+        let strictlyExclusiveCinema = rawCinema.filter { tmdb.isTheatricalExclusive($0) }
+        let strictlyExclusiveUpcoming = rawCinemaUp.filter { tmdb.isTheatricalExclusive($0) }
+        
+        self.cinemaNow = strictlyExclusiveCinema
+        self.cinemaMovies = strictlyExclusiveCinema
+        self.cinemaUpcoming = strictlyExclusiveUpcoming
+        self.exclusiveCinemaNow = strictlyExclusiveCinema
+        self.exclusiveCinemaUpcoming = strictlyExclusiveUpcoming
+        self.freshFromTheatres = await freshTask
+        
         self.trendingItems = await trendingTask
         self.streamingItems = await streamingTask
         self.netflixTrending = await netflixTask
@@ -90,6 +105,22 @@ public final class DiscoveryEngine: ObservableObject {
             }
         }
         self.topTen = unique
+    }
+    
+    public func isTheatricalExclusive(_ item: MediaItem) -> Bool {
+        tmdb.isTheatricalExclusive(item)
+    }
+    
+    public func loadPlatformTopMovies(provider: StreamingProvider) async -> [MediaItem] {
+        await tmdb.fetchPlatformTopMovies(provider: provider)
+    }
+    
+    public func loadPlatformTopTV(provider: StreamingProvider) async -> [MediaItem] {
+        await tmdb.fetchPlatformTopTV(provider: provider)
+    }
+    
+    public func loadPlatformNew(provider: StreamingProvider) async -> [MediaItem] {
+        await tmdb.fetchPlatformNew(provider: provider)
     }
     
     public func loadStreamingItems() async {

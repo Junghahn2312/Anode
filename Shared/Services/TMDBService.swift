@@ -109,14 +109,19 @@ public actor TMDBService: ContentProvider {
         return items
     }
     
+    nonisolated public func isTheatricalExclusive(_ item: MediaItem) -> Bool {
+        item.isTheatricalExclusive
+    }
+    
     public func fetchInCinemas() async -> [MediaItem] {
         if let cached = memoryCache["in_cinemas"], !cached.isEmpty {
             return cached
         }
         if let items = try? await getPagedMedia(endpoint: "/movie/now_playing", type: .movie) {
-            let mapped = items.map { item in
+            let mapped = items.compactMap { item -> MediaItem? in
                 var m = item
                 m.inCinemas = true
+                guard isTheatricalExclusive(m) else { return nil }
                 return m
             }
             if !mapped.isEmpty {
@@ -124,7 +129,7 @@ public actor TMDBService: ContentProvider {
                 return mapped
             }
         }
-        var list = MockData.cinemaMovies
+        var list = MockData.cinemaMovies.filter { isTheatricalExclusive($0) }
         for i in 0..<list.count {
             list[i].inCinemas = true
         }
@@ -137,10 +142,13 @@ public actor TMDBService: ContentProvider {
             return cached
         }
         if let items = try? await getPagedMedia(endpoint: "/movie/upcoming", type: .movie), !items.isEmpty {
-            memoryCache["upcoming_cinemas"] = items
-            return items
+            let exclusive = items.filter { isTheatricalExclusive($0) }
+            if !exclusive.isEmpty {
+                memoryCache["upcoming_cinemas"] = exclusive
+                return exclusive
+            }
         }
-        let items = MockData.upcoming
+        let items = MockData.upcoming.filter { isTheatricalExclusive($0) }
         memoryCache["upcoming_cinemas"] = items
         return items
     }
@@ -178,6 +186,90 @@ public actor TMDBService: ContentProvider {
         let fallback = MockData.streamingCatalog[provider.id] ?? MockData.trendingItems
         memoryCache[cacheKey] = fallback
         return fallback
+    }
+    
+    public func fetchPlatformTopMovies(provider: StreamingProvider) async -> [MediaItem] {
+        let cacheKey = "platform_top_movies_\(provider.id)"
+        if let cached = memoryCache[cacheKey], !cached.isEmpty {
+            return cached
+        }
+        if let items = try? await getPagedMedia(
+            endpoint: "/discover/movie?with_watch_providers=\(provider.id)&sort_by=popularity.desc",
+            type: .movie
+        ), !items.isEmpty {
+            var rankedList: [MediaItem] = []
+            for (idx, item) in items.prefix(10).enumerated() {
+                var r = item
+                r.rank = idx + 1
+                rankedList.append(r)
+            }
+            memoryCache[cacheKey] = rankedList
+            return rankedList
+        }
+        let raw = (MockData.streamingCatalog[provider.id] ?? MockData.trendingItems + MockData.topRated).filter { $0.mediaType == .movie }
+        var rankedList: [MediaItem] = []
+        for (idx, item) in raw.prefix(10).enumerated() {
+            var r = item
+            r.rank = idx + 1
+            rankedList.append(r)
+        }
+        memoryCache[cacheKey] = rankedList
+        return rankedList
+    }
+    
+    public func fetchPlatformTopTV(provider: StreamingProvider) async -> [MediaItem] {
+        let cacheKey = "platform_top_tv_\(provider.id)"
+        if let cached = memoryCache[cacheKey], !cached.isEmpty {
+            return cached
+        }
+        if let items = try? await getPagedMedia(
+            endpoint: "/discover/tv?with_watch_providers=\(provider.id)&sort_by=popularity.desc",
+            type: .tvShow
+        ), !items.isEmpty {
+            var rankedList: [MediaItem] = []
+            for (idx, item) in items.prefix(10).enumerated() {
+                var r = item
+                r.rank = idx + 1
+                rankedList.append(r)
+            }
+            memoryCache[cacheKey] = rankedList
+            return rankedList
+        }
+        let raw = (MockData.streamingCatalog[provider.id] ?? MockData.trendingItems).filter { $0.mediaType == .tvShow }
+        var rankedList: [MediaItem] = []
+        for (idx, item) in raw.prefix(10).enumerated() {
+            var r = item
+            r.rank = idx + 1
+            rankedList.append(r)
+        }
+        memoryCache[cacheKey] = rankedList
+        return rankedList
+    }
+    
+    public func fetchPlatformNew(provider: StreamingProvider) async -> [MediaItem] {
+        let cacheKey = "platform_new_\(provider.id)"
+        if let cached = memoryCache[cacheKey], !cached.isEmpty {
+            return cached
+        }
+        if let items = try? await getPagedMedia(
+            endpoint: "/discover/movie?with_watch_providers=\(provider.id)&sort_by=primary_release_date.desc",
+            type: .movie
+        ), !items.isEmpty {
+            memoryCache[cacheKey] = items
+            return items
+        }
+        let fallback = Array((MockData.streamingCatalog[provider.id] ?? MockData.newReleases).prefix(10))
+        memoryCache[cacheKey] = fallback
+        return fallback
+    }
+    
+    public func fetchFreshFromTheatres() async -> [MediaItem] {
+        if let cached = memoryCache["fresh_from_theatres"], !cached.isEmpty {
+            return cached
+        }
+        let items = MockData.freshFromTheatres
+        memoryCache["fresh_from_theatres"] = items
+        return items
     }
     
     public func fetchMovies(category: String) async -> [MediaItem] {
@@ -674,6 +766,170 @@ private struct TMDBLogoDTO: Codable {
 public enum MockData {
     public static let cinemaMovies: [MediaItem] = [
         MediaItem(
+            id: 111,
+            title: "Alien: Romulus",
+            mediaType: .movie,
+            overview: "While scavenging the deep ends of a derelict space station, a group of young space colonizers come face to face with the most terrifying life form in the universe.",
+            posterPath: "/b33nnKl1GSFbao8l3urDDujmmQh.jpg",
+            backdropPath: "/9SSEUrSqhljBMzRe4aBTh17r0aC.jpg",
+            voteAverage: 8.2,
+            voteCount: 3820,
+            releaseDateString: "2024-08-16",
+            genreNames: ["Horror", "Sci-Fi", "Thriller"],
+            runtimeMinutes: 119,
+            tagline: "In space, no one can hear you scream.",
+            certification: "R",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "ar1", name: "Official Trailer", key: "x0XDEhP4MQs")],
+            cast: [
+                CastMember(id: 41, name: "Cailee Spaeny", character: "Rain Carradine"),
+                CastMember(id: 42, name: "David Jonsson", character: "Andy"),
+                CastMember(id: 43, name: "Archie Renaux", character: "Tyler")
+            ],
+            inCinemas: true
+        ),
+        MediaItem(
+            id: 112,
+            title: "Beetlejuice Beetlejuice",
+            mediaType: .movie,
+            overview: "After a family tragedy, three generations of the Deetz family return home to Winter River. Still haunted by Beetlejuice, Lydia's life is turned upside down when her teenage daughter opens the portal to the Afterlife.",
+            posterPath: "/kKgQzkUCUm0meqLiwVoqaSt2KiL.jpg",
+            backdropPath: "/1wP1phHo2CroOqzvWrkW9YTXJea.jpg",
+            voteAverage: 7.6,
+            voteCount: 2940,
+            releaseDateString: "2024-09-06",
+            genreNames: ["Comedy", "Fantasy", "Horror"],
+            runtimeMinutes: 105,
+            tagline: "The juice is loose.",
+            certification: "PG-13",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "bb1", name: "Official Trailer", key: "As-vKW4ZboI")],
+            cast: [
+                CastMember(id: 44, name: "Michael Keaton", character: "Beetlejuice"),
+                CastMember(id: 45, name: "Winona Ryder", character: "Lydia Deetz"),
+                CastMember(id: 46, name: "Jenna Ortega", character: "Astrid Deetz")
+            ],
+            inCinemas: true
+        ),
+        MediaItem(
+            id: 113,
+            title: "Deadpool & Wolverine",
+            mediaType: .movie,
+            overview: "A listless Wade Wilson toils away in civilian life with his days as the morally flexible mercenary Deadpool behind him. But when his homeworld faces an existential threat, Wade must reluctantly suit-up again with an even more reluctant Wolverine.",
+            posterPath: "/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg",
+            backdropPath: "/yDHYTfA3R0jFYba16jBB1jv8uaC.jpg",
+            voteAverage: 8.0,
+            voteCount: 6540,
+            releaseDateString: "2024-07-26",
+            genreNames: ["Action", "Comedy", "Sci-Fi"],
+            runtimeMinutes: 128,
+            tagline: "Come together.",
+            certification: "R",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "dw1", name: "Official Trailer", key: "73_1biulkYk")],
+            cast: [
+                CastMember(id: 47, name: "Ryan Reynolds", character: "Wade Wilson / Deadpool"),
+                CastMember(id: 48, name: "Hugh Jackman", character: "Logan / Wolverine"),
+                CastMember(id: 49, name: "Emma Corrin", character: "Cassandra Nova")
+            ],
+            inCinemas: true
+        ),
+        MediaItem(
+            id: 114,
+            title: "Wicked",
+            mediaType: .movie,
+            overview: "The untold story of the witches of Oz stars Cynthia Erivo as Elphaba, a young woman misunderstood because of her unusual green skin, and Ariana Grande as Glinda, a popular young woman gilded by privilege.",
+            posterPath: "/xDGbDeRNXhvBT8ddTXSuUTxQg95.jpg",
+            backdropPath: "/uVl9hkz8ndiqAOmfU5Gkbt7eTsl.jpg",
+            voteAverage: 7.8,
+            voteCount: 1680,
+            releaseDateString: "2024-11-20",
+            genreNames: ["Drama", "Fantasy", "Music"],
+            runtimeMinutes: 160,
+            tagline: "Everyone deserves the chance to fly.",
+            certification: "PG",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "wk1", name: "Official Trailer", key: "6COmYeLsz4c")],
+            cast: [
+                CastMember(id: 50, name: "Cynthia Erivo", character: "Elphaba Thropp"),
+                CastMember(id: 51, name: "Ariana Grande", character: "Glinda Upland"),
+                CastMember(id: 52, name: "Jeff Goldblum", character: "The Wonderful Wizard of Oz")
+            ],
+            inCinemas: true
+        ),
+        MediaItem(
+            id: 115,
+            title: "The Substance",
+            mediaType: .movie,
+            overview: "A fading celebrity decides to use a black-market drug, a cell-replicating substance that temporarily creates a younger, better version of herself.",
+            posterPath: "/lQYXKq1WpI1fF10E0r6lVl523zV.jpg",
+            backdropPath: "/3s2j9u82L4x6Z9V5z0e7Q1r3w.jpg",
+            voteAverage: 8.1,
+            voteCount: 1950,
+            releaseDateString: "2024-09-20",
+            genreNames: ["Drama", "Horror", "Sci-Fi"],
+            runtimeMinutes: 141,
+            tagline: "Have you ever dreamt of a better version of yourself?",
+            certification: "R",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "sub1", name: "Official Trailer", key: "LNlrGhPdnk8")],
+            cast: [
+                CastMember(id: 53, name: "Demi Moore", character: "Elisabeth Sparkle"),
+                CastMember(id: 54, name: "Margaret Qualley", character: "Sue"),
+                CastMember(id: 55, name: "Dennis Quaid", character: "Harvey")
+            ],
+            inCinemas: true
+        ),
+        MediaItem(
+            id: 116,
+            title: "Smile 2",
+            mediaType: .movie,
+            overview: "About to embark on a world tour, global pop sensation Skye Riley begins experiencing increasingly terrifying and inexplicable events.",
+            posterPath: "/aE85MnPIvj1aW0d2oGZf0G7zR4S.jpg",
+            backdropPath: "/wNAhuOZ3Zf84jCIpkRw8vFaEN8i.jpg",
+            voteAverage: 7.4,
+            voteCount: 1430,
+            releaseDateString: "2024-10-18",
+            genreNames: ["Horror", "Mystery"],
+            runtimeMinutes: 127,
+            tagline: "It will never let you go.",
+            certification: "R",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "sm2", name: "Official Trailer", key: "0HY6QFlBz78")],
+            cast: [
+                CastMember(id: 56, name: "Naomi Scott", character: "Skye Riley"),
+                CastMember(id: 57, name: "Rosemarie DeWitt", character: "Elizabeth Riley"),
+                CastMember(id: 58, name: "Lukas Gage", character: "Lewis Fregoli")
+            ],
+            inCinemas: true
+        ),
+        MediaItem(
+            id: 117,
+            title: "The Wild Robot",
+            mediaType: .movie,
+            overview: "After a shipwreck, an intelligent robot called Roz is stranded on an uninhabited island. To survive the harsh environment, Roz bonds with the island's animals and cares for an orphaned baby goose.",
+            posterPath: "/wTnV3PCVW5O92JMrZISSH229f3d.jpg",
+            backdropPath: "/7h6TqPB3ESmPFVosytMb9J73i97.jpg",
+            voteAverage: 8.5,
+            voteCount: 3100,
+            releaseDateString: "2024-09-27",
+            genreNames: ["Animation", "Sci-Fi", "Family"],
+            runtimeMinutes: 102,
+            tagline: "Discover your true nature.",
+            certification: "PG",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "twr1", name: "Official Trailer", key: "67vbA5ZJb3k")],
+            cast: [
+                CastMember(id: 59, name: "Lupita Nyong'o", character: "Roz (voice)"),
+                CastMember(id: 60, name: "Pedro Pascal", character: "Fink (voice)"),
+                CastMember(id: 61, name: "Kit Connor", character: "Brightbill (voice)")
+            ],
+            inCinemas: true
+        )
+    ]
+    
+    public static let freshFromTheatres: [MediaItem] = [
+        MediaItem(
             id: 101,
             title: "Dune: Part Two",
             mediaType: .movie,
@@ -694,7 +950,53 @@ public enum MockData {
                 CastMember(id: 2, name: "Zendaya", character: "Chani"),
                 CastMember(id: 3, name: "Rebecca Ferguson", character: "Lady Jessica"),
                 CastMember(id: 4, name: "Javier Bardem", character: "Stilgar")
-            ]
+            ],
+            inCinemas: false
+        ),
+        MediaItem(
+            id: 103,
+            title: "Civil War",
+            mediaType: .movie,
+            overview: "In a near-future dystopian America, a team of military-embedded journalists races across the country to reach Washington, D.C. before rebel factions descend upon the White House.",
+            posterPath: "/sh7Rg8Er3tFcN9BpKIPOMvALgZd.jpg",
+            backdropPath: "/z121mtTxg5v9whDjy9spvBjeTeO.jpg",
+            voteAverage: 7.4,
+            voteCount: 2150,
+            releaseDateString: "2024-04-12",
+            genreNames: ["Action", "Thriller", "Drama"],
+            runtimeMinutes: 109,
+            tagline: "Welcome to the frontlines.",
+            certification: "R",
+            streamingProviders: [.max],
+            trailers: [VideoTrailer(id: "t3", name: "Official Trailer", key: "aDyQxtg0V2w")],
+            cast: [
+                CastMember(id: 9, name: "Kirsten Dunst", character: "Lee Smith"),
+                CastMember(id: 10, name: "Wagner Moura", character: "Joel"),
+                CastMember(id: 11, name: "Cailee Spaeny", character: "Jessie")
+            ],
+            inCinemas: false
+        ),
+        MediaItem(
+            id: 104,
+            title: "Furiosa: A Mad Max Saga",
+            mediaType: .movie,
+            overview: "As the world fell, young Furiosa is snatched from the Green Place of Many Mothers and falls into the hands of a great Biker Horde led by the Warlord Dementus.",
+            posterPath: "/iADOJ8Zymht2JPMoy3R7xceZprc.jpg",
+            backdropPath: "/wNAhuOZ3Zf84jCIpkRw8vFaEN8i.jpg",
+            voteAverage: 7.8,
+            voteCount: 3100,
+            releaseDateString: "2024-05-24",
+            genreNames: ["Action", "Sci-Fi", "Adventure"],
+            runtimeMinutes: 148,
+            tagline: "Out of the Wasteland.",
+            certification: "R",
+            streamingProviders: [.max],
+            trailers: [VideoTrailer(id: "t4", name: "Official Trailer", key: "XJMuhwVlca4")],
+            cast: [
+                CastMember(id: 12, name: "Anya Taylor-Joy", character: "Imperator Furiosa"),
+                CastMember(id: 13, name: "Chris Hemsworth", character: "Warlord Dementus")
+            ],
+            inCinemas: false
         ),
         MediaItem(
             id: 102,
@@ -717,50 +1019,8 @@ public enum MockData {
                 CastMember(id: 6, name: "Emily Blunt", character: "Katherine Oppenheimer"),
                 CastMember(id: 7, name: "Matt Damon", character: "Leslie Groves"),
                 CastMember(id: 8, name: "Robert Downey Jr.", character: "Lewis Strauss")
-            ]
-        ),
-        MediaItem(
-            id: 103,
-            title: "Civil War",
-            mediaType: .movie,
-            overview: "In a near-future dystopian America, a team of military-embedded journalists races across the country to reach Washington, D.C. before rebel factions descend upon the White House.",
-            posterPath: "/sh7Rg8Er3tFcN9BpKIPOMvALgZd.jpg",
-            backdropPath: "/z121mtTxg5v9whDjy9spvBjeTeO.jpg",
-            voteAverage: 7.4,
-            voteCount: 2150,
-            releaseDateString: "2024-04-12",
-            genreNames: ["Action", "Thriller", "Drama"],
-            runtimeMinutes: 109,
-            tagline: "Welcome to the frontlines.",
-            certification: "R",
-            streamingProviders: [.max],
-            trailers: [VideoTrailer(id: "t3", name: "Official Trailer", key: "aDyQxtg0V2w")],
-            cast: [
-                CastMember(id: 9, name: "Kirsten Dunst", character: "Lee Smith"),
-                CastMember(id: 10, name: "Wagner Moura", character: "Joel"),
-                CastMember(id: 11, name: "Cailee Spaeny", character: "Jessie")
-            ]
-        ),
-        MediaItem(
-            id: 104,
-            title: "Furiosa: A Mad Max Saga",
-            mediaType: .movie,
-            overview: "As the world fell, young Furiosa is snatched from the Green Place of Many Mothers and falls into the hands of a great Biker Horde led by the Warlord Dementus.",
-            posterPath: "/iADOJ8Zymht2JPMoy3R7xceZprc.jpg",
-            backdropPath: "/wNAhuOZ3Zf84jCIpkRw8vFaEN8i.jpg",
-            voteAverage: 7.8,
-            voteCount: 3100,
-            releaseDateString: "2024-05-24",
-            genreNames: ["Action", "Sci-Fi", "Adventure"],
-            runtimeMinutes: 148,
-            tagline: "Out of the Wasteland.",
-            certification: "R",
-            streamingProviders: [.max],
-            trailers: [VideoTrailer(id: "t4", name: "Official Trailer", key: "XJMuhwVlca4")],
-            cast: [
-                CastMember(id: 12, name: "Anya Taylor-Joy", character: "Imperator Furiosa"),
-                CastMember(id: 13, name: "Chris Hemsworth", character: "Warlord Dementus")
-            ]
+            ],
+            inCinemas: false
         )
     ]
     
@@ -887,28 +1147,158 @@ public enum MockData {
                 tagline: "A true story about obsession.",
                 certification: "TV-MA",
                 streamingProviders: [.netflix]
+            ),
+            MediaItem(
+                id: 303,
+                title: "Glass Onion: A Knives Out Mystery",
+                mediaType: .movie,
+                overview: "World-famous detective Benoit Blanc heads to Greece to peel back the layers of a mystery surrounding a tech billionaire and his eclectic crew of friends.",
+                posterPath: "/vDGr1YdrlfbU9wxTOdpf3zChmv9.jpg",
+                backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
+                voteAverage: 7.5,
+                voteCount: 5400,
+                releaseDateString: "2022-12-23",
+                genreNames: ["Comedy", "Mystery", "Thriller"],
+                runtimeMinutes: 139,
+                tagline: "You can't solve it alone.",
+                certification: "PG-13",
+                streamingProviders: [.netflix]
+            ),
+            MediaItem(
+                id: 304,
+                title: "The Killer",
+                mediaType: .movie,
+                overview: "After a fateful near-miss, an assassin battles his employers, and himself, on an international manhunt he insists isn't personal.",
+                posterPath: "/e7J69KVLueQfliVvKvyEZWjhAw.jpg",
+                backdropPath: "/bSqpOsrhQIenDoGq6w893Y8n8lr.jpg",
+                voteAverage: 7.3,
+                voteCount: 2900,
+                releaseDateString: "2023-11-10",
+                genreNames: ["Action", "Thriller", "Crime"],
+                runtimeMinutes: 118,
+                tagline: "Execution is everything.",
+                certification: "R",
+                streamingProviders: [.netflix]
             )
         ],
         StreamingProvider.appleTV.id: [
             trendingItems[0], // Severance
-            trendingItems[1]  // Slow Horses
+            trendingItems[1], // Slow Horses
+            MediaItem(
+                id: 311,
+                title: "Killers of the Flower Moon",
+                mediaType: .movie,
+                overview: "When oil is discovered in 1920s Oklahoma under Osage Nation land, the Osage people are murdered one by one until the FBI steps in to unravel the conspiracy.",
+                posterPath: "/dB6Krk806zeqd0YNp2ngQ9zXteH.jpg",
+                backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+                voteAverage: 7.9,
+                voteCount: 3100,
+                releaseDateString: "2023-10-20",
+                genreNames: ["Crime", "Drama", "History"],
+                runtimeMinutes: 206,
+                tagline: "Can you spot the wolves in this picture?",
+                certification: "R",
+                streamingProviders: [.appleTV]
+            ),
+            MediaItem(
+                id: 312,
+                title: "Ted Lasso",
+                mediaType: .tvShow,
+                overview: "An American college football coach is hired to manage a struggling British soccer team, attempting to win over skeptical players and town with optimism.",
+                posterPath: "/5fhZdwPmsDVJijDk879vdvZwugU.jpg",
+                backdropPath: "/ixgFmf1X59PUZam2qbAfskx2gQr.jpg",
+                voteAverage: 8.5,
+                voteCount: 4100,
+                releaseDateString: "2020-08-14",
+                genreNames: ["Comedy", "Drama"],
+                runtimeMinutes: 35,
+                tagline: "Kindness makes a comeback.",
+                certification: "TV-MA",
+                streamingProviders: [.appleTV]
+            )
         ],
         StreamingProvider.disneyPlus.id: [
-            trendingItems[3] // Shogun
+            trendingItems[3], // Shogun
+            MediaItem(
+                id: 321,
+                title: "The Mandalorian",
+                mediaType: .tvShow,
+                overview: "After the fall of the Galactic Empire, a lone gunfighter makes his way through the outer reaches of the lawless galaxy.",
+                posterPath: "/eU1i6eHXlzMOlEq0ku1R07YmvEi.jpg",
+                backdropPath: "/o7qi2v4uWQ8scZ1YW9Kbzy0vlAc.jpg",
+                voteAverage: 8.4,
+                voteCount: 9800,
+                releaseDateString: "2019-11-12",
+                genreNames: ["Sci-Fi", "Action", "Adventure"],
+                runtimeMinutes: 40,
+                tagline: "Bounty hunting is a complicated profession.",
+                certification: "TV-14",
+                streamingProviders: [.disneyPlus]
+            ),
+            MediaItem(
+                id: 322,
+                title: "Loki",
+                mediaType: .tvShow,
+                overview: "After stealing the Tesseract during the events of Avengers: Endgame, an alternate version of Loki is brought to the mysterious Time Variance Authority.",
+                posterPath: "/voHUmltYmKyle41993vt2Ggd1CP.jpg",
+                backdropPath: "/a39c9U12kE8f80B0jHn5uE7rQ8L.jpg",
+                voteAverage: 8.2,
+                voteCount: 8200,
+                releaseDateString: "2021-06-09",
+                genreNames: ["Sci-Fi", "Action", "Adventure"],
+                runtimeMinutes: 52,
+                tagline: "Loki's time has come.",
+                certification: "TV-14",
+                streamingProviders: [.disneyPlus]
+            )
         ],
         StreamingProvider.primeVideo.id: [
-            cinemaMovies[1] // Oppenheimer
+            freshFromTheatres[3], // Oppenheimer
+            MediaItem(
+                id: 331,
+                title: "The Boys",
+                mediaType: .tvShow,
+                overview: "A fun and irreverent take on what happens when superheroes abuse their superpowers rather than use them for good.",
+                posterPath: "/7Ns6tO3aYjppI5bFhyYZurvBTup.jpg",
+                backdropPath: "/2meX1nMdScFOoV4370rqHWFDxZ2.jpg",
+                voteAverage: 8.5,
+                voteCount: 9400,
+                releaseDateString: "2019-07-26",
+                genreNames: ["Action", "Sci-Fi", "Comedy"],
+                runtimeMinutes: 60,
+                tagline: "Never meet your heroes.",
+                certification: "TV-MA",
+                streamingProviders: [.primeVideo]
+            ),
+            MediaItem(
+                id: 332,
+                title: "Fallout",
+                mediaType: .tvShow,
+                overview: "In a future, post-apocalyptic Los Angeles brought about by nuclear decimation, citizens must live in underground bunkers to protect themselves from radiation, mutants and bandits.",
+                posterPath: "/AnsSKR9LuK0T9bA0PFi3QQMlZw.jpg",
+                backdropPath: "/3P52oz9HPcyfq5GwNuZYUHVoYes.jpg",
+                voteAverage: 8.4,
+                voteCount: 3800,
+                releaseDateString: "2024-04-10",
+                genreNames: ["Sci-Fi", "Action", "Drama"],
+                runtimeMinutes: 62,
+                tagline: "The end of the world is just the beginning.",
+                certification: "TV-MA",
+                streamingProviders: [.primeVideo]
+            )
         ],
         StreamingProvider.max.id: [
-            cinemaMovies[0], // Dune 2
-            trendingItems[2] // The Penguin
+            freshFromTheatres[0], // Dune 2
+            freshFromTheatres[1], // Civil War
+            freshFromTheatres[2], // Furiosa
+            trendingItems[2]      // The Penguin
         ]
     ]
     
     public static let newReleases: [MediaItem] = [
-        cinemaMovies[0],
-        cinemaMovies[2],
-        cinemaMovies[3],
+        freshFromTheatres[0],
+        freshFromTheatres[1],
+        freshFromTheatres[2],
         trendingItems[2]
     ]
     
@@ -978,7 +1368,9 @@ public enum MockData {
             runtimeMinutes: 148,
             tagline: "What we do in life echoes in eternity.",
             certification: "R",
-            trailers: [VideoTrailer(id: "t9", name: "Official Trailer", key: "4rgYUipGJNo")]
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "t9", name: "Official Trailer", key: "4rgYUipGJNo")],
+            inCinemas: false
         ),
         MediaItem(
             id: 502,
@@ -994,7 +1386,45 @@ public enum MockData {
             runtimeMinutes: 132,
             tagline: "He is coming.",
             certification: "R",
-            trailers: [VideoTrailer(id: "t10", name: "Official Trailer", key: "dG91B3hHyY4")]
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "t10", name: "Official Trailer", key: "dG91B3hHyY4")],
+            inCinemas: false
+        ),
+        MediaItem(
+            id: 503,
+            title: "Mission: Impossible - The Final Reckoning",
+            mediaType: .movie,
+            overview: "Ethan Hunt and his IMF team face their greatest adversary yet as they race to stop an apocalyptic artificial intelligence threat known as the Entity before it reshapes global destiny.",
+            posterPath: "/z121mtTxg5v9whDjy9spvBjeTeO.jpg",
+            backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+            voteAverage: 8.3,
+            voteCount: 950,
+            releaseDateString: "2025-05-23",
+            genreNames: ["Action", "Adventure", "Thriller"],
+            runtimeMinutes: 165,
+            tagline: "Our lives are the sum of our choices.",
+            certification: "PG-13",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "t11", name: "Teaser Trailer", key: "NOhDyZJ_318")],
+            inCinemas: false
+        ),
+        MediaItem(
+            id: 504,
+            title: "Captain America: Brave New World",
+            mediaType: .movie,
+            overview: "Sam Wilson finds himself in the middle of an international incident after meeting with newly elected U.S. President Thaddeus Ross, uncovering a nefarious global plot.",
+            posterPath: "/sh7Rg8Er3tFcN9BpKIPOMvALgZd.jpg",
+            backdropPath: "/xJHokMbljvjADYdit5fK5VQsXEG.jpg",
+            voteAverage: 7.8,
+            voteCount: 880,
+            releaseDateString: "2025-02-14",
+            genreNames: ["Action", "Sci-Fi", "Adventure"],
+            runtimeMinutes: 125,
+            tagline: "A new world order.",
+            certification: "PG-13",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "t12", name: "Official Trailer", key: "1pHDWnXmK7Y")],
+            inCinemas: false
         )
     ]
 }

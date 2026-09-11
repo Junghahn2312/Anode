@@ -35,7 +35,11 @@ public struct TVHomeView: View {
     }
     
     private var activeBackgroundItem: MediaItem? {
-        hoveredItem ?? spotlightHero
+        if activeRowIndex == 0 {
+            // Continue Watching row does NOT affect the background at all
+            return spotlightHero
+        }
+        return hoveredItem ?? spotlightHero
     }
     
     public var body: some View {
@@ -61,9 +65,9 @@ public struct TVHomeView: View {
                                     .id("heroSection")
                             }
                             
-                            // 2. Content Rows with Continue Watching peeking at bottom (offset -180)
+                            // 2. Content Rows with Continue Watching peeking at bottom (padding top -180)
                             contentRowsSection
-                                .offset(y: -180)
+                                .padding(.top, -180)
                         }
                         .padding(.bottom, 260)
                     }
@@ -362,8 +366,15 @@ public struct TVHomeView: View {
     // MARK: - Content Rows Section with Continue Watching & Subtle Ranked Numerals
     
     private func handleRowHover(_ item: MediaItem, rowIndex: Int) {
-        withAnimation(.easeInOut(duration: 0.45)) {
-            self.hoveredItem = item
+        if rowIndex == 0 {
+            // Continue Watching row does NOT affect the background at all
+            withAnimation(.easeInOut(duration: 0.45)) {
+                self.hoveredItem = nil
+            }
+        } else {
+            withAnimation(.easeInOut(duration: 0.45)) {
+                self.hoveredItem = item
+            }
         }
         if activeRowIndex != rowIndex {
             self.activeRowIndex = rowIndex

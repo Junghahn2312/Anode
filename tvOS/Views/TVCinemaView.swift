@@ -7,11 +7,23 @@ public struct TVCinemaView: View {
     @State private var selectedItem: MediaItem?
     @State private var hoveredItem: MediaItem? = nil
     @State private var activeRowIndex: Int = -1
+    @State private var heroIndex: Int = 0
+    @State private var isUserInteracting: Bool = false
+    @State private var heroLogoPath: String? = nil
+    
+    private let timer = Timer.publish(every: 8.0, on: .main, in: .common).autoconnect()
     
     public init() {}
     
+    // Strict Theatrical Exclusivity: Hero pool contains ONLY movies currently in theatres with ZERO streaming options
+    private var heroPool: [MediaItem] {
+        let pool = engine.exclusiveCinemaNow.isEmpty ? engine.cinemaNow.filter { engine.isTheatricalExclusive($0) } : engine.exclusiveCinemaNow
+        return Array(pool.prefix(6))
+    }
+    
     private var theatricalHero: MediaItem? {
-        engine.cinemaNow.first ?? engine.cinemaMovies.first ?? engine.trendingItems.first
+        guard !heroPool.isEmpty else { return nil }
+        return heroPool[heroIndex % heroPool.count]
     }
     
     private var isCarouselOutOfView: Bool {
@@ -35,9 +47,9 @@ public struct TVCinemaView: View {
                 ScrollViewReader { scrollProxy in
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 0) {
-                            // 1. Full-Screen Theatrical Premiere Hero Section
+                            // 1. Massive Theatrical Premiere Hero Section (~920pt presence)
                             if let hero = theatricalHero {
-                                cinemaHeroSection(hero: hero, screenWidth: screenWidth, screenHeight: screenHeight)
+                                cinemaHeroShowcaseSection(hero: hero, screenWidth: screenWidth, screenHeight: screenHeight)
                                     .id("cinemaHeroSection")
                             } else {
                                 Color.clear
@@ -45,57 +57,19 @@ public struct TVCinemaView: View {
                                     .id("cinemaHeroSection")
                             }
                             
-                            // 2. Theatrical Content Rows with Dynamic Expanding Cards (Image 2)
-                            VStack(alignment: .leading, spacing: 32) {
-                                // Now in Cinemas Row
-                                if !engine.cinemaNow.isEmpty {
-                                    TVContentRowView(
-                                        title: "Now in Cinemas",
-                                        items: engine.cinemaNow,
-                                        showCinemaBadge: true,
-                                        onHover: { handleRowHover($0, rowIndex: 0) }
-                                    ) { item in
-                                        selectedItem = item
-                                    }
-                                    .id("cinema-row-0")
-                                }
-                                
-                                // Coming Soon to Cinemas Row (Landscape 16:9)
-                                if !engine.cinemaUpcoming.isEmpty {
-                                    TVLandscapeRowView(
-                                        title: "Coming Soon to Cinemas",
-                                        items: engine.cinemaUpcoming,
-                                        onHover: { handleRowHover($0, rowIndex: 1) }
-                                    ) { item in
-                                        selectedItem = item
-                                    }
-                                    .id("cinema-row-1")
-                                }
-                                
-                                // Critically Acclaimed Theatrical Releases
-                                if !engine.cinemaMovies.isEmpty {
-                                    TVContentRowView(
-                                        title: "Critically Acclaimed in Theatres",
-                                        items: engine.cinemaMovies.filter { $0.rating >= 7.5 },
-                                        onHover: { handleRowHover($0, rowIndex: 2) }
-                                    ) { item in
-                                        selectedItem = item
-                                    }
-                                    .id("cinema-row-2")
-                                }
-                            }
-                            .offset(y: -260)
-                            .padding(.bottom, 260)
+                            // 2. Strict Theatrical Content Rows with first row peeking (padding top -180)
+                            theatricalContentRowsSection
+                                .padding(.top, -180)
                         }
+                        .padding(.bottom, 260)
                     }
                     .coordinateSpace(name: "cinemaScroll")
                     .onChange(of: activeRowIndex) { _, newIndex in
                         if newIndex == 0 {
                             withAnimation(.easeInOut(duration: 0.50)) {
-                                scrollProxy.scrollTo("cinema-row-0", anchor: UnitPoint(x: 0.5, y: 0.76))
+                                scrollProxy.scrollTo("cinema-row-0", anchor: UnitPoint(x: 0.5, y: 0.65))
                             }
                         } else if newIndex > 0 {
-                            // Selected row sits higher on screen (not at top, but higher - Y ~ 260)
                             withAnimation(.easeInOut(duration: 0.50)) {
                                 scrollProxy.scrollTo("cinema-row-\(newIndex)", anchor: UnitPoint(x: 0.5, y: 0.48))
                             }
@@ -112,6 +86,23 @@ public struct TVCinemaView: View {
             .ignoresSafeArea()
         }
         .ignoresSafeArea()
+        .onReceive(timer) { _ in
+            if !isUserInteracting && !heroPool.isEmpty {
+                withAnimation(.easeInOut(duration: 0.8)) {
+                    heroIndex = (heroIndex + 1) % heroPool.count
+                }
+            }
+        }
+        .task(id: theatricalHero?.id) {
+            if let hero = theatricalHero {
+                heroLogoPath = hero.logoPath
+                if heroLogoPath == nil {
+                    if let logo = await engine.fetchLogo(for: hero) {
+                        heroLogoPath = logo
+                    }
+                }
+            }
+        }
         .fullScreenCover(item: $selectedItem) { item in
             TVMediaDetailView(item: item)
         }
@@ -121,7 +112,6 @@ public struct TVCinemaView: View {
     
     private func rootBackground(screenWidth: CGFloat, screenHeight: CGFloat) -> some View {
         ZStack {
-            // Dark base color to guarantee zero harsh flashes
             Color(red: 0.04, green: 0.04, blue: 0.05)
                 .ignoresSafeArea()
             
@@ -138,12 +128,11 @@ public struct TVCinemaView: View {
                     .id(bgItem.id)
                     .transition(.opacity)
                     
-                    // Dark scrim for list contrast when carousel is out of view
+                    // Dark scrim for row contrast when scrolled down
                     Color.black.opacity(isCarouselOutOfView ? 0.42 : 0.0)
                     
                     // Subtle vignettes active when carousel hero is in view
                     Group {
-                        // Soft left vignette for typography readability
                         LinearGradient(
                             stops: [
                                 .init(color: Color.black.opacity(0.80), location: 0.0),
@@ -154,7 +143,6 @@ public struct TVCinemaView: View {
                             endPoint: .trailing
                         )
                         
-                        // Soft top vignette for tab bar readability
                         LinearGradient(
                             stops: [
                                 .init(color: Color.black.opacity(0.70), location: 0.0),
@@ -164,7 +152,6 @@ public struct TVCinemaView: View {
                             endPoint: .bottom
                         )
                         
-                        // Soft bottom fade allowing artwork to shine through peeking row
                         LinearGradient(
                             stops: [
                                 .init(color: Color.clear, location: 0.45),
@@ -185,6 +172,172 @@ public struct TVCinemaView: View {
         .ignoresSafeArea()
     }
     
+    // MARK: - Massive Theatrical Hero Showcase Section (~920pt presence)
+    
+    private func cinemaHeroShowcaseSection(hero: MediaItem, screenWidth: CGFloat, screenHeight: CGFloat) -> some View {
+        ZStack(alignment: .bottomLeading) {
+            Color.clear
+                .frame(width: screenWidth, height: screenHeight)
+            
+            // Hero Content: Badges, Logo/Title, Metadata, Synopsis, Controls & Centered Pagination Dots
+            VStack(alignment: .leading, spacing: 14) {
+                // Theatrical Badges
+                HStack(spacing: 12) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 7, height: 7)
+                        Text("IN CINEMAS NOW")
+                            .font(.system(size: 11, weight: .black))
+                            .tracking(2.0)
+                            .foregroundColor(.red)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(
+                        Capsule().stroke(Color.red.opacity(0.40), lineWidth: 1)
+                    )
+                    
+                    Text("THEATRICAL EXCLUSIVE")
+                        .font(.system(size: 11, weight: .black))
+                        .tracking(1.4)
+                        .foregroundColor(.white.opacity(0.85))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(
+                            Capsule().stroke(Color.white.opacity(0.20), lineWidth: 1)
+                        )
+                }
+                
+                // Official Transparent Title Logo or Typography Fallback
+                Group {
+                    if let logoPath = heroLogoPath ?? hero.logoPath,
+                       let logoURL = URL(string: "https://image.tmdb.org/t/p/w500\(logoPath)") {
+                        CachedAsyncImage(
+                            url: logoURL,
+                            contentMode: .fit
+                        )
+                        .frame(maxWidth: 460, maxHeight: 110, alignment: .leading)
+                        .shadow(color: Color.black.opacity(0.70), radius: 10, x: 0, y: 5)
+                    } else {
+                        Text(hero.title.uppercased())
+                            .font(.system(size: 50, weight: .black, design: .serif))
+                            .tracking(3.0)
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .shadow(color: Color.black.opacity(0.85), radius: 8, x: 0, y: 4)
+                    }
+                }
+                .frame(height: 110, alignment: .bottomLeading)
+                
+                // Metadata Row: Certification, Year, Rating Badge, Runtime, Genres
+                HStack(spacing: 14) {
+                    if let cert = hero.certification, !cert.isEmpty {
+                        Text(cert)
+                            .font(.system(size: 13, weight: .heavy))
+                            .foregroundColor(.white.opacity(0.9))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                    .stroke(Color.white.opacity(0.45), lineWidth: 1)
+                            )
+                    }
+                    
+                    if !hero.yearString.isEmpty {
+                        Text(hero.yearString)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    
+                    if !hero.formattedRating.isEmpty {
+                        RatingBadge(rating: hero.formattedRating)
+                    }
+                    
+                    if !hero.formattedRuntime.isEmpty {
+                        Text("•")
+                            .foregroundColor(.white.opacity(0.4))
+                        Text(hero.formattedRuntime)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    
+                    if !hero.genreNames.isEmpty {
+                        Text("•")
+                            .foregroundColor(.white.opacity(0.4))
+                        Text(hero.genreNames.prefix(3).joined(separator: ", "))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.85))
+                    }
+                }
+                
+                // 2-Line Overview Synopsis
+                if !hero.overview.isEmpty {
+                    Text(hero.overview)
+                        .font(.system(size: 15, weight: .regular))
+                        .foregroundColor(.white.opacity(0.82))
+                        .lineLimit(2)
+                        .lineSpacing(4)
+                        .frame(maxWidth: 720, alignment: .leading)
+                        .shadow(color: Color.black.opacity(0.6), radius: 4, x: 0, y: 2)
+                }
+                
+                // Primary Action Button & Add to Watchlist
+                HStack(spacing: 14) {
+                    Button {
+                        selectedItem = hero
+                    } label: {
+                        TVCinemaPrimaryHeroButtonLabel(title: "Cinema Details") {
+                            withAnimation(.easeInOut(duration: 0.45)) {
+                                self.hoveredItem = nil
+                                self.activeRowIndex = -1
+                                self.isUserInteracting = true
+                            }
+                        }
+                    }
+                    .buttonStyle(.tvCard)
+                    
+                    Button {
+                        watchlist.toggleWatchlist(item: hero)
+                    } label: {
+                        TVCinemaSecondaryBookmarkButtonLabel(isBookmarked: watchlist.contains(id: hero.id)) {
+                            withAnimation(.easeInOut(duration: 0.45)) {
+                                self.hoveredItem = nil
+                                self.activeRowIndex = -1
+                                self.isUserInteracting = true
+                            }
+                        }
+                    }
+                    .buttonStyle(.tvCard)
+                }
+                .focusSection()
+                .padding(.top, 4)
+                
+                // Centered Carousel Pagination Dots
+                HStack(spacing: 8) {
+                    ForEach(0..<min(heroPool.count, 6), id: \.self) { idx in
+                        Capsule()
+                            .fill(heroIndex % min(heroPool.count, 6) == idx ? Color.white : Color.white.opacity(0.35))
+                            .frame(width: heroIndex % min(heroPool.count, 6) == idx ? 24 : 7, height: 7)
+                            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: heroIndex)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, 6)
+            }
+            .id(hero.id)
+            .transition(.opacity)
+            .padding(.horizontal, 60)
+            .padding(.bottom, 210)
+        }
+        .frame(width: screenWidth, height: screenHeight)
+        .animation(.easeInOut(duration: 0.45), value: hero.id)
+    }
+    
+    // MARK: - Strict Theatrical Content Rows
+    
     private func handleRowHover(_ item: MediaItem, rowIndex: Int) {
         withAnimation(.easeInOut(duration: 0.45)) {
             self.hoveredItem = item
@@ -194,212 +347,134 @@ public struct TVCinemaView: View {
         }
     }
     
-    // MARK: - Cinema Hero Showcase Section (~820pt, peeking first row below)
-    
-    private func cinemaHeroSection(hero: MediaItem, screenWidth: CGFloat, screenHeight: CGFloat) -> some View {
-        ZStack(alignment: .bottomLeading) {
-            Color.clear
-                .frame(width: screenWidth, height: screenHeight)
-            
-            // Hero Content
-            VStack(alignment: .leading, spacing: 14) {
-                // Theatrical Header Pill
-                HStack(spacing: 12) {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: 7, height: 7)
-                        
-                        Text("NOW IN THEATRES")
-                            .font(.system(size: 11, weight: .black))
-                            .tracking(2.0)
-                            .foregroundColor(.red)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(Color.red.opacity(0.18))
-                            .background(.ultraThinMaterial, in: Capsule())
-                            .overlay(
-                                Capsule().stroke(Color.red.opacity(0.35), lineWidth: 1)
-                            )
-                    )
-                    
-                    Text("GLOBAL BOX OFFICE")
-                        .font(.system(size: 13, weight: .bold))
-                        .tracking(1.4)
-                        .foregroundColor(.white.opacity(0.55))
+    @ViewBuilder
+    private var theatricalContentRowsSection: some View {
+        let exclusiveNow = engine.exclusiveCinemaNow.isEmpty ? engine.cinemaNow.filter { engine.isTheatricalExclusive($0) } : engine.exclusiveCinemaNow
+        let exclusiveUpcoming = engine.exclusiveCinemaUpcoming.isEmpty ? engine.cinemaUpcoming.filter { engine.isTheatricalExclusive($0) } : engine.exclusiveCinemaUpcoming
+        
+        VStack(alignment: .leading, spacing: 32) {
+            // Row 0: Now in Theatres (Theatrical Exclusive) - Peeks in at bottom edge
+            if !exclusiveNow.isEmpty {
+                TVContentRowView(
+                    title: "Now in Theatres (Theatrical Exclusive)",
+                    items: exclusiveNow,
+                    showCinemaBadge: true,
+                    onHover: { handleRowHover($0, rowIndex: 0) }
+                ) { item in
+                    selectedItem = item
                 }
-                .padding(.top, 140)
-                
-                // Hero Information
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 10) {
-                        Text("THEATRICAL RELEASE")
-                            .font(.system(size: 11, weight: .black))
-                            .tracking(1.4)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(Color.red.opacity(0.85))
-                                    .background(.ultraThinMaterial, in: Capsule())
-                                    .overlay(
-                                        Capsule().stroke(Color.white.opacity(0.2), lineWidth: 0.8)
-                                    )
-                            )
-                        
-                        if !hero.formattedRating.isEmpty {
-                            RatingBadge(rating: hero.formattedRating)
-                        }
-                        
-                        if !hero.yearString.isEmpty {
-                            Text(hero.yearString)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                        
-                        if let genre = hero.genreNames.first {
-                            Text("•")
-                                .foregroundColor(.white.opacity(0.4))
-                            Text(genre)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                    }
-                    
-                    Text(hero.title)
-                        .font(.system(size: 48, weight: .heavy))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                        .shadow(color: Color.black.opacity(0.85), radius: 6, x: 0, y: 3)
-                    
-                    if !hero.overview.isEmpty {
-                        Text(hero.overview)
-                            .font(.system(size: 15, weight: .regular))
-                            .foregroundColor(.white.opacity(0.85))
-                            .lineLimit(3)
-                            .lineSpacing(3)
-                            .frame(maxWidth: 780, alignment: .leading)
-                    }
-                    
-                    HStack(spacing: 14) {
-                        Button {
-                            selectedItem = hero
-                        } label: {
-                            CinemaHeroPrimaryButtonLabel {
-                                withAnimation(.easeInOut(duration: 0.45)) {
-                                    self.hoveredItem = nil
-                                    self.activeRowIndex = -1
-                                }
-                            }
-                        }
-                        .buttonStyle(.tvCard)
-                        
-                        Button {
-                            watchlist.toggleWatchlist(item: hero)
-                        } label: {
-                            CinemaHeroBookmarkButtonLabel(isBookmarked: watchlist.contains(id: hero.id)) {
-                                withAnimation(.easeInOut(duration: 0.45)) {
-                                    self.hoveredItem = nil
-                                    self.activeRowIndex = -1
-                                }
-                            }
-                        }
-                        .buttonStyle(.tvCard)
-                    }
-                    .focusSection()
-                    .padding(.top, 4)
-                }
+                .id("cinema-row-0")
             }
-            .padding(.horizontal, 60)
-            .padding(.bottom, 280)
+            
+            // Row 1: Coming Soon to Theatres (Near Future)
+            if !exclusiveUpcoming.isEmpty {
+                TVLandscapeRowView(
+                    title: "Coming Soon to Theatres (Near Future)",
+                    items: exclusiveUpcoming,
+                    onHover: { handleRowHover($0, rowIndex: 1) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("cinema-row-1")
+            }
+            
+            // Row 2: Top Box Office Hits (In Theatres Only)
+            let boxOfficeHits = exclusiveNow.filter { $0.rating >= 7.0 }
+            if !boxOfficeHits.isEmpty {
+                TVContentRowView(
+                    title: "Top Box Office Hits (In Theatres Only)",
+                    items: boxOfficeHits,
+                    showCinemaBadge: true,
+                    onHover: { handleRowHover($0, rowIndex: 2) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("cinema-row-2")
+            }
+            
+            // Row 3: Upcoming Premium & IMAX Screenings
+            if exclusiveUpcoming.count > 2 {
+                TVContentRowView(
+                    title: "Upcoming Premium & IMAX Screenings",
+                    items: Array(exclusiveUpcoming.suffix(from: min(2, exclusiveUpcoming.count))),
+                    onHover: { handleRowHover($0, rowIndex: 3) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("cinema-row-3")
+            }
         }
-        .frame(width: screenWidth, height: screenHeight)
-        .animation(.easeInOut(duration: 0.45), value: hero.id)
     }
 }
 
-// MARK: - Focusable Buttons
+// MARK: - Dedicated Focusable Cinema Hero Button Labels
 
-private struct CinemaHeroPrimaryButtonLabel: View {
-    var onFocus: (() -> Void)? = nil
+private struct TVCinemaPrimaryHeroButtonLabel: View {
+    let title: String
+    let onFocusAction: () -> Void
+    
     @Environment(\.isFocused) private var isFocused: Bool
     
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Image(systemName: "ticket.fill")
-                .font(.system(size: 16, weight: .black))
-            Text("Cinema Details")
                 .font(.system(size: 16, weight: .bold))
+            Text(title)
+                .font(.system(size: 17, weight: .bold))
         }
         .foregroundColor(isFocused ? .black : .white)
-        .padding(.horizontal, 24)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 28)
+        .padding(.vertical, 14)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isFocused ? Color.white : Color.white.opacity(0.22))
-                .background(
-                    Group {
-                        if !isFocused {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.ultraThinMaterial)
-                        }
-                    }
-                )
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(isFocused ? Color.white : Color.white.opacity(0.18))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isFocused ? Color(white: 0.9) : Color.white.opacity(0.2), lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(isFocused ? Color.white : Color.white.opacity(0.25), lineWidth: isFocused ? 2.5 : 1)
         )
-        .scaleEffect(isFocused ? 1.05 : 1.0)
-        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+        .scaleEffect(isFocused ? 1.08 : 1.0)
+        .shadow(color: isFocused ? Color.white.opacity(0.4) : Color.clear, radius: 12)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isFocused)
         .onChange(of: isFocused) { _, focused in
             if focused {
-                onFocus?()
+                onFocusAction()
             }
         }
     }
 }
 
-private struct CinemaHeroBookmarkButtonLabel: View {
+private struct TVCinemaSecondaryBookmarkButtonLabel: View {
     let isBookmarked: Bool
-    var onFocus: (() -> Void)? = nil
+    let onFocusAction: () -> Void
+    
     @Environment(\.isFocused) private var isFocused: Bool
     
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
                 .font(.system(size: 16, weight: .bold))
-            Text(isBookmarked ? "In List" : "Add to List")
-                .font(.system(size: 16, weight: .bold))
+            Text(isBookmarked ? "In My List" : "Add to List")
+                .font(.system(size: 17, weight: .bold))
         }
-        .foregroundColor(.white)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .foregroundColor(isFocused ? .black : .white)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 14)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isFocused ? Color(white: 0.35) : Color.white.opacity(0.14))
-                .background(
-                    Group {
-                        if !isFocused {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.ultraThinMaterial)
-                        }
-                    }
-                )
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(isFocused ? Color.white : Color.white.opacity(0.12))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isFocused ? Color(white: 0.85) : Color.white.opacity(0.18), lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(isFocused ? Color.white : Color.white.opacity(0.25), lineWidth: isFocused ? 2.5 : 1)
         )
-        .scaleEffect(isFocused ? 1.05 : 1.0)
-        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+        .scaleEffect(isFocused ? 1.08 : 1.0)
+        .shadow(color: isFocused ? Color.white.opacity(0.4) : Color.clear, radius: 12)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isFocused)
         .onChange(of: isFocused) { _, focused in
             if focused {
-                onFocus?()
+                onFocusAction()
             }
         }
     }
 }
-

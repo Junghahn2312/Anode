@@ -4,46 +4,31 @@ public struct TVDiscoveryView: View {
     @ObservedObject private var engine = DiscoveryEngine.shared
     @ObservedObject private var watchlist = WatchlistStore.shared
     
-    @State private var selectedFilter: DiscoveryFilter = .all
-    @State private var selectedProvider: StreamingProvider = .netflix
-    @State private var providerItems: [MediaItem] = []
-    @State private var selectedItem: MediaItem?
-    @State private var isLoadingProvider: Bool = false
+    @State private var selectedProvider: StreamingProvider? = nil
+    @State private var selectedMediaType: MediaTypeFilter = .all
+    @State private var selectedGenre: GenreCategory? = nil
+    
+    @State private var platformTopMovies: [MediaItem] = []
+    @State private var platformTopTV: [MediaItem] = []
+    @State private var platformNew: [MediaItem] = []
+    @State private var isLoadingPlatform: Bool = false
+    
+    @State private var selectedItem: MediaItem? = nil
     @State private var hoveredItem: MediaItem? = nil
     @State private var activeRowIndex: Int = -1
     
-    private let tmdb = TMDBService.shared
-    
-    public enum DiscoveryFilter: String, CaseIterable, Identifiable {
+    public enum MediaTypeFilter: String, CaseIterable, Identifiable {
         case all = "All"
         case movies = "Movies"
         case tvShows = "TV Shows"
-        case streaming = "Streaming"
         
         public var id: String { rawValue }
     }
     
     public init() {}
     
-    private var categoryHero: MediaItem? {
-        switch selectedFilter {
-        case .all:
-            return engine.heroSpotlights.first ?? engine.trendingItems.first
-        case .movies:
-            return engine.popularMovies.first ?? engine.cinemaNow.first
-        case .tvShows:
-            return engine.popularTV.first ?? engine.trendingItems.first(where: { $0.mediaType == .tvShow })
-        case .streaming:
-            return (providerItems.isEmpty ? engine.streamingItems : providerItems).first
-        }
-    }
-    
-    private var isCarouselOutOfView: Bool {
-        activeRowIndex >= 1
-    }
-    
     private var activeBackgroundItem: MediaItem? {
-        hoveredItem ?? categoryHero
+        hoveredItem ?? engine.trendingItems.first ?? engine.freshFromTheatres.first
     }
     
     public var body: some View {
@@ -58,48 +43,27 @@ public struct TVDiscoveryView: View {
                 // Unified Root Vertical ScrollView (Zero Black Bars)
                 ScrollViewReader { scrollProxy in
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 0) {
-                            // 1. Full-Screen Category Featured Hero Section
-                            if let hero = categoryHero {
-                                discoveryHeroSection(hero: hero, screenWidth: screenWidth, screenHeight: screenHeight)
-                                    .id("discoveryHeroSection")
-                            } else {
-                                Color.clear
-                                    .frame(width: screenWidth, height: screenHeight)
-                                    .id("discoveryHeroSection")
-                            }
+                        VStack(alignment: .leading, spacing: 32) {
+                            // 1. Top Section: Discovery Badge & Small Streaming Platform Tab Buttons (Zero Hero)
+                            topStreamingPlatformsSection
+                                .id("discovery-top")
                             
-                            // 2. Dynamic Content Rows with Dynamic Expanding Cards (Image 2)
-                            VStack(alignment: .leading, spacing: 32) {
-                                switch selectedFilter {
-                                case .all:
-                                    allDiscoverySections
-                                case .movies:
-                                    moviesDiscoverySections
-                                case .tvShows:
-                                    tvShowsDiscoverySections
-                                case .streaming:
-                                    streamingDiscoverySections
-                                }
+                            // 2. Main Content: Either Selected Platform View or Filtered All-Catalog View
+                            if let provider = selectedProvider {
+                                platformCatalogSection(provider: provider)
+                                    .id("discovery-platform-catalog")
+                            } else {
+                                allMediaCatalogSection
+                                    .id("discovery-all-catalog")
                             }
-                            .offset(y: -260)
-                            .padding(.bottom, 260)
                         }
+                        .padding(.bottom, 160)
                     }
                     .coordinateSpace(name: "discoveryScroll")
                     .onChange(of: activeRowIndex) { _, newIndex in
-                        if newIndex == 0 {
-                            withAnimation(.easeInOut(duration: 0.50)) {
-                                scrollProxy.scrollTo("discovery-row-0", anchor: UnitPoint(x: 0.5, y: 0.76))
-                            }
-                        } else if newIndex > 0 {
-                            // Selected row sits higher on screen (not at top, but higher - Y ~ 260)
+                        if newIndex >= 0 {
                             withAnimation(.easeInOut(duration: 0.50)) {
                                 scrollProxy.scrollTo("discovery-row-\(newIndex)", anchor: UnitPoint(x: 0.5, y: 0.48))
-                            }
-                        } else if newIndex == -1 {
-                            withAnimation(.easeInOut(duration: 0.50)) {
-                                scrollProxy.scrollTo("discoveryHeroSection", anchor: .top)
                             }
                         }
                     }
@@ -113,14 +77,9 @@ public struct TVDiscoveryView: View {
         .fullScreenCover(item: $selectedItem) { item in
             TVMediaDetailView(item: item)
         }
-        .task(id: selectedProvider.id) {
-            if selectedFilter == .streaming {
-                await loadProviderContent(selectedProvider)
-            }
-        }
     }
     
-    // MARK: - Dynamic Full-Screen Background (Zero Black Spaces)
+    // MARK: - Dynamic Full-Screen Background (Zero Black Spaces, Always Soft Blurred)
     
     private func rootBackground(screenWidth: CGFloat, screenHeight: CGFloat) -> some View {
         ZStack {
@@ -136,232 +95,471 @@ public struct TVDiscoveryView: View {
                     )
                     .frame(width: screenWidth, height: screenHeight)
                     .clipped()
-                    .blur(radius: isCarouselOutOfView ? 40 : 0)
+                    .blur(radius: 40)
                     .id(bgItem.id)
                     .transition(.opacity)
                     
-                    // Dark scrim for list contrast when carousel is out of view
-                    Color.black.opacity(isCarouselOutOfView ? 0.42 : 0.0)
+                    // Dark scrim overlay for high contrast readability
+                    Color.black.opacity(0.48)
                     
-                    // Subtle vignettes active when carousel hero is in view
+                    // Subtle vignettes for edge softness
                     Group {
-                        // Soft left vignette for typography readability
                         LinearGradient(
                             stops: [
-                                .init(color: Color.black.opacity(0.80), location: 0.0),
-                                .init(color: Color.black.opacity(0.35), location: 0.35),
-                                .init(color: Color.clear, location: 0.65)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                        
-                        // Soft top vignette for tab bar readability
-                        LinearGradient(
-                            stops: [
-                                .init(color: Color.black.opacity(0.70), location: 0.0),
-                                .init(color: Color.clear, location: 0.20)
+                                .init(color: Color.black.opacity(0.75), location: 0.0),
+                                .init(color: Color.clear, location: 0.25)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                         
-                        // Soft bottom fade allowing artwork to shine through peeking row
                         LinearGradient(
                             stops: [
-                                .init(color: Color.clear, location: 0.45),
-                                .init(color: Color.black.opacity(0.35), location: 0.72),
-                                .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.75), location: 1.0)
+                                .init(color: Color.clear, location: 0.65),
+                                .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.85), location: 1.0)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                     }
-                    .opacity(isCarouselOutOfView ? 0.0 : 1.0)
                 }
                 .animation(.easeInOut(duration: 0.55), value: bgItem.id)
-                .animation(.easeInOut(duration: 0.55), value: isCarouselOutOfView)
             }
         }
         .frame(width: screenWidth, height: screenHeight)
         .ignoresSafeArea()
     }
     
-    // MARK: - Category Hero Showcase Section (~820pt, peeking first row below)
+    // MARK: - Top Streaming Platform Selector Tab Buttons (Zero Hero)
     
-    private func discoveryHeroSection(hero: MediaItem, screenWidth: CGFloat, screenHeight: CGFloat) -> some View {
-        ZStack(alignment: .bottomLeading) {
-            Color.clear
-                .frame(width: screenWidth, height: screenHeight)
+    private var topStreamingPlatformsSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            // Header Badges
+            HStack(spacing: 12) {
+                Text("DISCOVERY")
+                    .font(.system(size: 11, weight: .black))
+                    .tracking(2.0)
+                    .foregroundColor(.cyan)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(Capsule().stroke(Color.cyan.opacity(0.35), lineWidth: 1))
+                
+                Text("STREAMING PLATFORMS & MEDIA CATALOG")
+                    .font(.system(size: 13, weight: .bold))
+                    .tracking(1.4)
+                    .foregroundColor(.white.opacity(0.55))
+            }
+            .padding(.horizontal, 60)
+            .padding(.top, 54)
             
-            // Hero Content & Filter Header
-            VStack(alignment: .leading, spacing: 14) {
-                // Top Header Pill & Category Filter Selector
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 12) {
-                        Text("DISCOVERY")
-                            .font(.system(size: 11, weight: .black))
-                            .tracking(2.0)
-                            .foregroundColor(.cyan)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(.ultraThinMaterial)
-                                    .overlay(
-                                        Capsule().stroke(Color.cyan.opacity(0.35), lineWidth: 1)
-                                    )
-                            )
-                        
-                        Text("GLOBAL ENTERTAINMENT")
-                            .font(.system(size: 13, weight: .bold))
-                            .tracking(1.4)
-                            .foregroundColor(.white.opacity(0.55))
+            // Small Platform Tab Buttons
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 14) {
+                    // All Media Catalog Button
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.35)) {
+                            selectedProvider = nil
+                            hoveredItem = nil
+                            activeRowIndex = -1
+                        }
+                    } label: {
+                        DiscoveryPlatformPillLabel(
+                            title: "All Catalog",
+                            brandColor: .cyan,
+                            isSelected: selectedProvider == nil
+                        ) {
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                selectedProvider = nil
+                                hoveredItem = nil
+                                activeRowIndex = -1
+                            }
+                        }
                     }
+                    .buttonStyle(.tvCard)
                     
-                    // Filter Selector with Frosted Glass
-                    HStack(spacing: 12) {
-                        ForEach(DiscoveryFilter.allCases) { filter in
-                            Button {
-                                withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
-                                    selectedFilter = filter
-                                    activeRowIndex = -1
+                    // Streaming Platform Buttons
+                    ForEach(StreamingProvider.allCases, id: \.id) { provider in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                selectedProvider = provider
+                                hoveredItem = nil
+                                activeRowIndex = -1
+                            }
+                            Task { await loadPlatformContent(provider) }
+                        } label: {
+                            DiscoveryPlatformPillLabel(
+                                title: provider.name,
+                                brandColor: provider.brandColor,
+                                isSelected: selectedProvider?.id == provider.id
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.35)) {
+                                    selectedProvider = provider
                                     hoveredItem = nil
+                                    activeRowIndex = -1
+                                }
+                                Task { await loadPlatformContent(provider) }
+                            }
+                        }
+                        .buttonStyle(.tvCard)
+                    }
+                }
+                .padding(.horizontal, 60)
+                .padding(.vertical, 6)
+            }
+        }
+    }
+    
+    // MARK: - Dedicated Streaming Platform Catalog Section
+    
+    @ViewBuilder
+    private func platformCatalogSection(provider: StreamingProvider) -> some View {
+        VStack(alignment: .leading, spacing: 32) {
+            // Platform Brand Header
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(provider.brandColor)
+                    .frame(width: 10, height: 10)
+                
+                Text("STREAMING ON \(provider.name.uppercased())")
+                    .font(.system(size: 13, weight: .black))
+                    .tracking(2.0)
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                Button {
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        selectedProvider = nil
+                        hoveredItem = nil
+                        activeRowIndex = -1
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.uturn.backward")
+                            .font(.system(size: 13, weight: .bold))
+                        Text("Back to All Catalog")
+                            .font(.system(size: 13, weight: .bold))
+                    }
+                    .foregroundColor(.white.opacity(0.85))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .background(.ultraThinMaterial, in: Capsule())
+                }
+                .buttonStyle(.tvCard)
+            }
+            .padding(.horizontal, 60)
+            
+            if isLoadingPlatform {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 28) {
+                        ForEach(0..<6, id: \.self) { _ in
+                            TVSkeletonCardView(width: 210)
+                        }
+                    }
+                    .padding(.horizontal, 60)
+                    .padding(.vertical, 16)
+                }
+            } else {
+                // Row 0: Top 10 Movies Trending on [Platform]
+                if !platformTopMovies.isEmpty {
+                    TVTopTenRowView(
+                        title: "Top 10 Movies Trending on \(provider.name)",
+                        items: Array(platformTopMovies.prefix(10)),
+                        onHover: { handleRowHover($0, rowIndex: 0) }
+                    ) { item in
+                        selectedItem = item
+                    }
+                    .id("discovery-row-0")
+                }
+                
+                // Row 1: Top 10 TV Shows Trending on [Platform]
+                if !platformTopTV.isEmpty {
+                    TVTopTenRowView(
+                        title: "Top 10 TV Shows Trending on \(provider.name)",
+                        items: Array(platformTopTV.prefix(10)),
+                        onHover: { handleRowHover($0, rowIndex: 1) }
+                    ) { item in
+                        selectedItem = item
+                    }
+                    .id("discovery-row-1")
+                }
+                
+                // Row 2: New to [Platform]
+                if !platformNew.isEmpty {
+                    TVContentRowView(
+                        title: "New to \(provider.name)",
+                        items: platformNew,
+                        onHover: { handleRowHover($0, rowIndex: 2) }
+                    ) { item in
+                        selectedItem = item
+                    }
+                    .id("discovery-row-2")
+                }
+                
+                // Row 3: Critically Acclaimed on [Platform]
+                let acclaimed = (platformTopMovies + platformTopTV).filter { $0.rating >= 7.5 }
+                if !acclaimed.isEmpty {
+                    TVContentRowView(
+                        title: "Critically Acclaimed on \(provider.name)",
+                        items: acclaimed,
+                        onHover: { handleRowHover($0, rowIndex: 3) }
+                    ) { item in
+                        selectedItem = item
+                    }
+                    .id("discovery-row-3")
+                }
+            }
+        }
+    }
+    
+    // MARK: - Main All-Catalog Section with Filters & Genres ("All Movies Ever with Filters")
+    
+    @ViewBuilder
+    private var allMediaCatalogSection: some View {
+        VStack(alignment: .leading, spacing: 32) {
+            // Media Type Filters & Curated Genres Row
+            VStack(alignment: .leading, spacing: 14) {
+                // Media Type Filters
+                HStack(spacing: 12) {
+                    ForEach(MediaTypeFilter.allCases) { filter in
+                        Button {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                selectedMediaType = filter
+                                hoveredItem = nil
+                                activeRowIndex = -1
+                            }
+                        } label: {
+                            DiscoveryFilterPillLabel(
+                                title: filter.rawValue,
+                                isSelected: selectedMediaType == filter
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.35)) {
+                                    selectedMediaType = filter
+                                    hoveredItem = nil
+                                    activeRowIndex = -1
+                                }
+                            }
+                        }
+                        .buttonStyle(.tvCard)
+                    }
+                }
+                .padding(.horizontal, 60)
+                
+                // Curated Genre Filter Pills
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        // "All Genres" pill
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                selectedGenre = nil
+                                hoveredItem = nil
+                                activeRowIndex = -1
+                            }
+                        } label: {
+                            DiscoveryFilterPillLabel(
+                                title: "All Genres",
+                                isSelected: selectedGenre == nil
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.35)) {
+                                    selectedGenre = nil
+                                    hoveredItem = nil
+                                    activeRowIndex = -1
+                                }
+                            }
+                        }
+                        .buttonStyle(.tvCard)
+                        
+                        ForEach(GenreCategory.allCurated) { genre in
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    selectedGenre = genre
+                                    hoveredItem = nil
+                                    activeRowIndex = -1
                                 }
                             } label: {
                                 DiscoveryFilterPillLabel(
-                                    title: filter.rawValue,
-                                    isSelected: selectedFilter == filter
+                                    title: genre.name,
+                                    isSelected: selectedGenre?.id == genre.id
                                 ) {
-                                    withAnimation(.easeInOut(duration: 0.45)) {
-                                        self.activeRowIndex = -1
-                                        self.hoveredItem = nil
+                                    withAnimation(.easeInOut(duration: 0.35)) {
+                                        selectedGenre = genre
+                                        hoveredItem = nil
+                                        activeRowIndex = -1
                                     }
                                 }
                             }
                             .buttonStyle(.tvCard)
                         }
                     }
-                    
-                    // Streaming Provider Row if Streaming filter is active
-                    if selectedFilter == .streaming {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                ForEach(StreamingProvider.allCases, id: \.id) { provider in
-                                    Button {
-                                        withAnimation(.easeInOut(duration: 0.2)) {
-                                            selectedProvider = provider
-                                            activeRowIndex = -1
-                                            hoveredItem = nil
-                                        }
-                                        Task { await loadProviderContent(provider) }
-                                    } label: {
-                                        StreamingProviderPillLabel(
-                                            provider: provider,
-                                            isSelected: selectedProvider == provider
-                                        ) {
-                                            withAnimation(.easeInOut(duration: 0.45)) {
-                                                self.activeRowIndex = -1
-                                                self.hoveredItem = nil
-                                            }
-                                        }
-                                    }
-                                    .buttonStyle(.tvCard)
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        }
-                    }
-                }
-                .padding(.top, 140)
-                
-                // Hero Information
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 10) {
-                        Text(hero.mediaType == .movie ? "FEATURED FILM" : "FEATURED SERIES")
-                            .font(.system(size: 11, weight: .black))
-                            .tracking(1.4)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(Color.red.opacity(0.85))
-                                    .background(.ultraThinMaterial, in: Capsule())
-                                    .overlay(
-                                        Capsule().stroke(Color.white.opacity(0.2), lineWidth: 0.8)
-                                    )
-                            )
-                        
-                        if !hero.formattedRating.isEmpty {
-                            RatingBadge(rating: hero.formattedRating)
-                        }
-                        
-                        if !hero.yearString.isEmpty {
-                            Text(hero.yearString)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                        
-                        if let genre = hero.genreNames.first {
-                            Text("•")
-                                .foregroundColor(.white.opacity(0.4))
-                            Text(genre)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                    }
-                    
-                    Text(hero.title)
-                        .font(.system(size: 46, weight: .heavy))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                        .shadow(color: Color.black.opacity(0.85), radius: 6, x: 0, y: 3)
-                    
-                    if !hero.overview.isEmpty {
-                        Text(hero.overview)
-                            .font(.system(size: 15, weight: .regular))
-                            .foregroundColor(.white.opacity(0.85))
-                            .lineLimit(3)
-                            .lineSpacing(3)
-                            .frame(maxWidth: 780, alignment: .leading)
-                    }
-                    
-                    HStack(spacing: 14) {
-                        Button {
-                            selectedItem = hero
-                        } label: {
-                            DiscoveryHeroPrimaryButtonLabel {
-                                withAnimation(.easeInOut(duration: 0.45)) {
-                                    self.hoveredItem = nil
-                                    self.activeRowIndex = -1
-                                }
-                            }
-                        }
-                        .buttonStyle(.tvCard)
-                        
-                        Button {
-                            watchlist.toggleWatchlist(item: hero)
-                        } label: {
-                            DiscoveryHeroBookmarkButtonLabel(isBookmarked: watchlist.contains(id: hero.id)) {
-                                withAnimation(.easeInOut(duration: 0.45)) {
-                                    self.hoveredItem = nil
-                                    self.activeRowIndex = -1
-                                }
-                            }
-                        }
-                        .buttonStyle(.tvCard)
-                    }
-                    .focusSection()
-                    .padding(.top, 4)
+                    .padding(.horizontal, 60)
+                    .padding(.vertical, 4)
                 }
             }
-            .padding(.horizontal, 60)
-            .padding(.bottom, 280)
+            
+            // Dedicated Section: Fresh from Theatres (New to Rent or Buy)
+            if selectedMediaType != .tvShows && !engine.freshFromTheatres.isEmpty {
+                TVLandscapeRowView(
+                    title: "Fresh from Theatres (New to Rent or Buy)",
+                    items: engine.freshFromTheatres,
+                    onHover: { handleRowHover($0, rowIndex: 0) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-0")
+            }
+            
+            // Filtered Content Rows
+            filteredCatalogRows
         }
-        .frame(width: screenWidth, height: screenHeight)
-        .animation(.easeInOut(duration: 0.45), value: hero.id)
     }
+    
+    // MARK: - Dynamic Filtered Catalog Content Rows
+    
+    @ViewBuilder
+    private var filteredCatalogRows: some View {
+        if let genre = selectedGenre {
+            // Genre-Specific Rows
+            let allItems = (engine.popularMovies + engine.popularTV + engine.trendingItems)
+            let genreFiltered = allItems.filter { item in
+                item.genreNames.contains { g in g.localizedCaseInsensitiveContains(genre.name) }
+            }
+            let matchingMovies = genreFiltered.filter { $0.mediaType == .movie }
+            let matchingTV = genreFiltered.filter { $0.mediaType == .tvShow }
+            
+            if selectedMediaType != .tvShows && !matchingMovies.isEmpty {
+                TVContentRowView(
+                    title: "\(genre.name) Movies",
+                    items: matchingMovies,
+                    onHover: { handleRowHover($0, rowIndex: 1) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-1")
+            }
+            
+            if selectedMediaType != .movies && !matchingTV.isEmpty {
+                TVContentRowView(
+                    title: "\(genre.name) Series & Shows",
+                    items: matchingTV,
+                    onHover: { handleRowHover($0, rowIndex: 2) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-2")
+            }
+            
+            let topRatedGenre = genreFiltered.filter { $0.rating >= 8.0 }
+            if !topRatedGenre.isEmpty {
+                TVContentRowView(
+                    title: "Top Rated \(genre.name)",
+                    items: topRatedGenre,
+                    onHover: { handleRowHover($0, rowIndex: 3) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-3")
+            }
+        } else {
+            // General Catalog Rows based on selectedMediaType
+            switch selectedMediaType {
+            case .all:
+                TVContentRowView(
+                    title: "Trending Worldwide",
+                    items: engine.trendingItems,
+                    onHover: { handleRowHover($0, rowIndex: 1) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-1")
+                
+                TVContentRowView(
+                    title: "Popular Movies",
+                    items: engine.popularMovies,
+                    onHover: { handleRowHover($0, rowIndex: 2) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-2")
+                
+                TVContentRowView(
+                    title: "Popular TV Shows",
+                    items: engine.popularTV,
+                    onHover: { handleRowHover($0, rowIndex: 3) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-3")
+                
+                TVContentRowView(
+                    title: "Critically Acclaimed of All Time",
+                    items: engine.topRated,
+                    onHover: { handleRowHover($0, rowIndex: 4) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-4")
+                
+            case .movies:
+                TVContentRowView(
+                    title: "Trending Movies",
+                    items: engine.popularMovies,
+                    onHover: { handleRowHover($0, rowIndex: 1) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-1")
+                
+                TVContentRowView(
+                    title: "Top Rated Feature Films",
+                    items: engine.topRated.filter { $0.mediaType == .movie },
+                    onHover: { handleRowHover($0, rowIndex: 2) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-2")
+                
+                TVContentRowView(
+                    title: "New Digital Releases",
+                    items: engine.newReleases.filter { $0.mediaType == .movie },
+                    onHover: { handleRowHover($0, rowIndex: 3) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-3")
+                
+            case .tvShows:
+                TVContentRowView(
+                    title: "Trending Television Series",
+                    items: engine.popularTV,
+                    onHover: { handleRowHover($0, rowIndex: 1) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-1")
+                
+                TVContentRowView(
+                    title: "Critically Acclaimed Drama Series",
+                    items: (engine.popularTV + engine.trendingItems).filter { $0.mediaType == .tvShow && $0.rating >= 8.2 },
+                    onHover: { handleRowHover($0, rowIndex: 2) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-2")
+                
+                TVContentRowView(
+                    title: "Popular Streaming Series",
+                    items: engine.trendingItems.filter { $0.mediaType == .tvShow },
+                    onHover: { handleRowHover($0, rowIndex: 3) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("discovery-row-3")
+            }
+        }
+    }
+    
+    // MARK: - Row Hover & Platform Loading Helpers
     
     private func handleRowHover(_ item: MediaItem, rowIndex: Int) {
         withAnimation(.easeInOut(duration: 0.45)) {
@@ -372,292 +570,117 @@ public struct TVDiscoveryView: View {
         }
     }
     
-    // MARK: - All Sections
-    
-    @ViewBuilder
-    private var allDiscoverySections: some View {
-        if !engine.trendingItems.isEmpty {
-            TVContentRowView(title: "Trending Worldwide", items: engine.trendingItems, onHover: { handleRowHover($0, rowIndex: 0) }) { item in
-                selectedItem = item
-            }
-            .id("discovery-row-0")
-        }
-        if !engine.popularMovies.isEmpty {
-            TVContentRowView(title: "Popular Movies", items: engine.popularMovies, onHover: { handleRowHover($0, rowIndex: 1) }) { item in
-                selectedItem = item
-            }
-            .id("discovery-row-1")
-        }
-        if !engine.popularTV.isEmpty {
-            TVContentRowView(title: "Popular TV Series", items: engine.popularTV, onHover: { handleRowHover($0, rowIndex: 2) }) { item in
-                selectedItem = item
-            }
-            .id("discovery-row-2")
-        }
-        if !engine.topRated.isEmpty {
-            TVContentRowView(title: "Critically Acclaimed", items: engine.topRated, onHover: { handleRowHover($0, rowIndex: 3) }) { item in
-                selectedItem = item
-            }
-            .id("discovery-row-3")
-        }
-    }
-    
-    // MARK: - Movies Sections
-    
-    @ViewBuilder
-    private var moviesDiscoverySections: some View {
-        if !engine.popularMovies.isEmpty {
-            TVContentRowView(title: "Trending Movies", items: engine.popularMovies, onHover: { handleRowHover($0, rowIndex: 0) }) { item in
-                selectedItem = item
-            }
-            .id("discovery-row-0")
-        }
-        let topMovies = engine.topRated.filter { $0.mediaType == .movie }
-        if !topMovies.isEmpty {
-            TVContentRowView(title: "Highest Rated Movies", items: topMovies, onHover: { handleRowHover($0, rowIndex: 1) }) { item in
-                selectedItem = item
-            }
-            .id("discovery-row-1")
-        }
-        if !engine.cinemaNow.isEmpty {
-            TVContentRowView(title: "Now in Theatres", items: engine.cinemaNow, showCinemaBadge: true, onHover: { handleRowHover($0, rowIndex: 2) }) { item in
-                selectedItem = item
-            }
-            .id("discovery-row-2")
-        }
-        if !engine.newReleases.isEmpty {
-            let newMovies = engine.newReleases.filter { $0.mediaType == .movie }
-            if !newMovies.isEmpty {
-                TVContentRowView(title: "New Releases", items: newMovies, onHover: { handleRowHover($0, rowIndex: 3) }) { item in
-                    selectedItem = item
-                }
-                .id("discovery-row-3")
-            }
-        }
-    }
-    
-    // MARK: - TV Shows Sections
-    
-    @ViewBuilder
-    private var tvShowsDiscoverySections: some View {
-        if !engine.popularTV.isEmpty {
-            TVContentRowView(title: "Popular TV Series", items: engine.popularTV, onHover: { handleRowHover($0, rowIndex: 0) }) { item in
-                selectedItem = item
-            }
-            .id("discovery-row-0")
-        }
-        let topTV = engine.topRated.filter { $0.mediaType == .tvShow }
-        if !topTV.isEmpty {
-            TVContentRowView(title: "Critically Acclaimed Series", items: topTV, onHover: { handleRowHover($0, rowIndex: 1) }) { item in
-                selectedItem = item
-            }
-            .id("discovery-row-1")
-        }
-        if !engine.netflixTrending.isEmpty {
-            TVContentRowView(title: "Trending on Netflix", items: engine.netflixTrending.filter { $0.mediaType == .tvShow }, onHover: { handleRowHover($0, rowIndex: 2) }) { item in
-                selectedItem = item
-            }
-            .id("discovery-row-2")
-        }
-        if !engine.disneyTrending.isEmpty {
-            TVContentRowView(title: "Trending on Disney+", items: engine.disneyTrending.filter { $0.mediaType == .tvShow }, onHover: { handleRowHover($0, rowIndex: 3) }) { item in
-                selectedItem = item
-            }
-            .id("discovery-row-3")
-        }
-        if !engine.appleTVTrending.isEmpty {
-            TVContentRowView(title: "Trending on Apple TV+", items: engine.appleTVTrending.filter { $0.mediaType == .tvShow }, onHover: { handleRowHover($0, rowIndex: 4) }) { item in
-                selectedItem = item
-            }
-            .id("discovery-row-4")
-        }
-    }
-    
-    // MARK: - Streaming Sections
-    
-    @ViewBuilder
-    private var streamingDiscoverySections: some View {
-        let displayItems = providerItems.isEmpty ? engine.streamingItems : providerItems
-        TVContentRowView(title: "Trending on \(selectedProvider.name)", items: displayItems, onHover: { handleRowHover($0, rowIndex: 0) }) { item in
-            selectedItem = item
-        }
-        .id("discovery-row-0")
+    private func loadPlatformContent(_ provider: StreamingProvider) async {
+        isLoadingPlatform = true
+        async let topMoviesTask = engine.loadPlatformTopMovies(provider: provider)
+        async let topTVTask = engine.loadPlatformTopTV(provider: provider)
+        async let newTask = engine.loadPlatformNew(provider: provider)
         
-        let topRated = displayItems.filter { $0.rating >= 7.8 }
-        if !topRated.isEmpty {
-            TVContentRowView(title: "Highest Rated on \(selectedProvider.name)", items: topRated, onHover: { handleRowHover($0, rowIndex: 1) }) { item in
-                selectedItem = item
-            }
-            .id("discovery-row-1")
-        }
-    }
-    
-    private func loadProviderContent(_ provider: StreamingProvider) async {
-        isLoadingProvider = true
-        providerItems = await tmdb.fetchStreaming(provider: provider)
-        isLoadingProvider = false
+        self.platformTopMovies = await topMoviesTask
+        self.platformTopTV = await topTVTask
+        self.platformNew = await newTask
+        isLoadingPlatform = false
     }
 }
 
-// MARK: - Dedicated Focusable Buttons & Labels
+// MARK: - Dedicated Focusable Platform & Filter Pill Labels
 
-private struct DiscoveryFilterPillLabel: View {
+private struct DiscoveryPlatformPillLabel: View {
     let title: String
+    let brandColor: Color
     let isSelected: Bool
-    var onFocus: (() -> Void)? = nil
+    let onFocusAction: () -> Void
+    
     @Environment(\.isFocused) private var isFocused: Bool
     
-    var body: some View {
-        Text(title)
-            .font(.system(size: 15, weight: isSelected || isFocused ? .bold : .medium))
-            .foregroundColor(isFocused ? .black : (isSelected ? .white : .white.opacity(0.75)))
-            .padding(.horizontal, 20)
-            .padding(.vertical, 9)
-            .background(
-                Capsule()
-                    .fill(isFocused ? Color.white : (isSelected ? Color.white.opacity(0.30) : Color.clear))
-                    .background(
-                        Group {
-                            if !isFocused && !isSelected {
-                                Capsule().fill(.ultraThinMaterial)
-                            }
-                        }
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(isFocused ? Color.clear : Color.white.opacity(isSelected ? 0.4 : 0.16), lineWidth: 1)
-                    )
-            )
-            .scaleEffect(isFocused ? 1.05 : 1.0)
-            .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
-            .onChange(of: isFocused) { _, focused in
-                if focused {
-                    onFocus?()
-                }
-            }
+    private var textColor: Color {
+        if isFocused { return .black }
+        return isSelected ? .white : .white.opacity(0.80)
     }
-}
-
-private struct StreamingProviderPillLabel: View {
-    let provider: StreamingProvider
-    let isSelected: Bool
-    var onFocus: (() -> Void)? = nil
-    @Environment(\.isFocused) private var isFocused: Bool
+    
+    private var backgroundColor: Color {
+        if isFocused { return .white }
+        return isSelected ? brandColor.opacity(0.35) : Color.white.opacity(0.08)
+    }
+    
+    private var borderColor: Color {
+        if isFocused { return .white }
+        return isSelected ? brandColor.opacity(0.70) : Color.white.opacity(0.16)
+    }
     
     var body: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(provider.brandColor)
+                .fill(brandColor)
                 .frame(width: 8, height: 8)
-            
-            Text(provider.name)
-                .font(.system(size: 14, weight: isSelected || isFocused ? .bold : .medium))
-                .foregroundColor(isFocused ? .black : (isSelected ? .white : .white.opacity(0.8)))
+            Text(title)
+                .font(.system(size: 15, weight: isSelected ? .bold : .medium))
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 9)
+        .foregroundColor(textColor)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
         .background(
-            Capsule()
-                .fill(isFocused ? Color.white : (isSelected ? provider.brandColor.opacity(0.40) : Color.clear))
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(backgroundColor)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(borderColor, lineWidth: isFocused ? 2 : 1)
+        )
+        .scaleEffect(isFocused ? 1.06 : 1.0)
+        .shadow(color: isFocused ? Color.white.opacity(0.35) : Color.clear, radius: 8)
+        .animation(.spring(response: 0.32, dampingFraction: 0.8), value: isFocused)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                onFocusAction()
+            }
+        }
+    }
+}
+
+private struct DiscoveryFilterPillLabel: View {
+    let title: String
+    let isSelected: Bool
+    let onFocusAction: () -> Void
+    
+    @Environment(\.isFocused) private var isFocused: Bool
+    
+    private var textColor: Color {
+        if isFocused { return .black }
+        return isSelected ? .white : .white.opacity(0.80)
+    }
+    
+    private var backgroundColor: Color {
+        if isFocused { return .white }
+        return isSelected ? Color.white.opacity(0.24) : Color.white.opacity(0.08)
+    }
+    
+    private var borderColor: Color {
+        if isFocused { return .white }
+        return isSelected ? Color.white.opacity(0.50) : Color.white.opacity(0.14)
+    }
+    
+    var body: some View {
+        Text(title)
+            .font(.system(size: 15, weight: isSelected ? .bold : .medium))
+            .foregroundColor(textColor)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
             .background(
-                Group {
-                    if !isFocused && !isSelected {
-                        Capsule().fill(.ultraThinMaterial)
-                    }
-                }
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(backgroundColor)
             )
             .overlay(
-                Capsule()
-                    .stroke(isFocused ? Color.clear : (isSelected ? provider.brandColor.opacity(0.6) : Color.white.opacity(0.16)), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(borderColor, lineWidth: isFocused ? 2 : 1)
             )
-        )
-        .scaleEffect(isFocused ? 1.05 : 1.0)
-        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
-        .onChange(of: isFocused) { _, focused in
-            if focused {
-                onFocus?()
+            .scaleEffect(isFocused ? 1.05 : 1.0)
+            .shadow(color: isFocused ? Color.white.opacity(0.3) : Color.clear, radius: 6)
+            .animation(.spring(response: 0.32, dampingFraction: 0.8), value: isFocused)
+            .onChange(of: isFocused) { _, focused in
+                if focused {
+                    onFocusAction()
+                }
             }
-        }
     }
 }
-
-private struct DiscoveryHeroPrimaryButtonLabel: View {
-    var onFocus: (() -> Void)? = nil
-    @Environment(\.isFocused) private var isFocused: Bool
-    
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "info.circle.fill")
-                .font(.system(size: 16, weight: .black))
-            Text("Details")
-                .font(.system(size: 16, weight: .bold))
-        }
-        .foregroundColor(isFocused ? .black : .white)
-        .padding(.horizontal, 24)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isFocused ? Color.white : Color.white.opacity(0.22))
-                .background(
-                    Group {
-                        if !isFocused {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.ultraThinMaterial)
-                        }
-                    }
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isFocused ? Color(white: 0.9) : Color.white.opacity(0.2), lineWidth: 1.5)
-        )
-        .scaleEffect(isFocused ? 1.05 : 1.0)
-        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
-        .onChange(of: isFocused) { _, focused in
-            if focused {
-                onFocus?()
-            }
-        }
-    }
-}
-
-private struct DiscoveryHeroBookmarkButtonLabel: View {
-    let isBookmarked: Bool
-    var onFocus: (() -> Void)? = nil
-    @Environment(\.isFocused) private var isFocused: Bool
-    
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
-                .font(.system(size: 16, weight: .bold))
-            Text(isBookmarked ? "In List" : "Add to List")
-                .font(.system(size: 16, weight: .bold))
-        }
-        .foregroundColor(.white)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isFocused ? Color(white: 0.35) : Color.white.opacity(0.14))
-                .background(
-                    Group {
-                        if !isFocused {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.ultraThinMaterial)
-                        }
-                    }
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isFocused ? Color(white: 0.85) : Color.white.opacity(0.18), lineWidth: 1.5)
-        )
-        .scaleEffect(isFocused ? 1.05 : 1.0)
-        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
-        .onChange(of: isFocused) { _, focused in
-            if focused {
-                onFocus?()
-            }
-        }
-    }
-}
-
-
