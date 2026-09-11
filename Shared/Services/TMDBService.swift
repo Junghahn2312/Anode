@@ -13,6 +13,7 @@ public actor TMDBService: ContentProvider {
     private var videosCache: [Int: [VideoTrailer]] = [:]
     private var seasonsCache: [Int: [TVSeason]] = [:]
     private var episodesCache: [String: [TVEpisode]] = [:]
+    private var logoCache: [Int: String] = [:]
     
     private static let genreMap: [Int: String] = [
         28: "Action",
@@ -66,12 +67,22 @@ public actor TMDBService: ContentProvider {
         if let live = try? await getPagedMedia(endpoint: "/trending/all/day", type: .movie) {
             let candidates = live.filter { $0.backdropPath != nil && !$0.overview.isEmpty }
             if !candidates.isEmpty {
-                let heroes = Array(candidates.prefix(8))
+                var heroes = Array(candidates.prefix(8))
+                for i in 0..<heroes.count {
+                    if let logo = await fetchLogo(for: heroes[i]) {
+                        heroes[i].logoPath = logo
+                    }
+                }
                 memoryCache["hero_spotlights"] = heroes
                 return heroes
             }
         }
-        let fallback = Array((MockData.trendingItems + MockData.cinemaMovies).prefix(6))
+        var fallback = Array((MockData.trendingItems + MockData.cinemaMovies).prefix(6))
+        for i in 0..<fallback.count {
+            if let logo = await fetchLogo(for: fallback[i]) {
+                fallback[i].logoPath = logo
+            }
+        }
         memoryCache["hero_spotlights"] = fallback
         return fallback
     }
@@ -438,6 +449,30 @@ public actor TMDBService: ContentProvider {
         await fetchInCinemas()
     }
     
+    public func fetchLogo(for item: MediaItem) async -> String? {
+        if let cached = logoCache[item.id] {
+            return cached
+        }
+        let endpoint = item.mediaType == .tvShow ? "/tv/\(item.id)/images" : "/movie/\(item.id)/images"
+        guard let url = URL(string: "\(baseURL)\(endpoint)?api_key=\(apiKey)&include_image_language=en,null") else {
+            return nil
+        }
+        let request = createRequest(for: url)
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            return nil
+        }
+        guard let decoded = try? JSONDecoder().decode(TMDBImagesResponse.self, from: data) else {
+            return nil
+        }
+        let logo = decoded.logos?.first(where: { $0.iso_639_1 == "en" }) ?? decoded.logos?.first
+        if let path = logo?.file_path {
+            logoCache[item.id] = path
+            return path
+        }
+        return nil
+    }
+    
     // MARK: - Network Request Helper
     
     private func createRequest(for url: URL) -> URLRequest {
@@ -620,6 +655,18 @@ private struct TMDBEpisodeDTO: Codable {
     let runtime: Int?
     let air_date: String?
     let still_path: String?
+}
+
+private struct TMDBImagesResponse: Codable {
+    let id: Int?
+    let logos: [TMDBLogoDTO]?
+}
+
+private struct TMDBLogoDTO: Codable {
+    let aspect_ratio: Double?
+    let file_path: String?
+    let iso_639_1: String?
+    let vote_average: Double?
 }
 
 // MARK: - Rich Curated Mock Data (Zero Emojis)

@@ -100,6 +100,10 @@ public final class DiscoveryEngine: ObservableObject {
         await tmdb.fetchWatchAvailability(id: item.id, mediaType: item.mediaType, region: "GB")
     }
     
+    public func fetchLogo(for item: MediaItem) async -> String? {
+        await tmdb.fetchLogo(for: item)
+    }
+    
     public func fetchCredits(for item: MediaItem) async -> [CastMember] {
         await tmdb.fetchCredits(id: item.id, mediaType: item.mediaType)
     }

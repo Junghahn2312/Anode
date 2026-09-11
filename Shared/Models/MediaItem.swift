@@ -18,6 +18,7 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
     public var streamingProviders: [StreamingProvider]
     public var trailers: [VideoTrailer]
     public var cast: [CastMember]
+    public var logoPath: String?
     public var rank: Int?
     public var availability: WatchAvailability?
     public var inCinemas: Bool
@@ -40,6 +41,7 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
         streamingProviders: [StreamingProvider] = [],
         trailers: [VideoTrailer] = [],
         cast: [CastMember] = [],
+        logoPath: String? = nil,
         rank: Int? = nil,
         availability: WatchAvailability? = nil,
         inCinemas: Bool = false
@@ -61,6 +63,7 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
         self.streamingProviders = streamingProviders
         self.trailers = trailers
         self.cast = cast
+        self.logoPath = logoPath
         self.rank = rank
         self.availability = availability
         self.inCinemas = inCinemas
@@ -104,5 +107,11 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
         guard let backdropPath else { return nil }
         if backdropPath.hasPrefix("http") { return URL(string: backdropPath) }
         return URL(string: "https://image.tmdb.org/t/p/\(size)\(backdropPath)")
+    }
+    
+    public func logoURL(size: String = "w500") -> URL? {
+        guard let logoPath else { return nil }
+        if logoPath.hasPrefix("http") { return URL(string: logoPath) }
+        return URL(string: "https://image.tmdb.org/t/p/\(size)\(logoPath)")
     }
 }

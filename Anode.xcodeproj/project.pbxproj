@@ -72,6 +72,13 @@
 		TVOB51239AB67890CDEF1002 /* TVSettingsView.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF51239AB67890CDEF1002 /* TVSettingsView.swift */; };
 		TVOB51239AB67890CDEF1003 /* TVContentRowView.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF51239AB67890CDEF1003 /* TVContentRowView.swift */; };
 		TVOB148FED12605349AAAFE6 /* Assets.xcassets in Resources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREFD38EDF69570846AEB5F9 /* Assets.xcassets */; };
+		IOSB17FDC0105116478C84C1 /* ContinueWatchingItem.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF17FDC0105116478C84C1 /* ContinueWatchingItem.swift */; };
+		IOSB17FDC0105116478C84C2 /* TraktService.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF17FDC0105116478C84C2 /* TraktService.swift */; };
+		IOSB17FDC0105116478C84C3 /* TraktStore.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = FREF17FDC0105116478C84C3 /* TraktStore.swift */; };
+		TVOB17FDC0105116478C84C1 /* ContinueWatchingItem.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF17FDC0105116478C84C1 /* ContinueWatchingItem.swift */; };
+		TVOB17FDC0105116478C84C2 /* TraktService.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF17FDC0105116478C84C2 /* TraktService.swift */; };
+		TVOB17FDC0105116478C84C3 /* TraktStore.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF17FDC0105116478C84C3 /* TraktStore.swift */; };
+		TVOB17FDC0105116478C84C4 /* TVContinueWatchingRowView.swift in Sources (tvOS) */ = {isa = PBXBuildFile; fileRef = FREF17FDC0105116478C84C4 /* TVContinueWatchingRowView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -123,6 +130,10 @@
 		FREFCF29FE0420F44A1BAEF4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		PRD1878D0BAC9136437BA147 /* Anode.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Anode.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		PRD23DFEA996879E4032983A /* Anode-tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Anode-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		FREF17FDC0105116478C84C1 /* ContinueWatchingItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContinueWatchingItem.swift"; sourceTree = "<group>"; };
+		FREF17FDC0105116478C84C2 /* TraktService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TraktService.swift"; sourceTree = "<group>"; };
+		FREF17FDC0105116478C84C3 /* TraktStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TraktStore.swift"; sourceTree = "<group>"; };
+		FREF17FDC0105116478C84C4 /* TVContinueWatchingRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TVContinueWatchingRowView.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -163,6 +174,7 @@
 				FREF17FDC0105116478C84B1 /* TVEpisode.swift */,
 				FREF64BBF282F6CA412B910A /* GenreCategory.swift */,
 				FREF24D1169AEADC4C1E8454 /* WatchAvailability.swift */,
+				FREF17FDC0105116478C84C1 /* ContinueWatchingItem.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -174,6 +186,8 @@
 				FREF8EB9E9CE4AD34987B1E7 /* TMDBService.swift */,
 				FREFC6DDA326702C405F9EF9 /* WatchlistStore.swift */,
 				FREFC3D6442FC1074D15BE1F /* DiscoveryEngine.swift */,
+				FREF17FDC0105116478C84C2 /* TraktService.swift */,
+				FREF17FDC0105116478C84C3 /* TraktStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -244,6 +258,7 @@
 				FREF51239AB67890CDEF1001 /* TVDiscoveryView.swift */,
 				FREF51239AB67890CDEF1002 /* TVSettingsView.swift */,
 				FREF51239AB67890CDEF1003 /* TVContentRowView.swift */,
+				FREF17FDC0105116478C84C4 /* TVContinueWatchingRowView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -382,6 +397,9 @@
 				IOSB098ADF5344684F338610 /* SearchView.swift in Sources */,
 				IOSB19A9B596EDC446D5BF45 /* WatchlistView.swift in Sources */,
 				IOSB150F81BE3A2F4C92ABD4 /* MediaDetailView.swift in Sources */,
+				IOSB17FDC0105116478C84C1 /* ContinueWatchingItem.swift in Sources */,
+				IOSB17FDC0105116478C84C2 /* TraktService.swift in Sources */,
+				IOSB17FDC0105116478C84C3 /* TraktStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -424,6 +442,10 @@
 				TVOB51239AB67890CDEF1001 /* TVDiscoveryView.swift in Sources */,
 				TVOB51239AB67890CDEF1002 /* TVSettingsView.swift in Sources */,
 				TVOB51239AB67890CDEF1003 /* TVContentRowView.swift in Sources */,
+				TVOB17FDC0105116478C84C1 /* ContinueWatchingItem.swift in Sources */,
+				TVOB17FDC0105116478C84C2 /* TraktService.swift in Sources */,
+				TVOB17FDC0105116478C84C3 /* TraktStore.swift in Sources */,
+				TVOB17FDC0105116478C84C4 /* TVContinueWatchingRowView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
