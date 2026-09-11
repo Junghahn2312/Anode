@@ -235,6 +235,14 @@ public struct TVHomeView: View {
                             .foregroundColor(.white.opacity(0.9))
                     }
                     
+                    if !hero.formattedRuntime.isEmpty {
+                        Text("•")
+                            .foregroundColor(.white.opacity(0.4))
+                        Text(hero.formattedRuntime)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    
                     if let cert = hero.certification {
                         Text("•")
                             .foregroundColor(.white.opacity(0.4))

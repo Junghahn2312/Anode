@@ -115,6 +115,13 @@ private struct TVTopTabButtonLabel: View {
 struct AnodeTVApp: App {
     @StateObject private var nav = AppNavigation.shared
     
+    init() {
+        let memoryCapacity = 200 * 1024 * 1024 // 200 MB
+        let diskCapacity = 1000 * 1024 * 1024 // 1 GB
+        let cache = URLCache(memoryCapacity: memoryCapacity, diskCapacity: diskCapacity, diskPath: "AnodeImageCache")
+        URLCache.shared = cache
+    }
+    
     var body: some Scene {
         WindowGroup {
             ZStack(alignment: .top) {

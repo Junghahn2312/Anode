@@ -133,6 +133,10 @@ public final class DiscoveryEngine: ObservableObject {
         await tmdb.fetchWatchAvailability(id: item.id, mediaType: item.mediaType, region: "GB")
     }
     
+    public func enrichItem(_ item: MediaItem) async -> MediaItem {
+        await tmdb.enrichMediaItem(item)
+    }
+    
     public func fetchLogo(for item: MediaItem) async -> String? {
         await tmdb.fetchLogo(for: item)
     }

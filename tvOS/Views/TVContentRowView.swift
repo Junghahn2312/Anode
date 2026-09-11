@@ -230,11 +230,11 @@ public struct TVExpandingMediaCardView: View {
         .animation(.spring(response: 0.42, dampingFraction: 0.88), value: isFocused)
         .task(id: isFocused) {
             guard isFocused else { return }
-            if let logo = item.logoPath, !logo.isEmpty {
+            let enriched = await DiscoveryEngine.shared.enrichItem(item)
+            if let logo = enriched.logoPath, !logo.isEmpty {
                 loadedLogoPath = logo
-            } else if loadedLogoPath == nil {
-                loadedLogoPath = await DiscoveryEngine.shared.fetchLogo(for: item)
             }
+            onFocus?(enriched)
         }
         .onChange(of: isFocused) { _, focused in
             if focused {

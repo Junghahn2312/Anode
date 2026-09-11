@@ -18,9 +18,11 @@ public struct TVMediaDetailView: View {
     @State private var selectedSeasonNumber: Int = 1
     @State private var episodes: [TVEpisode] = []
     @State private var isLoadingEpisodes: Bool = false
+    @State private var currentItem: MediaItem
     
     public init(item: MediaItem) {
         self.item = item
+        self._currentItem = State(initialValue: item)
     }
     
     private var fallbackRecommendations: [MediaItem] {
@@ -105,11 +107,14 @@ public struct TVMediaDetailView: View {
             }
         }
         .task(id: item.id) {
+            async let enrichTask = engine.enrichItem(item)
             async let availTask = engine.fetchAvailability(for: item)
             async let castTask = engine.fetchCredits(for: item)
             async let videoTask = engine.fetchVideos(for: item)
             async let recTask = engine.fetchRecommendations(for: item)
             
+            let enriched = await enrichTask
+            self.currentItem = enriched
             self.availability = await availTask
             let c = await castTask
             if !c.isEmpty { self.castMembers = c }
@@ -136,27 +141,27 @@ public struct TVMediaDetailView: View {
     private var heroHeaderSection: some View {
         VStack(alignment: .leading, spacing: 18) {
             // Title Treatment
-            Text(item.title.uppercased())
+            Text(currentItem.title.uppercased())
                 .font(.system(size: 56, weight: .black, design: .rounded))
                 .foregroundColor(.white)
                 .tracking(1.0)
                 .shadow(color: Color.black.opacity(0.8), radius: 6, x: 0, y: 3)
             
-            // Metadata Line (Rating in vibrant green, Year, Genre)
+            // Metadata Line (Rating in vibrant green, Year, Genre, Certification, Runtime)
             HStack(spacing: 14) {
-                if !item.formattedRating.isEmpty {
-                    Text(item.formattedRating)
+                if !currentItem.formattedRating.isEmpty {
+                    Text(currentItem.formattedRating)
                         .font(.system(size: 16, weight: .black))
                         .foregroundColor(Color(red: 0.3, green: 0.9, blue: 0.4))
                 }
                 
-                if !item.yearString.isEmpty {
-                    Text(item.yearString)
+                if !currentItem.yearString.isEmpty {
+                    Text(currentItem.yearString)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white.opacity(0.85))
                 }
                 
-                if let genre = item.genreNames.first {
+                if let genre = currentItem.genreNames.first {
                     Text("•")
                         .foregroundColor(.white.opacity(0.4))
                     Text(genre)
@@ -164,10 +169,24 @@ public struct TVMediaDetailView: View {
                         .foregroundColor(.white.opacity(0.85))
                 }
                 
-                if !item.formattedRuntime.isEmpty {
+                if let cert = currentItem.certification {
                     Text("•")
                         .foregroundColor(.white.opacity(0.4))
-                    Text(item.formattedRuntime)
+                    Text(cert)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .stroke(Color.white.opacity(0.4), lineWidth: 1)
+                        )
+                }
+                
+                if !currentItem.formattedRuntime.isEmpty {
+                    Text("•")
+                        .foregroundColor(.white.opacity(0.4))
+                    Text(currentItem.formattedRuntime)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white.opacity(0.85))
                 }
@@ -176,9 +195,9 @@ public struct TVMediaDetailView: View {
             // Action Buttons & Overview Line (Image 3)
             HStack(alignment: .top, spacing: 28) {
                 HStack(spacing: 14) {
-                    // Primary White Action Button: ▶ Play / ▶ Watch Trailer
+                    // Primary White Action Button: Play / Watch Trailer
                     Button {
-                        if let trailer = (trailers.first ?? item.trailers.first), let url = trailer.youtubeURL {
+                        if let trailer = (trailers.first ?? currentItem.trailers.first), let url = trailer.youtubeURL {
                             openURL(url)
                         }
                     } label: {
@@ -188,16 +207,16 @@ public struct TVMediaDetailView: View {
                     
                     // Secondary Bookmark Button
                     Button {
-                        watchlist.toggleWatchlist(item: item)
+                        watchlist.toggleWatchlist(item: currentItem)
                     } label: {
-                        TVBookmarkButtonLabel(isBookmarked: watchlist.contains(id: item.id))
+                        TVBookmarkButtonLabel(isBookmarked: watchlist.contains(id: currentItem.id))
                     }
                     .buttonStyle(.tvCard)
                 }
                 
                 // Synopsis to the right
-                if !item.overview.isEmpty {
-                    Text(item.overview)
+                if !currentItem.overview.isEmpty {
+                    Text(currentItem.overview)
                         .font(.system(size: 15, weight: .regular))
                         .foregroundColor(.white.opacity(0.82))
                         .lineLimit(3)

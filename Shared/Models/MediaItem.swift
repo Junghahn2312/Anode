@@ -12,9 +12,9 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
     public let voteCount: Int
     public let releaseDateString: String?
     public let genreNames: [String]
-    public let runtimeMinutes: Int?
-    public let tagline: String?
-    public let certification: String?
+    public var runtimeMinutes: Int?
+    public var tagline: String?
+    public var certification: String?
     public var streamingProviders: [StreamingProvider]
     public var trailers: [VideoTrailer]
     public var cast: [CastMember]

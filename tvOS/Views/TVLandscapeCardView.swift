@@ -88,6 +88,11 @@ public struct TVLandscapeCardView: View {
             .animation(.spring(response: 0.40, dampingFraction: 0.86), value: isFocused)
         }
         .frame(width: width)
+        .task(id: isFocused) {
+            guard isFocused else { return }
+            let enriched = await DiscoveryEngine.shared.enrichItem(item)
+            onFocus?(enriched)
+        }
         .onChange(of: isFocused) { _, focused in
             if focused {
                 onFocus?(item)

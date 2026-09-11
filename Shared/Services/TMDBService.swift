@@ -14,6 +14,7 @@ public actor TMDBService: ContentProvider {
     private var seasonsCache: [Int: [TVSeason]] = [:]
     private var episodesCache: [String: [TVEpisode]] = [:]
     private var logoCache: [Int: String] = [:]
+    private var enrichedCache: [Int: MediaItem] = [:]
     
     public func clearMemoryCache() {
         memoryCache.removeAll()
@@ -23,6 +24,7 @@ public actor TMDBService: ContentProvider {
         seasonsCache.removeAll()
         episodesCache.removeAll()
         logoCache.removeAll()
+        enrichedCache.removeAll()
     }
     
     private static let genreMap: [Int: String] = [
@@ -79,9 +81,7 @@ public actor TMDBService: ContentProvider {
             if !candidates.isEmpty {
                 var heroes = Array(candidates.prefix(8))
                 for i in 0..<heroes.count {
-                    if let logo = await fetchLogo(for: heroes[i]) {
-                        heroes[i].logoPath = logo
-                    }
+                    heroes[i] = await enrichMediaItem(heroes[i])
                 }
                 memoryCache["hero_spotlights"] = heroes
                 return heroes
@@ -89,9 +89,7 @@ public actor TMDBService: ContentProvider {
         }
         var fallback = Array((MockData.trendingItems + MockData.cinemaMovies).prefix(6))
         for i in 0..<fallback.count {
-            if let logo = await fetchLogo(for: fallback[i]) {
-                fallback[i].logoPath = logo
-            }
+            fallback[i] = await enrichMediaItem(fallback[i])
         }
         memoryCache["hero_spotlights"] = fallback
         return fallback
@@ -641,6 +639,105 @@ public actor TMDBService: ContentProvider {
         return nil
     }
     
+    public func enrichMediaItem(_ item: MediaItem) async -> MediaItem {
+        if let cached = enrichedCache[item.id] {
+            return cached
+        }
+        
+        if item.runtimeMinutes != nil && item.certification != nil && item.logoPath != nil {
+            enrichedCache[item.id] = item
+            return item
+        }
+        
+        var enriched = item
+        let isTV = (item.mediaType == .tvShow)
+        let append = isTV ? "content_ratings,images" : "release_dates,images"
+        let endpoint = isTV ? "/tv/\(item.id)?append_to_response=\(append)" : "/movie/\(item.id)?append_to_response=\(append)"
+        let separator = endpoint.contains("?") ? "&" : "?"
+        guard let url = URL(string: "\(baseURL)\(endpoint)\(separator)api_key=\(apiKey)") else {
+            enrichedCache[item.id] = item
+            return item
+        }
+        
+        let request = createRequest(for: url)
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            enrichedCache[item.id] = item
+            return item
+        }
+        
+        // Runtime
+        if enriched.runtimeMinutes == nil || enriched.runtimeMinutes == 0 {
+            if let r = json["runtime"] as? Int, r > 0 {
+                enriched.runtimeMinutes = r
+            } else if let epRun = json["episode_run_time"] as? [Int], let first = epRun.first, first > 0 {
+                enriched.runtimeMinutes = first
+            }
+        }
+        
+        // Certification
+        if enriched.certification == nil || enriched.certification?.isEmpty == true {
+            var cert: String? = nil
+            if !isTV {
+                if let relDates = json["release_dates"] as? [String: Any],
+                   let results = relDates["results"] as? [[String: Any]] {
+                    for res in results {
+                        let iso = res["iso_3166_1"] as? String
+                        if iso == "US" || iso == "GB" {
+                            if let dates = res["release_dates"] as? [[String: Any]] {
+                                for d in dates {
+                                    if let c = d["certification"] as? String, !c.isEmpty {
+                                        cert = c
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                        if cert != nil { break }
+                    }
+                }
+            } else {
+                if let contentRatings = json["content_ratings"] as? [String: Any],
+                   let results = contentRatings["results"] as? [[String: Any]] {
+                    for res in results {
+                        let iso = res["iso_3166_1"] as? String
+                        if iso == "US" || iso == "GB" {
+                            if let r = res["rating"] as? String, !r.isEmpty {
+                                cert = r
+                                break
+                            }
+                        }
+                    }
+                }
+            }
+            if let cert {
+                enriched.certification = cert
+            }
+        }
+        
+        // Tagline
+        if enriched.tagline == nil || enriched.tagline?.isEmpty == true {
+            if let tag = json["tagline"] as? String, !tag.isEmpty {
+                enriched.tagline = tag
+            }
+        }
+        
+        // Logo
+        if enriched.logoPath == nil || enriched.logoPath?.isEmpty == true {
+            if let images = json["images"] as? [String: Any],
+               let logos = images["logos"] as? [[String: Any]] {
+                let enLogo = logos.first(where: { ($0["iso_639_1"] as? String) == "en" }) ?? logos.first
+                if let path = enLogo?["file_path"] as? String {
+                    enriched.logoPath = path
+                }
+            }
+        }
+        
+        enrichedCache[item.id] = enriched
+        return enriched
+    }
+    
     // MARK: - Network Request Helper
     
     private func createRequest(for url: URL) -> URLRequest {
@@ -869,8 +966,8 @@ public enum MockData {
             title: "Practical Magic 2",
             mediaType: .movie,
             overview: "The Owens sisters reunite as an unexpected ancestral hex emerges, forcing them to protect their family and delve into ancient enchantments.",
-            posterPath: "/6CoOz2vPzC9441VpZ91gE9R5q2Z.jpg",
-            backdropPath: "/8fno3G1KqLz7m3bT3pP6mX1YkL.jpg",
+            posterPath: "/kKgQzkUCnQmeTPkyIwHly2t6ZFI.jpg",
+            backdropPath: "/kF8ljC7Y4p1UsmKBi2LxelZpqw.jpg",
             voteAverage: 8.0,
             voteCount: 920,
             releaseDateString: "2026-09-11",
@@ -962,8 +1059,8 @@ public enum MockData {
             title: "Pressure",
             mediaType: .movie,
             overview: "During the tense 72 hours leading up to D-Day, Britain's chief meteorological officer must make the most consequential weather forecast in history.",
-            posterPath: "/vJq8F6Yh9B8V7k2X8wL3nM5q1P.jpg",
-            backdropPath: "/p7X6m5kL4w9Q2j7M8n3V5b1K9.jpg",
+            posterPath: "/gFjEggtrejCN79r6SXRjM269OtG.jpg",
+            backdropPath: "/8Tfys3mDZVp4tNoH2ktm06a0Tau.jpg",
             voteAverage: 8.2,
             voteCount: 780,
             releaseDateString: "2026-09-09",
@@ -985,8 +1082,8 @@ public enum MockData {
             title: "Onslaught",
             mediaType: .movie,
             overview: "A mother living in an isolated wilderness homestead must use her clandestine former training to defend her family against a mercenary squad.",
-            posterPath: "/8wX6M9P1L2k3V4b5N6m7Q8w9E.jpg",
-            backdropPath: "/q2W3e4R5t6Y7u8I9o0P1A2s3D.jpg",
+            posterPath: "/cOGtvhc6Ij9KvzM6jZsfQyg0B0O.jpg",
+            backdropPath: "/pmPXXniQlb4EdYY0gVZO90rf54F.jpg",
             voteAverage: 7.8,
             voteCount: 650,
             releaseDateString: "2026-09-04",
@@ -1008,8 +1105,8 @@ public enum MockData {
             title: "By Any Means",
             mediaType: .movie,
             overview: "A gritty crime thriller following an elite investigative task force hunting an underground syndicate that manipulates metropolitan infrastructure.",
-            posterPath: "/1q2W3e4R5t6Y7u8I9o0P1A2s3.jpg",
-            backdropPath: "/3e4R5t6Y7u8I9o0P1A2s3D4f5.jpg",
+            posterPath: "/pu2VxGlpGwffOx292w18b1tv96j.jpg",
+            backdropPath: "/e2QAGrEmbpmZpMymDRkDisJkvg9.jpg",
             voteAverage: 7.7,
             voteCount: 590,
             releaseDateString: "2026-09-04",
@@ -1031,8 +1128,8 @@ public enum MockData {
             title: "Bad Apples",
             mediaType: .movie,
             overview: "A devoted primary school teacher struggles with an unruly, disruptive ten-year-old student until a bizarre series of misadventures spirals out of control.",
-            posterPath: "/2w3E4r5T6y7U8i9O0p1A2s3D4.jpg",
-            backdropPath: "/4r5T6y7U8i9O0p1A2s3D4f5G6.jpg",
+            posterPath: "/60BxAjKM20ABTSYnWZcJ8ExiVNL.jpg",
+            backdropPath: "/A5sGEzVMjvbgh5ZniaHBXAxppKQ.jpg",
             voteAverage: 8.0,
             voteCount: 710,
             releaseDateString: "2026-09-05",
@@ -1054,8 +1151,8 @@ public enum MockData {
             title: "Runner",
             mediaType: .movie,
             overview: "A high-stakes courier in a fortified metropolis is tasked with transporting an organ transplant across enemy territory under an absolute deadline.",
-            posterPath: "/5t6Y7u8I9o0P1A2s3D4f5G6h7.jpg",
-            backdropPath: "/6y7U8i9O0p1A2s3D4f5G6h7J8.jpg",
+            posterPath: "/16oqRrWVzQm6qdGfBxvziZ2UiMT.jpg",
+            backdropPath: "/tK3QdOOrX4qEkmSlvrmc8cK7iOU.jpg",
             voteAverage: 7.9,
             voteCount: 680,
             releaseDateString: "2026-09-11",
@@ -1123,8 +1220,8 @@ public enum MockData {
             title: "The Uprising",
             mediaType: .movie,
             overview: "When a totalitarian regime disables planetary communications, a rebellion orchestrates a tactical resistance from the underground catacombs.",
-            posterPath: "/7u8I9o0P1A2s3D4f5G6h7J8k9.jpg",
-            backdropPath: "/8i9O0p1A2s3D4f5G6h7J8k9L0.jpg",
+            posterPath: "/7TUl15TOsIvndKlgMWTtLgtEzZP.jpg",
+            backdropPath: "/4YyuSadBoc5k6krj0REcYH15DXG.jpg",
             voteAverage: 8.1,
             voteCount: 750,
             releaseDateString: "2026-09-11",
@@ -1146,8 +1243,8 @@ public enum MockData {
             title: "The Fix",
             mediaType: .movie,
             overview: "A disgraced former surgeon must navigate the treacherous criminal underworld after agreeing to perform an illicit procedure on a cartel boss.",
-            posterPath: "/9o0P1A2s3D4f5G6h7J8k9L0z1.jpg",
-            backdropPath: "/0p1A2s3D4f5G6h7J8k9L0z1X2.jpg",
+            posterPath: "/yopXjun3ICFfJci2ukcEzceZjUs.jpg",
+            backdropPath: "/dJTWIecL2vxsCRl5G0lRhPsfrhc.jpg",
             voteAverage: 7.6,
             voteCount: 520,
             releaseDateString: "2026-09-11",
@@ -1195,8 +1292,8 @@ public enum MockData {
             title: "The Runner",
             mediaType: .movie,
             overview: "A high-stakes psychological thriller following a prominent attorney whose daughter is held hostage by a syndicate demanding the retrieval of sensitive financial data.",
-            posterPath: "/5t6Y7u8I9o0P1A2s3D4f5G6h7.jpg",
-            backdropPath: "/6y7U8i9O0p1A2s3D4f5G6h7J8.jpg",
+            posterPath: "/16oqRrWVzQm6qdGfBxvziZ2UiMT.jpg",
+            backdropPath: "/tK3QdOOrX4qEkmSlvrmc8cK7iOU.jpg",
             voteAverage: 7.9,
             voteCount: 1540,
             releaseDateString: "2026-09-02",
@@ -1218,8 +1315,8 @@ public enum MockData {
             title: "Mayday",
             mediaType: .movie,
             overview: "A charismatic commercial airline pilot and a stoic air marshal must work together when their transatlantic flight is intercepted over the Arctic Circle.",
-            posterPath: "/1q2W3e4R5t6Y7u8I9o0P1A2s3.jpg",
-            backdropPath: "/3e4R5t6Y7u8I9o0P1A2s3D4f5.jpg",
+            posterPath: "/pu2VxGlpGwffOx292w18b1tv96j.jpg",
+            backdropPath: "/e2QAGrEmbpmZpMymDRkDisJkvg9.jpg",
             voteAverage: 8.1,
             voteCount: 1820,
             releaseDateString: "2026-09-04",
@@ -1241,8 +1338,8 @@ public enum MockData {
             title: "Why Did I Get Married Again?",
             mediaType: .movie,
             overview: "Eight married friends reunite for an annual retreat in the Bahamas, only to confront surprising secrets, shifting loyalties, and unexpected life turns.",
-            posterPath: "/2w3E4r5T6y7U8i9O0p1A2s3D4.jpg",
-            backdropPath: "/4r5T6y7U8i9O0p1A2s3D4f5G6.jpg",
+            posterPath: "/60BxAjKM20ABTSYnWZcJ8ExiVNL.jpg",
+            backdropPath: "/A5sGEzVMjvbgh5ZniaHBXAxppKQ.jpg",
             voteAverage: 7.5,
             voteCount: 980,
             releaseDateString: "2026-09-09",
@@ -1264,8 +1361,8 @@ public enum MockData {
             title: "Project Hail Mary",
             mediaType: .movie,
             overview: "Lone astronaut Ryland Grace wakes up aboard a spacecraft with amnesia, slowly discovering he is humanity's last hope to solve an extinction-level solar crisis.",
-            posterPath: "/vJq8F6Yh9B8V7k2X8wL3nM5q1P.jpg",
-            backdropPath: "/p7X6m5kL4w9Q2j7M8n3V5b1K9.jpg",
+            posterPath: "/gFjEggtrejCN79r6SXRjM269OtG.jpg",
+            backdropPath: "/8Tfys3mDZVp4tNoH2ktm06a0Tau.jpg",
             voteAverage: 8.7,
             voteCount: 5120,
             releaseDateString: "2026-07-18",
@@ -1287,8 +1384,8 @@ public enum MockData {
             title: "Enola Holmes 3",
             mediaType: .movie,
             overview: "Enola Holmes uncovers a conspiracy reaching into the heart of London's royal societies while collaborating with her brother Sherlock on a baffling case.",
-            posterPath: "/6CoOz2vPzC9441VpZ91gE9R5q2Z.jpg",
-            backdropPath: "/8fno3G1KqLz7m3bT3pP6mX1YkL.jpg",
+            posterPath: "/kKgQzkUCnQmeTPkyIwHly2t6ZFI.jpg",
+            backdropPath: "/kF8ljC7Y4p1UsmKBi2LxelZpqw.jpg",
             voteAverage: 7.9,
             voteCount: 3200,
             releaseDateString: "2026-07-01",
@@ -1310,8 +1407,8 @@ public enum MockData {
             title: "Ready or Not 2: Here I Come",
             mediaType: .movie,
             overview: "Grace thought the Le Domas ritual was behind her until an international branch of high-society elites initiates a new deadly game of survival.",
-            posterPath: "/8wX6M9P1L2k3V4b5N6m7Q8w9E.jpg",
-            backdropPath: "/q2W3e4R5t6Y7u8I9o0P1A2s3D.jpg",
+            posterPath: "/cOGtvhc6Ij9KvzM6jZsfQyg0B0O.jpg",
+            backdropPath: "/pmPXXniQlb4EdYY0gVZO90rf54F.jpg",
             voteAverage: 7.8,
             voteCount: 2450,
             releaseDateString: "2026-07-02",
@@ -1333,8 +1430,8 @@ public enum MockData {
             title: "Swapped",
             mediaType: .movie,
             overview: "In a futuristic society where minds can be temporarily swapped for occupational training, two polar-opposite rivals get trapped in each other's lives.",
-            posterPath: "/7u8I9o0P1A2s3D4f5G6h7J8k9.jpg",
-            backdropPath: "/8i9O0p1A2s3D4f5G6h7J8k9L0.jpg",
+            posterPath: "/7TUl15TOsIvndKlgMWTtLgtEzZP.jpg",
+            backdropPath: "/4YyuSadBoc5k6krj0REcYH15DXG.jpg",
             voteAverage: 7.7,
             voteCount: 1980,
             releaseDateString: "2026-06-25",
@@ -1356,8 +1453,8 @@ public enum MockData {
             title: "72 Hours in Miami",
             mediaType: .movie,
             overview: "A chaotic weekend road trip in Miami turns into an adrenaline-fueled dash across South Beach when two brothers get mixed up with stolen artwork.",
-            posterPath: "/9o0P1A2s3D4f5G6h7J8k9L0z1.jpg",
-            backdropPath: "/0p1A2s3D4f5G6h7J8k9L0z1X2.jpg",
+            posterPath: "/yopXjun3ICFfJci2ukcEzceZjUs.jpg",
+            backdropPath: "/dJTWIecL2vxsCRl5G0lRhPsfrhc.jpg",
             voteAverage: 7.4,
             voteCount: 1620,
             releaseDateString: "2026-08-14",
@@ -1474,7 +1571,7 @@ public enum MockData {
                 mediaType: .tvShow,
                 overview: "A grifter drawn into a world of wealth and privilege after taking a unique job in Italy finds himself entangled in a complex web of deception, fraud, and murder.",
                 posterPath: "/zU0htwkhNvBQdVSIKB9s6hgVeFK.jpg",
-                backdropPath: "/3s2j9u82L4x6Z9V5z0e7Q1r3w.jpg",
+                backdropPath: "/erpjqVdJLpDQJjsbxaSJmMwvcqd.jpg",
                 voteAverage: 8.1,
                 voteCount: 1420,
                 releaseDateString: "2024-04-04",
@@ -1490,7 +1587,7 @@ public enum MockData {
                 mediaType: .tvShow,
                 overview: "When a struggling comedian shows one kind gesture to a vulnerable woman, an obsessive stalking nightmare erupts that forces both to confront deeply buried trauma.",
                 posterPath: "/pylL2yER1E23rq60imU9GVYusxu.jpg",
-                backdropPath: "/z121mtTxg5v9whDjy9spvBjeTeO.jpg",
+                backdropPath: "/Y5P4Q3q8nrruZ9aD3wXeJS2Plg.jpg",
                 voteAverage: 7.9,
                 voteCount: 2890,
                 releaseDateString: "2024-04-11",
@@ -1521,8 +1618,8 @@ public enum MockData {
                 title: "The Killer",
                 mediaType: .movie,
                 overview: "After a fateful near-miss, an assassin battles his employers, and himself, on an international manhunt he insists isn't personal.",
-                posterPath: "/e7J69KVLueQfliVvKvyEZWjhAw.jpg",
-                backdropPath: "/bSqpOsrhQIenDoGq6w893Y8n8lr.jpg",
+                posterPath: "/ipkcgvN7h3yZnbYowthloHLKsf4.jpg",
+                backdropPath: "/f9Atch0jlzcOT9RbF8UccqfNOpd.jpg",
                 voteAverage: 7.3,
                 voteCount: 2900,
                 releaseDateString: "2023-11-10",
@@ -1537,8 +1634,8 @@ public enum MockData {
                 title: "Society of the Snow",
                 mediaType: .movie,
                 overview: "In 1972, a Uruguayan rugby team's flight crashes onto a glacier in the heart of the Andes, where survivors must resort to extreme measures to stay alive.",
-                posterPath: "/2e853FDVSIso600RqCuOp003Q9y.jpg",
-                backdropPath: "/tLscOARAybtDUBIrIKVoF3BTSRk.jpg",
+                posterPath: "/2e853FDVSIso600RqAMunPxiZjq.jpg",
+                backdropPath: "/md848EEPm3dHZOqwGxxTVwH2vu5.jpg",
                 voteAverage: 8.0,
                 voteCount: 3100,
                 releaseDateString: "2023-12-15",
@@ -1589,7 +1686,7 @@ public enum MockData {
                 title: "Ted Lasso",
                 mediaType: .tvShow,
                 overview: "An American college football coach is hired to manage a struggling British soccer team, attempting to win over skeptical players and town with optimism.",
-                posterPath: "/5fhZdwPmsDVJijDk879vdvZwugU.jpg",
+                posterPath: "/uRHsiw1wLxPHFXkkv4Ix1s0O6f4.jpg",
                 backdropPath: "/ixgFmf1X59PUZam2qbAfskx2gQr.jpg",
                 voteAverage: 8.5,
                 voteCount: 4100,
@@ -1605,7 +1702,7 @@ public enum MockData {
                 title: "CODA",
                 mediaType: .movie,
                 overview: "As a CODA (Child of Deaf Adults), Ruby is the only hearing person in her deaf family. When the family's fishing business is threatened, Ruby finds herself torn between pursuing her love of music and her fear of abandoning her parents.",
-                posterPath: "/BzVjmm8SysUbh4niICj2vAncDq.jpg",
+                posterPath: "/BzVjmm8l23rPsijLiNLUzuQtyd.jpg",
                 backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
                 voteAverage: 8.1,
                 voteCount: 2200,
@@ -1621,7 +1718,7 @@ public enum MockData {
                 title: "Silo",
                 mediaType: .tvShow,
                 overview: "In a ruined and toxic future, thousands live in a giant underground silo. When its sheriff breaks a cardinal rule, an engineer uncovers shocking truths about their world.",
-                posterPath: "/1N1s8ZzW3lU2Z13x8lq1q1p.jpg",
+                posterPath: "/gMYZZvnkVNTqSVnVCphWbPXwWwb.jpg",
                 backdropPath: "/1Qf5ClZJpmEPJgBqBB03UvCVXzO.jpg",
                 voteAverage: 8.3,
                 voteCount: 2100,
@@ -1640,8 +1737,8 @@ public enum MockData {
                 title: "The Mandalorian",
                 mediaType: .tvShow,
                 overview: "After the fall of the Galactic Empire, a lone gunfighter makes his way through the outer reaches of the lawless galaxy.",
-                posterPath: "/eU1i6eHXlzMOlEq0ku1R07YmvEi.jpg",
-                backdropPath: "/o7qi2v4uWQ8scZ1YW9Kbzy0vlAc.jpg",
+                posterPath: "/sWgBv7LV2PRoQgkxwlibdGXKz1S.jpg",
+                backdropPath: "/9zcbqSxdsRMZWHYtyCd1nXPr2xq.jpg",
                 voteAverage: 8.4,
                 voteCount: 9800,
                 releaseDateString: "2019-11-12",
@@ -1656,8 +1753,8 @@ public enum MockData {
                 title: "Loki",
                 mediaType: .tvShow,
                 overview: "After stealing the Tesseract during the events of Avengers: Endgame, an alternate version of Loki is brought to the mysterious Time Variance Authority.",
-                posterPath: "/voHUmltYmKyle41993vt2Ggd1CP.jpg",
-                backdropPath: "/a39c9U12kE8f80B0jHn5uE7rQ8L.jpg",
+                posterPath: "/kEl2t3OhXc3Zb9FBh1AuYzRTgZp.jpg",
+                backdropPath: "/q3jHCb4dMfYF6ojikKuHd6LscxC.jpg",
                 voteAverage: 8.2,
                 voteCount: 8200,
                 releaseDateString: "2021-06-09",
@@ -1673,7 +1770,7 @@ public enum MockData {
                 mediaType: .movie,
                 overview: "Brought back to life by an unorthodox scientist, a young woman runs off with a debauched lawyer on a whirlwind adventure across continents.",
                 posterPath: "/kCGlIMHnOm8JPXq3rXM6c5wMxcT.jpg",
-                backdropPath: "/bQS43HSLZzMjZkcHJz4fUg7f6wm.jpg",
+                backdropPath: "/zh6IdheEYinU4TPtorWsjx6qPQE.jpg",
                 voteAverage: 7.8,
                 voteCount: 4200,
                 releaseDateString: "2023-12-08",
@@ -1688,8 +1785,8 @@ public enum MockData {
                 title: "The Bear",
                 mediaType: .tvShow,
                 overview: "A young fine-dining chef comes home to Chicago to run his family Italian beef sandwich shop after a heartbreaking death in his family.",
-                posterPath: "/sHFl7mhn1g5i7P2tL6fQW0a3mUo.jpg",
-                backdropPath: "/2meX1nMdScFOoV4370rqHWFDxZ2.jpg",
+                posterPath: "/eKfVzzEazSIjJMrw9ADa2x8ksLz.jpg",
+                backdropPath: "/nQyQ4c8DUvXra1LDWnNfV9QJluD.jpg",
                 voteAverage: 8.6,
                 voteCount: 3900,
                 releaseDateString: "2022-06-23",
@@ -1706,8 +1803,8 @@ public enum MockData {
                 title: "The Boys",
                 mediaType: .tvShow,
                 overview: "A fun and irreverent take on what happens when superheroes abuse their superpowers rather than use them for good.",
-                posterPath: "/7Ns6tO3aYjppI5bFhyYZurvBTup.jpg",
-                backdropPath: "/2meX1nMdScFOoV4370rqHWFDxZ2.jpg",
+                posterPath: "/in1R2dDc421JxsoRWaIIAqVI2KE.jpg",
+                backdropPath: "/nQyQ4c8DUvXra1LDWnNfV9QJluD.jpg",
                 voteAverage: 8.5,
                 voteCount: 9400,
                 releaseDateString: "2019-07-26",
@@ -1722,8 +1819,8 @@ public enum MockData {
                 title: "Fallout",
                 mediaType: .tvShow,
                 overview: "In a future, post-apocalyptic Los Angeles brought about by nuclear decimation, citizens must live in underground bunkers to protect themselves from radiation, mutants and bandits.",
-                posterPath: "/AnsSKR9LuK0T9bA0PFi3QQMlZw.jpg",
-                backdropPath: "/3P52oz9HPcyfq5GwNuZYUHVoYes.jpg",
+                posterPath: "/c15BtJxCXMrISLVmysdsnZUPQft.jpg",
+                backdropPath: "/coaPCIqQBPUZsOnJcWZxhaORcDT.jpg",
                 voteAverage: 8.4,
                 voteCount: 3800,
                 releaseDateString: "2024-04-10",
@@ -1738,7 +1835,7 @@ public enum MockData {
                 title: "The Idea of You",
                 mediaType: .movie,
                 overview: "Solène Marchand, a 40-year-old single mother, begins an unexpected romance with 24-year-old Hayes Campbell, the lead singer of August Moon, the hottest boy band on the planet.",
-                posterPath: "/z121mtTxg5v9whDjy9spvBjeTeO.jpg",
+                posterPath: "/Y5P4Q3q8nrruZ9aD3wXeJS2Plg.jpg",
                 backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
                 voteAverage: 7.4,
                 voteCount: 1600,
@@ -1754,8 +1851,8 @@ public enum MockData {
                 title: "Road House",
                 mediaType: .movie,
                 overview: "Ex-UFC fighter Dalton takes a job as a bouncer at a Florida Keys roadhouse, only to discover that this paradise is not all it seems.",
-                posterPath: "/bXi6IQiCuHDvBh9YLG5dsXdPGio.jpg",
-                backdropPath: "/oe7mWXYY8MAqJvOKIPdaACvd3o5.jpg",
+                posterPath: "/fDEdtS4P0gJsxHDIt8dG8TR5dx1.jpg",
+                backdropPath: "/clFFCapyGpE7KD4Jsu5pUbFBZF4.jpg",
                 voteAverage: 7.0,
                 voteCount: 2200,
                 releaseDateString: "2024-03-21",
@@ -1770,8 +1867,8 @@ public enum MockData {
                 title: "Reacher",
                 mediaType: .tvShow,
                 overview: "Jack Reacher, a veteran military police investigator, enters civilian life travelling from town to town across the United States.",
-                posterPath: "/j73ytuz4015fGq2W1nK1E7k0fT5.jpg",
-                backdropPath: "/gmecR22SuKqB8i4O1GqL0Kz9w.jpg",
+                posterPath: "/f1VCQIG2iCyOookdgOzwtUpwWC0.jpg",
+                backdropPath: "/pF0qkRsrHkdYadPWY9AMeFZfcwk.jpg",
                 voteAverage: 8.1,
                 voteCount: 2400,
                 releaseDateString: "2022-02-03",
@@ -1793,7 +1890,7 @@ public enum MockData {
                 mediaType: .tvShow,
                 overview: "The Targaryen dynasty is at the absolute apex of its power, with more than 15 dragons under their yoke. Most empires crumble from such heights.",
                 posterPath: "/1X4h40fcB4WWUmIBK0auT4zRBAV.jpg",
-                backdropPath: "/etjA2mG4V5zV6mO1O5wP4gQ3X9.jpg",
+                backdropPath: "/577eXC8wFQT0eUrJcgznSiFPRmk.jpg",
                 voteAverage: 8.4,
                 voteCount: 4700,
                 releaseDateString: "2022-08-21",
@@ -1826,8 +1923,8 @@ public enum MockData {
                 title: "Yellowstone",
                 mediaType: .tvShow,
                 overview: "Follow the Dutton family, led by John Dutton, who controls the largest contiguous ranch in the United States, under constant attack by those it borders.",
-                posterPath: "/peNC0eyc3TQJa6x4Td1IlRVUIpq.jpg",
-                backdropPath: "/1G6mP6uL0U4wQ5L7R3n2y.jpg",
+                posterPath: "/peNC0eyc3TQJa6x4TdKcBPNP4t0.jpg",
+                backdropPath: "/2NhBFUTg5KVBmGwafxtLwVdsqrr.jpg",
                 voteAverage: 8.2,
                 voteCount: 2600,
                 releaseDateString: "2018-06-20",
@@ -1843,7 +1940,7 @@ public enum MockData {
                 mediaType: .movie,
                 overview: "After more than thirty years of service as one of the Navy’s top aviators, Pete Mitchell is where he belongs, pushing the envelope as a courageous test pilot.",
                 posterPath: "/62HCnUTziyWcpDaBO2i1DX17ljH.jpg",
-                backdropPath: "/odJ4hx6g6vBt4lBWKFD1tGLilAc.jpg",
+                backdropPath: "/AaV1YIdWKnjAIAOe8UUKBFm327v.jpg",
                 voteAverage: 8.3,
                 voteCount: 8700,
                 releaseDateString: "2022-05-27",
@@ -1858,8 +1955,8 @@ public enum MockData {
                 title: "Tulsa King",
                 mediaType: .tvShow,
                 overview: "Just after he is released from prison after 25 years, New York mafia capo Dwight Manfredi is unceremoniously exiled by his boss to set up shop in Tulsa, Oklahoma.",
-                posterPath: "/fwTv393FvDXlJp8zP9C5Q3K.jpg",
-                backdropPath: "/7wP2gH0R9z8Y5vT1mK.jpg",
+                posterPath: "/rOYLWCdAifpUtPlTf1WHxyaxeMt.jpg",
+                backdropPath: "/mNHRGO1gFpR2CYZdANe72kcKq7G.jpg",
                 voteAverage: 8.0,
                 voteCount: 1400,
                 releaseDateString: "2022-11-13",
@@ -1876,7 +1973,7 @@ public enum MockData {
                 title: "Aftersun",
                 mediaType: .movie,
                 overview: "Sophie reflects on the shared joy and private melancholy of a holiday she took with her father twenty years earlier as memories fill the gaps between footage.",
-                posterPath: "/4pukqLz0K4v0V0w7P9.jpg",
+                posterPath: "/evKz85EKouVbIr51zy5fOtpNRPg.jpg",
                 backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
                 voteAverage: 7.8,
                 voteCount: 1200,
@@ -1893,7 +1990,7 @@ public enum MockData {
                 mediaType: .movie,
                 overview: "Nora and Hae Sung, two deeply connected childhood friends, are wrested apart after Nora's family emigrates from South Korea. Decades later, they are reunited.",
                 posterPath: "/k3waqVXSnvCZWfJYNtdamTgTtTA.jpg",
-                backdropPath: "/2meX1nMdScFOoV4370rqHWFDxZ2.jpg",
+                backdropPath: "/nQyQ4c8DUvXra1LDWnNfV9QJluD.jpg",
                 voteAverage: 7.9,
                 voteCount: 1900,
                 releaseDateString: "2023-06-02",
@@ -1910,8 +2007,8 @@ public enum MockData {
                 title: "Demon Slayer: Kimetsu no Yaiba",
                 mediaType: .tvShow,
                 overview: "It is the Taisho Period in Japan. Tanjiro, a kindhearted boy who sells charcoal for a living, finds his family slaughtered by a demon.",
-                posterPath: "/xUfRZu2mi8jH69hmV1cr5F1LGDl.jpg",
-                backdropPath: "/nTvM4mhqZlHIUQRLxqPvLoooiWn.jpg",
+                posterPath: "/xUfRZu2mi8jH6SzQEJGP6tjBuYj.jpg",
+                backdropPath: "/3GQKYh6Trm8pxd2AypovoYQf4Ay.jpg",
                 voteAverage: 8.7,
                 voteCount: 6100,
                 releaseDateString: "2019-04-06",
@@ -1926,8 +2023,8 @@ public enum MockData {
                 title: "Jujutsu Kaisen",
                 mediaType: .tvShow,
                 overview: "Yuji Itadori is a boy with tremendous physical strength, though he lives a completely ordinary high school life. One day, to save a classmate, he eats the finger of Ryomen Sukuna.",
-                posterPath: "/hFWScjl6vXnkWbYw0uQp8J9F4L.jpg",
-                backdropPath: "/2meX1nMdScFOoV4370rqHWFDxZ2.jpg",
+                posterPath: "/6qQzMJG27XOJsyAEEIisoJB45j2.jpg",
+                backdropPath: "/nQyQ4c8DUvXra1LDWnNfV9QJluD.jpg",
                 voteAverage: 8.6,
                 voteCount: 3800,
                 releaseDateString: "2020-10-03",
@@ -1944,7 +2041,7 @@ public enum MockData {
                 title: "The Regime",
                 mediaType: .tvShow,
                 overview: "Follow the story of a modern European regime as it begins to unravel over the course of a year within the palace walls.",
-                posterPath: "/z121mtTxg5v9whDjy9spvBjeTeO.jpg",
+                posterPath: "/Y5P4Q3q8nrruZ9aD3wXeJS2Plg.jpg",
                 backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
                 voteAverage: 7.2,
                 voteCount: 420,
@@ -1960,7 +2057,7 @@ public enum MockData {
                 title: "Wonka",
                 mediaType: .movie,
                 overview: "Willy Wonka – chock-full of ideas and determined to change the world one delectable bite at a time – is determined to prove that the best things in life begin with a dream.",
-                posterPath: "/qhb1qYHeY97Ol5zXO0Z0bQW9G.jpg",
+                posterPath: "/qhb1qOilapbapxWQn9jtRCMwXJF.jpg",
                 backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
                 voteAverage: 7.2,
                 voteCount: 3100,
@@ -1979,7 +2076,7 @@ public enum MockData {
                 mediaType: .tvShow,
                 overview: "A gangster family epic set in 1919 Birmingham, England and centered on a gang who sew razor blades in the peaks of their caps, and their fierce boss Tommy Shelby.",
                 posterPath: "/vUUqzWa2LnHIVqkaKVlVGkVcZIW.jpg",
-                backdropPath: "/w7Wp4z9Q0V3y1v.jpg",
+                backdropPath: "/dzq83RHwQcnP6WGJ6YkenIqeaa5.jpg",
                 voteAverage: 8.6,
                 voteCount: 9500,
                 releaseDateString: "2013-09-12",
@@ -1994,8 +2091,8 @@ public enum MockData {
                 title: "Happy Valley",
                 mediaType: .tvShow,
                 overview: "Catherine Cawood is a strong-willed police sergeant in West Yorkshire, still coming to terms with the suicide of her teenage daughter eight years earlier.",
-                posterPath: "/7P4wQ9z1vK8y.jpg",
-                backdropPath: "/2meX1nMdScFOoV4370rqHWFDxZ2.jpg",
+                posterPath: "/xZK5iQSrn2mouZEk2PwyLPCwa4u.jpg",
+                backdropPath: "/nQyQ4c8DUvXra1LDWnNfV9QJluD.jpg",
                 voteAverage: 8.4,
                 voteCount: 1100,
                 releaseDateString: "2014-04-29",
@@ -2012,7 +2109,7 @@ public enum MockData {
                 title: "Broadchurch",
                 mediaType: .tvShow,
                 overview: "The murder of a young boy in a small coastal town brings a media frenzy, which threatens to tear the community apart.",
-                posterPath: "/1G6mP6uL0U4wQ5L7R3n2y.jpg",
+                posterPath: "/2NhBFUTg5KVBmGwafxtLwVdsqrr.jpg",
                 backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
                 voteAverage: 8.2,
                 voteCount: 1600,
@@ -2028,7 +2125,7 @@ public enum MockData {
                 title: "The Duke",
                 mediaType: .movie,
                 overview: "In 1961, Kempton Bunton, a 60-year-old taxi driver, stole Goya's portrait of the Duke of Wellington from the National Gallery in London.",
-                posterPath: "/z121mtTxg5v9whDjy9spvBjeTeO.jpg",
+                posterPath: "/Y5P4Q3q8nrruZ9aD3wXeJS2Plg.jpg",
                 backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
                 voteAverage: 7.2,
                 voteCount: 450,
@@ -2046,8 +2143,8 @@ public enum MockData {
                 title: "Derry Girls",
                 mediaType: .tvShow,
                 overview: "Amidst the political conflict of Northern Ireland in the 1990s, five high school friends navigate the universal challenges of being a teenager.",
-                posterPath: "/4pukqLz0K4v0V0w7P9.jpg",
-                backdropPath: "/2meX1nMdScFOoV4370rqHWFDxZ2.jpg",
+                posterPath: "/evKz85EKouVbIr51zy5fOtpNRPg.jpg",
+                backdropPath: "/nQyQ4c8DUvXra1LDWnNfV9QJluD.jpg",
                 voteAverage: 8.3,
                 voteCount: 1200,
                 releaseDateString: "2018-01-04",
@@ -2062,7 +2159,7 @@ public enum MockData {
                 title: "It's A Sin",
                 mediaType: .tvShow,
                 overview: "A chronicle of four friends during a decade in which everything changed, including the rise of AIDS in 1980s London.",
-                posterPath: "/7P4wQ9z1vK8y.jpg",
+                posterPath: "/xZK5iQSrn2mouZEk2PwyLPCwa4u.jpg",
                 backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
                 voteAverage: 8.5,
                 voteCount: 950,
@@ -2080,7 +2177,7 @@ public enum MockData {
                 title: "Gangs of London",
                 mediaType: .tvShow,
                 overview: "When the head of a criminal organization is assassinated, the sudden power vacuum creates a battle between rival gangs on the streets of London.",
-                posterPath: "/1G6mP6uL0U4wQ5L7R3n2y.jpg",
+                posterPath: "/2NhBFUTg5KVBmGwafxtLwVdsqrr.jpg",
                 backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
                 voteAverage: 7.9,
                 voteCount: 880,
@@ -2097,7 +2194,7 @@ public enum MockData {
                 mediaType: .movie,
                 overview: "One man's brutal campaign for vengeance takes on national stakes after he is revealed to be a former operative of a powerful and clandestine organization.",
                 posterPath: "/A7EByudX0eOzlkQ2FIbogzyazm2.jpg",
-                backdropPath: "/4woSOUD0equCwXLwh2jiJD2q26S.jpg",
+                backdropPath: "/f0ACHVpV707zqu4etZrXnWNdSgL.jpg",
                 voteAverage: 7.4,
                 voteCount: 2600,
                 releaseDateString: "2024-01-12",
@@ -2124,7 +2221,7 @@ public enum MockData {
             mediaType: .movie,
             overview: "Spanning the years 1945 to 1955, a chronicle of the fictional Italian-American Corleone crime family. When organized crime family patriarch, Vito Corleone, barely survives an attempt on his life, his youngest son, Michael, steps in to take care of the would-be killers.",
             posterPath: "/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
-            backdropPath: "/tmU7GeKVybMWF9YdfZveL75z5Un.jpg",
+            backdropPath: "/tSPT36ZKlP2WVHJLM4cQPLSzv3b.jpg",
             voteAverage: 9.2,
             voteCount: 19800,
             releaseDateString: "1972-03-14",
@@ -2156,7 +2253,7 @@ public enum MockData {
             mediaType: .movie,
             overview: "A young girl, Chihiro, becomes trapped in a strange new world of spirits. When her parents undergo a mysterious transformation, she must call upon the courage she never knew she had to free her family.",
             posterPath: "/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg",
-            backdropPath: "/Ab8mkHmkYADjU7wQiOkia99GQI.jpg",
+            backdropPath: "/dyJvKsNs2KP8qQnAXbRwDjblViy.jpg",
             voteAverage: 8.9,
             voteCount: 16200,
             releaseDateString: "2001-07-20",
@@ -2246,7 +2343,7 @@ public enum MockData {
             title: "Spider-Man: Beyond the Spider-Verse",
             mediaType: .movie,
             overview: "Miles Morales travels across parallel universes to save his father and rectify the fate of the Spider-Verse against overwhelming multiversal odds.",
-            posterPath: "/v2bbf5xVv43V7nS7U1G73Pq2B1f.jpg",
+            posterPath: "/9KAe39xqyZnv9J4W3DRGdQqX82h.jpg",
             backdropPath: "/4HodYYKEIsGOdinkGi2Ucz6X9i0.jpg",
             voteAverage: 8.8,
             voteCount: 2400,
@@ -2262,7 +2359,7 @@ public enum MockData {
                 CastMember(id: 54693, name: "Hailee Steinfeld", character: "Gwen Stacy (voice)"),
                 CastMember(id: 1100, name: "Oscar Isaac", character: "Miguel O'Hara (voice)")
             ],
-            logoPath: "/w2sV9d3Qx1pG9X1qW2P1A2bC3d.png",
+            logoPath: "/cmE0j3mQQe6xrzLryxGF9rF2KC8.png",
             inCinemas: false
         ),
         MediaItem(
@@ -2270,8 +2367,8 @@ public enum MockData {
             title: "Avengers: Secret Wars",
             mediaType: .movie,
             overview: "The grand conclusion to the Multiverse Saga brings the heroes of every reality together for the ultimate battle to preserve existence.",
-            posterPath: "/ng3cLwHkI4Z9RkC5V9W1aX1bY2.jpg",
-            backdropPath: "/bZqD1qX1m1fK1N1l1p1w1r1t1y.jpg",
+            posterPath: "/f0YBuh4hyiAheXhh4JnJWoKi9g5.jpg",
+            backdropPath: "/rytc6Lf4447C0CDncwFa4gxe0vY.jpg",
             voteAverage: 8.7,
             voteCount: 1950,
             releaseDateString: "2027-05-07",
@@ -2293,8 +2390,8 @@ public enum MockData {
             title: "The Hunger Games: Sunrise on the Reaping",
             mediaType: .movie,
             overview: "On the morning of the reaping for the 50th Annual Hunger Games, also known as the Second Quarter Quell, young Haymitch Abernathy is thrust into the deadly arena.",
-            posterPath: "/sv1x9yswnAOqLhgq0a92x6vE.jpg",
-            backdropPath: "/75a9q11L7BvN4pZ9xR2Q5w8m3t.jpg",
+            posterPath: "/mBaXZ95R2OxueZhvQbcEWy2DqyO.jpg",
+            backdropPath: "/aqFZcr2dxSZ2UwWSo1WC6C0rwDf.jpg",
             voteAverage: 8.3,
             voteCount: 750,
             releaseDateString: "2026-11-20",
@@ -2308,7 +2405,7 @@ public enum MockData {
                 CastMember(id: 34567, name: "Tom Blyth", character: "Young Haymitch"),
                 CastMember(id: 19492, name: "Jason Schwartzman", character: "Lucky Flickerman")
             ],
-            logoPath: "/hgSunriseReapingLogo.png",
+            logoPath: "/s10CeAphteFqLxb2h4g5FvpiQkU.png",
             inCinemas: false
         ),
         MediaItem(
@@ -2316,8 +2413,8 @@ public enum MockData {
             title: "Frozen III",
             mediaType: .movie,
             overview: "Elsa and Anna embark on their most daunting journey yet beyond the enchanted forest to unravel the ancient origins of Arendelle's elemental magic.",
-            posterPath: "/mQ4Q3xL6G7bW0V4kL8z9R2x.jpg",
-            backdropPath: "/fz11x9W8vB6n3m2L1pQ4k8t.jpg",
+            posterPath: "/qzVuYNqRX7rBBuUdobS2SWEni5R.jpg",
+            backdropPath: "/AsoITR3tq9PXk0j0VJyN7dkFkp9.jpg",
             voteAverage: 8.4,
             voteCount: 1200,
             releaseDateString: "2027-11-24",
@@ -2332,7 +2429,7 @@ public enum MockData {
                 CastMember(id: 8450, name: "Kristen Bell", character: "Anna (voice)"),
                 CastMember(id: 8452, name: "Josh Gad", character: "Olaf (voice)")
             ],
-            logoPath: "/frozen3TitleLogo2027.png",
+            logoPath: "/irfwoDMSoLUsY4KtnlzlpatCTxY.png",
             inCinemas: false
         ),
         MediaItem(
@@ -2340,8 +2437,8 @@ public enum MockData {
             title: "Violent Night 2",
             mediaType: .movie,
             overview: "Santa Claus returns to defend another high-stakes holiday hostage crisis, bringing bone-crunching festive justice to a ruthless syndicate.",
-            posterPath: "/vn2PosterArt92xK10p.jpg",
-            backdropPath: "/vn2BackdropWide83j.jpg",
+            posterPath: "/e8CpMgdyihz9Td7amQDqubPuzfN.jpg",
+            backdropPath: "/uvYnQE4I40J5vtj2acWYWSlv672.jpg",
             voteAverage: 7.8,
             voteCount: 620,
             releaseDateString: "2026-12-04",
@@ -2355,7 +2452,7 @@ public enum MockData {
                 CastMember(id: 3594, name: "David Harbour", character: "Santa Claus"),
                 CastMember(id: 54321, name: "Beverly D'Angelo", character: "Gertrude")
             ],
-            logoPath: "/violentNight2LogoArt.png",
+            logoPath: "/kLkhOLx1khXHLNMSBmR7750xv2j.png",
             inCinemas: false
         )
     ]
