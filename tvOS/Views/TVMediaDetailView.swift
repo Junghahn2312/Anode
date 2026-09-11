@@ -186,7 +186,7 @@ public struct TVMediaDetailView: View {
                     }
                     .buttonStyle(.tvCard)
                     
-                    // Secondary Bookmark Button [􀉚]
+                    // Secondary Bookmark Button
                     Button {
                         watchlist.toggleWatchlist(item: item)
                     } label: {

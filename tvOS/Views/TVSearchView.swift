@@ -40,6 +40,9 @@ public struct TVSearchView: View {
     
     public var body: some View {
         GeometryReader { screenGeo in
+            let screenWidth = max(screenGeo.size.width, UIScreen.main.bounds.width)
+            let screenHeight = max(screenGeo.size.height, UIScreen.main.bounds.height)
+            
             ZStack(alignment: .topLeading) {
                 // Fixed Full-Screen Background (100% Viewport, Zero Black Spaces)
                 ZStack {
@@ -52,7 +55,7 @@ public struct TVSearchView: View {
                                 url: item.backdropURL(size: "w1280") ?? item.posterURL(size: "original"),
                                 contentMode: .fill
                             )
-                            .frame(width: screenGeo.size.width, height: screenGeo.size.height)
+                            .frame(width: screenWidth, height: screenHeight)
                             .clipped()
                             
                             Rectangle()
@@ -65,6 +68,7 @@ public struct TVSearchView: View {
                         .animation(.easeInOut(duration: 0.55), value: item.id)
                     }
                 }
+                .frame(width: screenWidth, height: screenHeight)
                 .ignoresSafeArea()
                 
                 HStack(alignment: .top, spacing: 36) {
@@ -240,8 +244,10 @@ public struct TVSearchView: View {
                 .padding(.top, 140)
                 .padding(.horizontal, 60)
             }
+            .frame(width: screenWidth, height: screenHeight)
             .ignoresSafeArea()
         }
+        .ignoresSafeArea()
         .task {
             if !query.isEmpty && engine.searchResults.isEmpty {
                 await engine.search(query: query)

@@ -10,6 +10,7 @@ public struct TVHomeView: View {
     @State private var selectedItem: MediaItem?
     @State private var heroAvailability: WatchAvailability?
     @State private var hoveredItem: MediaItem? = nil
+    @State private var isHeroGone: Bool = false
     
     private let timer = Timer.publish(every: 8.0, on: .main, in: .common).autoconnect()
     
@@ -28,24 +29,39 @@ public struct TVHomeView: View {
     }
     
     private var activeBackgroundItem: MediaItem? {
-        hoveredItem ?? spotlightHero
+        if isHeroGone {
+            return hoveredItem ?? spotlightHero
+        } else {
+            return spotlightHero
+        }
     }
     
     public var body: some View {
         GeometryReader { screenGeo in
+            let screenWidth = max(screenGeo.size.width, UIScreen.main.bounds.width)
+            let screenHeight = max(screenGeo.size.height, UIScreen.main.bounds.height)
+            
             ZStack(alignment: .topLeading) {
                 // Fixed Full-Screen Background (100% Viewport, Zero Black Spaces)
-                rootBackground(screenGeo: screenGeo)
+                rootBackground(screenWidth: screenWidth, screenHeight: screenHeight)
                 
                 // Unified Root Vertical ScrollView (Continuous Natural Flow)
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
                         // 1. Full-Screen Hero Spotlight Section (100% Viewport, Zero Black Bars)
                         if let hero = spotlightHero {
-                            heroShowcaseSection(hero: hero, screenGeo: screenGeo)
+                            heroShowcaseSection(hero: hero, screenWidth: screenWidth, screenHeight: screenHeight)
+                                .background(
+                                    GeometryReader { heroGeo in
+                                        Color.clear.preference(
+                                            key: TVHeroScrollOffsetPreferenceKey.self,
+                                            value: heroGeo.frame(in: .named("homeScroll")).maxY
+                                        )
+                                    }
+                                )
                         } else {
                             Color.clear
-                                .frame(width: screenGeo.size.width, height: screenGeo.size.height)
+                                .frame(width: screenWidth, height: screenHeight)
                         }
                         
                         // 2. Content Rows with Dynamic Expanding Cards & Inline Detail Strips (Image 2)
@@ -54,10 +70,21 @@ public struct TVHomeView: View {
                     }
                     .padding(.bottom, 120)
                 }
+                .coordinateSpace(name: "homeScroll")
+                .onPreferenceChange(TVHeroScrollOffsetPreferenceKey.self) { maxY in
+                    let gone = maxY <= 200
+                    if gone != isHeroGone {
+                        withAnimation(.easeInOut(duration: 0.55)) {
+                            self.isHeroGone = gone
+                        }
+                    }
+                }
                 .ignoresSafeArea()
             }
+            .frame(width: screenWidth, height: screenHeight)
             .ignoresSafeArea()
         }
+        .ignoresSafeArea()
         .onReceive(timer) { _ in
             if !isUserInteracting && !heroPool.isEmpty {
                 withAnimation(.easeInOut(duration: 0.8)) {
@@ -77,7 +104,7 @@ public struct TVHomeView: View {
     
     // MARK: - Dynamic Full-Screen Background (Zero Black Spaces)
     
-    private func rootBackground(screenGeo: GeometryProxy) -> some View {
+    private func rootBackground(screenWidth: CGFloat, screenHeight: CGFloat) -> some View {
         ZStack {
             // Dark base color to guarantee zero harsh flashes
             Color(red: 0.04, green: 0.04, blue: 0.05)
@@ -86,49 +113,28 @@ public struct TVHomeView: View {
             if let bgItem = activeBackgroundItem {
                 let backdropURL = bgItem.backdropURL(size: "w1280") ?? bgItem.posterURL(size: "original")
                 ZStack {
-                    if hoveredItem != nil {
-                        // When hovering over an item in any list/row:
-                        // Entire background is the softly blurred cover art of the hovered item
+                    if isHeroGone {
+                        // When carousel hero has scrolled off screen:
+                        // Background transitions to currently hovered movie's blurred art
                         CachedAsyncImage(
                             url: backdropURL,
                             contentMode: .fill
                         )
-                        .frame(width: screenGeo.size.width + 40, height: screenGeo.size.height + 40)
+                        .frame(width: screenWidth, height: screenHeight)
                         .clipped()
-                        .blur(radius: 35)
+                        .blur(radius: 40)
                         
                         // Scrim for perfect contrast with lists and typography
                         Color.black.opacity(0.42)
                     } else {
-                        // When at hero / top of page:
-                        // 1. Sharp backdrop artwork
+                        // Hero image at the very top on the carousel:
+                        // MUST NOT BE BLURRED! Carousel hero remains sharp and present.
                         CachedAsyncImage(
                             url: backdropURL,
                             contentMode: .fill
                         )
-                        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
+                        .frame(width: screenWidth, height: screenHeight)
                         .clipped()
-                        
-                        // 2. Blurred lower region behind lists
-                        CachedAsyncImage(
-                            url: backdropURL,
-                            contentMode: .fill
-                        )
-                        .frame(width: screenGeo.size.width + 40, height: screenGeo.size.height + 40)
-                        .clipped()
-                        .blur(radius: 35)
-                        .mask(
-                            LinearGradient(
-                                stops: [
-                                    .init(color: .clear, location: 0.0),
-                                    .init(color: .clear, location: 0.45),
-                                    .init(color: .black, location: 0.68),
-                                    .init(color: .black, location: 1.0)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
                         
                         // Soft left vignette for typography readability
                         LinearGradient(
@@ -151,32 +157,33 @@ public struct TVHomeView: View {
                             endPoint: .bottom
                         )
                         
-                        // Translucent tint behind lists to ensure full legibility with zero black voids
+                        // Soft bottom fade allowing artwork to shine through peeking row
                         LinearGradient(
                             stops: [
-                                .init(color: Color.clear, location: 0.40),
-                                .init(color: Color.black.opacity(0.35), location: 0.70),
-                                .init(color: Color.black.opacity(0.50), location: 1.0)
+                                .init(color: Color.clear, location: 0.45),
+                                .init(color: Color.black.opacity(0.35), location: 0.72),
+                                .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.75), location: 1.0)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                     }
                 }
-                .id(bgItem.id)
+                .id(isHeroGone ? (hoveredItem?.id ?? bgItem.id) : (spotlightHero?.id ?? bgItem.id))
                 .transition(.opacity)
-                .animation(.easeInOut(duration: 0.55), value: bgItem.id)
+                .animation(.easeInOut(duration: 0.55), value: isHeroGone ? hoveredItem?.id : spotlightHero?.id)
             }
         }
+        .frame(width: screenWidth, height: screenHeight)
         .ignoresSafeArea()
     }
     
     // MARK: - Massive Hero Showcase Section (~840pt, 80% screen, peeking first row below)
     
-    private func heroShowcaseSection(hero: MediaItem, screenGeo: GeometryProxy) -> some View {
+    private func heroShowcaseSection(hero: MediaItem, screenWidth: CGFloat, screenHeight: CGFloat) -> some View {
         ZStack(alignment: .bottomLeading) {
             Color.clear
-                .frame(width: screenGeo.size.width, height: screenGeo.size.height)
+                .frame(width: screenWidth, height: screenHeight)
             
             // Hero Typography, Metadata & Action Controls
             VStack(alignment: .leading, spacing: 14) {
@@ -328,7 +335,7 @@ public struct TVHomeView: View {
             .padding(.horizontal, 60)
             .padding(.bottom, 280)
         }
-        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
+        .frame(width: screenWidth, height: screenHeight)
         .animation(.easeInOut(duration: 0.45), value: hero.id)
     }
     
@@ -571,5 +578,12 @@ private struct TVHomeSecondaryBookmarkButtonLabel: View {
                 onFocus?()
             }
         }
+    }
+}
+
+private struct TVHeroScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 1080
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
