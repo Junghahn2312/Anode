@@ -49,12 +49,15 @@ public struct TVMediaDetailView: View {
                         
                         // Content Below the Hero Fold
                         VStack(alignment: .leading, spacing: 38) {
-                            // Dedicated Trailers Carousel
-                            trailersCarouselSection
-                            
-                            // Season Selector & Episode Grid (TV Shows)
                             if item.mediaType == .tvShow {
+                                // Season Selector & Episode Grid (TV Shows)
                                 tvShowSeasonsAndEpisodesSection
+                                
+                                // Dedicated Trailers Carousel (underneath seasons & episodes)
+                                trailersCarouselSection
+                            } else {
+                                // Dedicated Trailers Carousel (Movies)
+                                trailersCarouselSection
                             }
                             
                             // Where to Watch Section (Platforms only, zero prices, zero attributions)
@@ -374,7 +377,7 @@ public struct TVMediaDetailView: View {
                                 }
                                 .buttonStyle(.tvCard)
                                 .onMoveCommand { direction in
-                                    if direction == .up {
+                                    if direction == .up && item.mediaType != .tvShow {
                                         isHeroPlayFocused = true
                                     }
                                 }

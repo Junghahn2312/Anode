@@ -143,31 +143,31 @@ public struct TVExpandingMediaCardView: View {
     
     public var body: some View {
         ZStack(alignment: .bottomLeading) {
-            let backdrop = item.backdropURL(size: "w780") ?? item.posterURL(size: "w500")
+            // Unfocused: Portrait Poster | Focused: 16:9 Landscape Backdrop
+            if isFocused {
+                let backdrop = item.backdropURL(size: "w780") ?? item.posterURL(size: "w500")
+                CachedAsyncImage(url: backdrop)
+                    .frame(width: expandedWidth, height: cardHeight)
+                    .clipped()
+            } else {
+                CachedAsyncImage(url: item.posterURL(size: "w500"))
+                    .frame(width: normalWidth, height: cardHeight)
+                    .clipped()
+            }
             
-            // Poster Layer: smooth crossfade
-            CachedAsyncImage(url: item.posterURL(size: "w500"), contentMode: .fill)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-                .opacity(isFocused ? 0.0 : 1.0)
-            
-            // Backdrop Layer: smooth crossfade
-            CachedAsyncImage(url: backdrop, contentMode: .fill)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-                .opacity(isFocused ? 1.0 : 0.0)
-            
-            // Focused Overlays: Gradient and Logo Artwork
-            ZStack(alignment: .bottomLeading) {
+            // Overlays
+            if isFocused {
+                // Soft bottom gradient for logo legibility
                 LinearGradient(
                     stops: [
-                        .init(color: Color.clear, location: 0.20),
+                        .init(color: Color.clear, location: 0.25),
                         .init(color: Color.black.opacity(0.85), location: 1.0)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 
+                // ONLY the media's logo artwork (no text, no rating, no genre, no cinema badge)
                 VStack {
                     Spacer()
                     HStack {
@@ -189,11 +189,9 @@ public struct TVExpandingMediaCardView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 14)
                 }
-            }
-            .opacity(isFocused ? 1.0 : 0.0)
-            
-            // Unfocused Overlays: Rank numeral or rating badge
-            ZStack(alignment: .topTrailing) {
+                .transition(.opacity)
+            } else {
+                // Unfocused state: subtle rank numeral if top 10, or rating badge
                 if let rank = rank {
                     VStack {
                         HStack {
@@ -208,12 +206,16 @@ public struct TVExpandingMediaCardView: View {
                         Spacer()
                     }
                 } else if !item.formattedRating.isEmpty {
-                    RatingBadge(rating: item.formattedRating)
-                        .padding(8)
+                    VStack {
+                        HStack {
+                            Spacer()
+                            RatingBadge(rating: item.formattedRating)
+                                .padding(8)
+                        }
+                        Spacer()
+                    }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-            .opacity(isFocused ? 0.0 : 1.0)
             
             // Crisp White Outline on Focus
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -228,7 +230,7 @@ public struct TVExpandingMediaCardView: View {
             x: 0,
             y: isFocused ? 10 : 2
         )
-        .animation(.spring(response: 0.38, dampingFraction: 0.82), value: isFocused)
+        .animation(.spring(response: 0.42, dampingFraction: 0.88), value: isFocused)
         .applyMoveUp(onMoveUp: onMoveUp)
         .task(id: isFocused) {
             guard isFocused else { return }
@@ -290,7 +292,7 @@ public struct TVContentRowView: View {
             
             // Horizontal Card Carousel with Expanding Cards
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 28) {
+                LazyHStack(spacing: 28) {
                     ForEach(items) { item in
                         Button {
                             onSelect(item)
@@ -301,7 +303,7 @@ public struct TVContentRowView: View {
                                 showCinemaBadge: showCinemaBadge,
                                 onMoveUp: onMoveUp
                             ) { focused in
-                                withAnimation(.easeInOut(duration: 0.35)) {
+                                withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
                                     self.focusedItem = focused
                                 }
                                 self.onHover?(focused)
@@ -442,7 +444,7 @@ public struct TVTopTenRowView: View {
             
             // Horizontal Card Carousel
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 38) {
+                LazyHStack(spacing: 38) {
                     ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                         Button {
                             onSelect(item)
@@ -453,7 +455,7 @@ public struct TVTopTenRowView: View {
                                 rank: index + 1,
                                 onMoveUp: onMoveUp
                             ) { focused in
-                                withAnimation(.easeInOut(duration: 0.35)) {
+                                withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
                                     self.focusedItem = focused
                                 }
                                 self.onHover?(focused)

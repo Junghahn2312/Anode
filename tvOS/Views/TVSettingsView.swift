@@ -104,7 +104,7 @@ public struct TVSettingsView: View {
                     .ignoresSafeArea()
                     .overlay(
                         VStack(spacing: 16) {
-                            AnodeLogoView(size: 140)
+                            AnodeLogoView(size: 160)
                                 .opacity(0.20)
                             Text("Press any button to resume")
                                 .font(.system(size: 15, weight: .medium))
@@ -125,6 +125,22 @@ public struct TVSettingsView: View {
             }
         }
         .ignoresSafeArea()
+        .onExitCommand {
+            if activeSubpage != nil {
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) {
+                    activeSubpage = nil
+                }
+            }
+        }
+        .onChange(of: activeSubpage) { _, newSubpage in
+            AppNavigation.shared.isTopBarVisible = (newSubpage == nil)
+        }
+        .onAppear {
+            AppNavigation.shared.isTopBarVisible = (activeSubpage == nil)
+        }
+        .onDisappear {
+            AppNavigation.shared.isTopBarVisible = true
+        }
         .alert("Clear My List?", isPresented: $showingClearAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Clear All", role: .destructive) {
@@ -148,35 +164,34 @@ public struct TVSettingsView: View {
     // MARK: - Root Settings Screen (Matching Apple TV Settings Exactly)
     
     private var rootSettingsView: some View {
-        VStack(spacing: 36) {
-            // Centered Settings title moved down with generous breathing room
+        VStack(spacing: 24) {
+            // Centered Settings title positioned slightly higher up
             Text("Settings")
                 .font(.system(size: 38, weight: .bold))
                 .foregroundColor(.white.opacity(0.90))
-                .padding(.top, 160)
+                .padding(.top, 95)
             
             HStack(alignment: .center) {
                 Spacer()
                 
-                // Left: Large Squircle Card with Anode Logo (Centre Left of Screen)
+                // Left: Large Squircle Card with Anode Logo (Centre Left of Screen, slightly higher and bigger)
                 ZStack {
-                    RoundedRectangle(cornerRadius: 56, style: .continuous)
+                    RoundedRectangle(cornerRadius: 64, style: .continuous)
                         .fill(Color(red: 0.17, green: 0.17, blue: 0.20))
-                        .frame(width: 380, height: 380)
+                        .frame(width: 440, height: 440)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 56, style: .continuous)
+                            RoundedRectangle(cornerRadius: 64, style: .continuous)
                                 .stroke(Color.white.opacity(0.12), lineWidth: 1.5)
                         )
-                        .shadow(color: Color.black.opacity(0.45), radius: 28, y: 10)
+                        .shadow(color: Color.black.opacity(0.45), radius: 32, y: 10)
                     
-                    AnodeLogoView(size: 220)
+                    AnodeLogoView(size: 270)
                 }
-                .frame(width: 440)
+                .frame(width: 480)
                 
                 Spacer()
-                Spacer()
                 
-                // Right: Clean Vertical Settings Rows (Centre Right of Screen, Zero Clipping)
+                // Right: Clean Vertical Settings Rows (Centre Right of Screen, bigger and slightly higher up)
                 VStack(spacing: 12) {
                     ForEach(SettingsSection.allCases) { section in
                         TVSettingsMenuRowButton(
@@ -187,14 +202,15 @@ public struct TVSettingsView: View {
                         }
                     }
                 }
-                .padding(.vertical, 20)
-                .padding(.horizontal, 36)
-                .frame(width: 580)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 20)
+                .frame(width: 640)
                 .focusSection()
                 
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.top, -20)
         }
     }
     
@@ -202,94 +218,95 @@ public struct TVSettingsView: View {
         if section == .sleep {
             showingSleepAlert = true
         } else {
-            withAnimation(.easeInOut(duration: 0.32)) {
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) {
                 activeSubpage = section
             }
         }
     }
     
-    // MARK: - Subpage Drill-Down View
+    // MARK: - Subpage Drill-Down View (Matching Apple TV Settings App Format)
     
     private func subpageView(for section: SettingsSection) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // Back Button (< Settings)
-            Button {
-                withAnimation(.easeInOut(duration: 0.32)) {
-                    activeSubpage = nil
+        HStack(alignment: .top, spacing: 60) {
+            // Left Column: Navigation Title, Back Button, Category Preview/Logo & Description
+            VStack(alignment: .leading, spacing: 22) {
+                // Back Button (< Settings)
+                Button {
+                    withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) {
+                        activeSubpage = nil
+                    }
+                } label: {
+                    TVSettingsBackButtonLabel()
                 }
-            } label: {
-                TVSettingsBackButtonLabel()
-            }
-            .buttonStyle(.tvCard)
-            .padding(.top, 40)
-            .padding(.leading, 80)
-            
-            HStack(alignment: .top, spacing: 60) {
-                // Left Column: Category Summary Card
-                VStack(spacing: 20) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 44, style: .continuous)
-                            .fill(Color(red: 0.17, green: 0.17, blue: 0.20))
-                            .frame(width: 280, height: 280)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 44, style: .continuous)
-                                    .stroke(Color.white.opacity(0.12), lineWidth: 1.5)
-                            )
-                            .shadow(color: Color.black.opacity(0.40), radius: 20, y: 6)
-                        
-                        VStack(spacing: 16) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .fill(section.iconColor)
-                                    .frame(width: 80, height: 80)
-                                Image(systemName: section.icon)
-                                    .font(.system(size: 38, weight: .bold))
-                                    .foregroundColor(.white)
-                            }
-                            
-                            Text(section.title)
-                                .font(.system(size: 22, weight: .bold))
+                .buttonStyle(.tvCard)
+                
+                Text(section.title)
+                    .font(.system(size: 40, weight: .bold))
+                    .foregroundColor(.white)
+                
+                // Category Squircle Preview Card
+                ZStack {
+                    RoundedRectangle(cornerRadius: 48, style: .continuous)
+                        .fill(Color(red: 0.17, green: 0.17, blue: 0.20))
+                        .frame(width: 340, height: 340)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 48, style: .continuous)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1.5)
+                        )
+                        .shadow(color: Color.black.opacity(0.40), radius: 24, y: 8)
+                    
+                    VStack(spacing: 16) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .fill(section.iconColor)
+                                .frame(width: 90, height: 90)
+                            Image(systemName: section.icon)
+                                .font(.system(size: 44, weight: .bold))
                                 .foregroundColor(.white)
                         }
                     }
-                    
-                    Text(section.summary)
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundColor(.white.opacity(0.60))
-                        .multilineTextAlignment(.center)
-                        .frame(width: 280)
                 }
-                .frame(width: 320)
-                .padding(.leading, 80)
+                .frame(width: 360)
                 
-                // Right Column: Active Category Detail Pane
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 24) {
-                        switch section {
-                        case .general:
-                            generalDetailPane
-                        case .accounts:
-                            traktDetailPane
-                        case .audioVideo:
-                            playbackDetailPane
-                        case .library:
-                            watchlistDetailPane
-                        case .providers:
-                            providersDetailPane
-                        case .privacy:
-                            privacyDetailPane
-                        case .about:
-                            aboutDetailPane
-                        case .sleep:
-                            EmptyView()
-                        }
-                    }
-                    .padding(.trailing, 80)
-                    .padding(.bottom, 60)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .focusSection()
+                Text(section.summary)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundColor(.white.opacity(0.60))
+                    .lineSpacing(4)
+                    .frame(width: 340, alignment: .leading)
             }
+            .frame(width: 380)
+            .padding(.leading, 80)
+            .padding(.top, 55)
+            .focusSection()
+            
+            // Right Column: Apple TV Grouped List of Setting Items
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 26) {
+                    switch section {
+                    case .general:
+                        generalDetailPane
+                    case .accounts:
+                        traktDetailPane
+                    case .audioVideo:
+                        playbackDetailPane
+                    case .library:
+                        watchlistDetailPane
+                    case .providers:
+                        providersDetailPane
+                    case .privacy:
+                        privacyDetailPane
+                    case .about:
+                        aboutDetailPane
+                    case .sleep:
+                        EmptyView()
+                    }
+                }
+                .padding(.top, 55)
+                .padding(.trailing, 80)
+                .padding(.bottom, 80)
+                .frame(width: 640)
+            }
+            .focusSection()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -297,20 +314,13 @@ public struct TVSettingsView: View {
     // MARK: - 0. General Detail Pane
     
     private var generalDetailPane: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            headerBanner(
-                title: "General Preferences",
-                subtitle: "Customize application startup behavior, background refreshes, and display preferences.",
-                icon: "gearshape.fill",
-                iconColor: SettingsSection.general.iconColor
-            )
-            
-            VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
                 sectionHeader("STARTUP TAB")
                 
                 let tabs: [(Int, String)] = [(0, "Home"), (1, "Discovery"), (2, "Cinema"), (3, "Search")]
                 ForEach(tabs, id: \.0) { tab in
-                    TVSettingsChoiceButton(
+                    TVSettingsRowItem(
                         title: tab.1,
                         isSelected: initialTab == tab.0
                     ) {
@@ -318,18 +328,21 @@ public struct TVSettingsView: View {
                         UserDefaults.standard.set(tab.0, forKey: "InitialTab")
                     }
                 }
+                
+                sectionFooter("Choose which section opens automatically when Anode launches.")
             }
             
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
                 sectionHeader("MAINTENANCE")
                 
-                TVSettingsActionButton(
+                TVSettingsRowItem(
                     title: "Clear Image Cache",
-                    icon: "trash",
-                    isDestructive: false
+                    icon: "trash"
                 ) {
                     URLCache.shared.removeAllCachedResponses()
                 }
+                
+                sectionFooter("Removes temporary downloaded poster and backdrop images to reclaim space.")
             }
         }
     }
@@ -337,184 +350,176 @@ public struct TVSettingsView: View {
     // MARK: - 1. Trakt Detail Pane
     
     private var traktDetailPane: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            headerBanner(
-                title: "Trakt Integration",
-                subtitle: "Automatically sync watch history, continue watching progress, and ratings across your devices.",
-                icon: "play.tv.fill",
-                iconColor: SettingsSection.accounts.iconColor
-            )
-            
-            if let code = trakt.deviceCode {
-                VStack(alignment: .leading, spacing: 18) {
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(Color.cyan)
-                            .frame(width: 8, height: 8)
-                        Text("ACTIVATION CODE ACTIVE")
-                            .font(.system(size: 12, weight: .black))
-                            .tracking(1.4)
-                            .foregroundColor(.cyan)
-                    }
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("TRAKT INTEGRATION")
+                
+                if let code = trakt.deviceCode {
+                    TVSettingsRowItem(
+                        title: "Activation Code",
+                        value: code.userCode
+                    ) {}
                     
-                    Text("1. Visit trakt.tv/activate on your phone or computer")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                    
-                    HStack(spacing: 16) {
-                        Text("2. Enter Code:")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.80))
-                        
-                        Text(code.userCode)
-                            .font(.system(size: 32, weight: .black, design: .monospaced))
-                            .tracking(4.0)
-                            .foregroundColor(.cyan)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color.cyan.opacity(0.18))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                            .stroke(Color.cyan.opacity(0.40), lineWidth: 1)
-                                    )
-                            )
-                    }
-                    
-                    TVSettingsActionButton(
+                    TVSettingsRowItem(
                         title: "Cancel Code Request",
                         icon: "xmark.circle.fill",
                         isDestructive: true
                     ) {
                         trakt.cancelDeviceAuth()
                     }
-                    .padding(.top, 6)
-                }
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.white.opacity(0.06))
-                )
-            } else if !trakt.isConnected {
-                VStack(alignment: .leading, spacing: 20) {
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(Color.orange)
-                            .frame(width: 8, height: 8)
-                        Text("NOT CONNECTED")
-                            .font(.system(size: 12, weight: .black))
-                            .tracking(1.4)
-                            .foregroundColor(.orange)
-                    }
                     
-                    Text("Sign in with your Trakt account to populate your personalized Continue Watching queue on the Home page.")
-                        .font(.system(size: 15, weight: .regular))
-                        .foregroundColor(.white.opacity(0.70))
-                        .lineSpacing(3)
-                    
-                    TVSettingsActionButton(
+                    sectionFooter("Visit trakt.tv/activate on your phone or computer and enter the code above.")
+                } else if !trakt.isConnected {
+                    TVSettingsRowItem(
                         title: "Connect with Trakt",
-                        icon: "link",
-                        isDestructive: false
+                        icon: "link"
                     ) {
                         Task { await trakt.startDeviceAuth() }
                     }
-                }
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.white.opacity(0.06))
-                )
-            } else {
-                VStack(alignment: .leading, spacing: 20) {
-                    HStack(spacing: 12) {
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(Color.green)
-                                .frame(width: 8, height: 8)
-                            Text("CONNECTED")
-                                .font(.system(size: 12, weight: .black))
-                                .tracking(1.4)
-                                .foregroundColor(.green)
-                        }
-                        
-                        Text("@\(trakt.username)")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white)
+                    
+                    sectionFooter("Sign in with your Trakt account to synchronize watch history and continue watching queues.")
+                } else {
+                    TVSettingsRowItem(
+                        title: "Status",
+                        value: "Connected"
+                    ) {}
+                    
+                    TVSettingsRowItem(
+                        title: "Username",
+                        value: "@\(trakt.username)"
+                    ) {}
+                    
+                    TVSettingsRowItem(
+                        title: trakt.isSyncing ? "Syncing..." : "Sync Watchlist Now",
+                        icon: "arrow.triangle.2.circlepath"
+                    ) {
+                        Task { await trakt.refresh() }
                     }
                     
-                    HStack(spacing: 16) {
-                        TVSettingsActionButton(
-                            title: trakt.isSyncing ? "Syncing..." : "Sync Now",
-                            icon: "arrow.triangle.2.circlepath",
-                            isDestructive: false
-                        ) {
-                            Task { await trakt.refresh() }
-                        }
-                        
-                        TVSettingsActionButton(
-                            title: "Disconnect Account",
-                            icon: "rectangle.portrait.and.arrow.right",
-                            isDestructive: true
-                        ) {
-                            trakt.disconnect()
-                        }
+                    TVSettingsRowItem(
+                        title: "Disconnect Account",
+                        icon: "rectangle.portrait.and.arrow.right",
+                        isDestructive: true
+                    ) {
+                        trakt.disconnect()
                     }
                 }
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.white.opacity(0.06))
-                )
             }
             
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
                 sectionHeader("CONTINUE WATCHING ROW")
                 
-                TVSettingsChoiceButton(
-                    title: "Curated Standalone Queue (When Unlinked)",
+                TVSettingsRowItem(
+                    title: "Curated Standalone Queue",
+                    value: trakt.useSampleData ? "Enabled" : "Disabled",
                     isSelected: trakt.useSampleData
                 ) {
                     trakt.toggleSampleData(!trakt.useSampleData)
                 }
                 
-                Text("Enables a curated continue watching tray on the Home tab when no Trakt account is linked or when offline.")
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundColor(.white.opacity(0.50))
-                    .padding(.leading, 12)
+                sectionFooter("Enables a curated continue watching queue on the Home tab when unlinked or offline.")
             }
         }
     }
     
-    // MARK: - 2. Providers Detail Pane
+    // MARK: - 2. Video & Playback Detail Pane
     
-    private var providersDetailPane: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            headerBanner(
-                title: "Metadata & Watch Providers",
-                subtitle: "Live catalog integration querying TMDB API v3 and JustWatch global streaming availability.",
-                icon: "network",
-                iconColor: SettingsSection.providers.iconColor
-            )
+    private var playbackDetailPane: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("TRAILER STREAM QUALITY")
+                
+                let qualities = ["4K Ultra HD", "1080p Full HD", "Auto Dynamic"]
+                ForEach(qualities, id: \.self) { quality in
+                    TVSettingsRowItem(
+                        title: quality,
+                        isSelected: preferredQuality == quality
+                    ) {
+                        preferredQuality = quality
+                    }
+                }
+                
+                sectionFooter("Sets the target video resolution for YouTube trailer playback.")
+            }
             
             VStack(alignment: .leading, spacing: 10) {
-                detailRow(label: "Primary API", value: "The Movie Database (TMDB)", icon: "film")
-                detailRow(label: "Availability Engine", value: "JustWatch Integration", icon: "play.circle")
-                detailRow(label: "Region Filter", value: "Worldwide & Country Specific", icon: "globe")
-                detailRow(label: "Network Connection", value: "Online / High Speed", icon: "wifi", isGreen: true)
+                sectionHeader("HERO SPOTLIGHT BEHAVIOR")
+                
+                let modes = ["Stationary Showcase", "Ambient Crossfade"]
+                ForEach(modes, id: \.self) { mode in
+                    TVSettingsRowItem(
+                        title: mode,
+                        isSelected: heroMode == mode
+                    ) {
+                        heroMode = mode
+                    }
+                }
+                
+                sectionFooter("Controls whether top banner hero spotlights auto-advance periodically.")
             }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
-            )
-            
-            VStack(alignment: .leading, spacing: 12) {
-                TVSettingsActionButton(
+        }
+    }
+    
+    // MARK: - 3. Watchlist & Library Detail Pane
+    
+    private var watchlistDetailPane: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("WATCHLIST LIBRARY")
+                
+                TVSettingsRowItem(
+                    title: "Saved Titles",
+                    value: "\(watchlist.items.count) titles"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Saved Movies",
+                    value: "\(watchlist.items.filter { $0.mediaType == .movie }.count)"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Saved Series",
+                    value: "\(watchlist.items.filter { $0.mediaType == .tvShow }.count)"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Clear All Saved Titles",
+                    icon: "trash.fill",
+                    isDestructive: true
+                ) {
+                    showingClearAlert = true
+                }
+                
+                sectionFooter("All saved titles are persisted securely within the local sandbox container.")
+            }
+        }
+    }
+    
+    // MARK: - 4. Providers Detail Pane
+    
+    private var providersDetailPane: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("METADATA & WATCH ENGINES")
+                
+                TVSettingsRowItem(
+                    title: "The Movie Database (TMDB)",
+                    value: "Connected"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "JustWatch Streaming Engine",
+                    value: "Active"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Network Connection",
+                    value: "Online"
+                ) {}
+                
+                TVSettingsRowItem(
                     title: cacheRefreshStatus ?? "Flush Metadata Cache & Reload",
-                    icon: "arrow.clockwise",
-                    isDestructive: false
+                    icon: "arrow.clockwise"
                 ) {
                     cacheRefreshStatus = "Flushing..."
                     Task {
@@ -526,84 +531,8 @@ public struct TVSettingsView: View {
                         cacheRefreshStatus = nil
                     }
                 }
-            }
-        }
-    }
-    
-    // MARK: - 3. Watchlist Detail Pane
-    
-    private var watchlistDetailPane: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            headerBanner(
-                title: "Personal Library & Watchlist",
-                subtitle: "Manage titles saved locally to your device and view catalog statistics.",
-                icon: "bookmark.fill",
-                iconColor: SettingsSection.library.iconColor
-            )
-            
-            VStack(alignment: .leading, spacing: 10) {
-                detailRow(label: "Total Saved Titles", value: "\(watchlist.items.count) items", icon: "square.stack.fill")
-                detailRow(label: "Saved Movies", value: "\(watchlist.items.filter { $0.mediaType == .movie }.count) movies", icon: "film.fill")
-                detailRow(label: "Saved Series", value: "\(watchlist.items.filter { $0.mediaType == .tvShow }.count) shows", icon: "tv.fill")
-                detailRow(label: "Storage Location", value: "App Sandbox Documents", icon: "internaldrive")
-            }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
-            )
-            
-            TVSettingsActionButton(
-                title: "Clear All Saved Titles",
-                icon: "trash.fill",
-                isDestructive: true
-            ) {
-                showingClearAlert = true
-            }
-        }
-    }
-    
-    // MARK: - 4. Playback Detail Pane
-    
-    private var playbackDetailPane: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            headerBanner(
-                title: "Video & Playback",
-                subtitle: "Configure trailer resolution preferences and hero spotlight showcase modes.",
-                icon: "tv.fill",
-                iconColor: SettingsSection.audioVideo.iconColor
-            )
-            
-            VStack(alignment: .leading, spacing: 14) {
-                sectionHeader("TRAILER STREAM QUALITY")
                 
-                let qualities = ["4K Ultra HD", "1080p Full HD", "Auto Dynamic"]
-                ForEach(qualities, id: \.self) { quality in
-                    TVSettingsChoiceButton(
-                        title: quality,
-                        isSelected: preferredQuality == quality
-                    ) {
-                        preferredQuality = quality
-                    }
-                }
-            }
-            
-            VStack(alignment: .leading, spacing: 14) {
-                sectionHeader("HERO SPOTLIGHT BEHAVIOR")
-                
-                let modes = [
-                    ("Stationary Showcase", "Showcases 20s then softly cycles to next title."),
-                    ("Ambient Crossfade", "Smoothly transitions backdrops every 8s.")
-                ]
-                
-                ForEach(modes, id: \.0) { mode in
-                    TVSettingsChoiceButton(
-                        title: mode.0,
-                        isSelected: heroMode == mode.0
-                    ) {
-                        heroMode = mode.0
-                    }
-                }
+                sectionFooter("Refreshes all catalog records and streaming availability data from providers.")
             }
         }
     }
@@ -611,63 +540,68 @@ public struct TVSettingsView: View {
     // MARK: - 5. Privacy Detail Pane
     
     private var privacyDetailPane: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            headerBanner(
-                title: "Privacy & Security",
-                subtitle: "Anode is designed from the ground up with zero telemetry and complete privacy preservation.",
-                icon: "hand.raised.fill",
-                iconColor: SettingsSection.privacy.iconColor
-            )
-            
+        VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 10) {
-                detailRow(label: "Telemetry & Tracking", value: "Disabled (Zero Analytics)", icon: "shield.slash", isGreen: true)
-                detailRow(label: "Watchlist Data", value: "Local Device Only (Encrypted)", icon: "lock.shield", isGreen: true)
-                detailRow(label: "Ad Identifier (IDFA)", value: "Never Requested", icon: "xmark.shield", isGreen: true)
-                detailRow(label: "Network Connections", value: "HTTPS Only (TMDB, Trakt, JustWatch)", icon: "network.badge.shield.half.filled", isGreen: true)
+                sectionHeader("PRIVACY & SECURITY")
+                
+                TVSettingsRowItem(
+                    title: "Telemetry & Tracking",
+                    value: "Disabled"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Watchlist Data",
+                    value: "Local Device Only"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Ad Identifier (IDFA)",
+                    value: "Never Requested"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Network Security",
+                    value: "HTTPS Only"
+                ) {}
+                
+                sectionFooter("Anode is engineered with zero analytics collection and zero user tracking.")
             }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
-            )
         }
     }
     
     // MARK: - 6. About Detail Pane
     
     private var aboutDetailPane: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            headerBanner(
-                title: "About Anode",
-                subtitle: "Anode for tvOS - Unified cinema and streaming discovery built with native SwiftUI.",
-                icon: "info.circle.fill",
-                iconColor: SettingsSection.about.iconColor
-            )
-            
+        VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 10) {
-                detailRow(label: "Application Version", value: "1.0.0 (Build 2026.09)", icon: "app.badge")
-                detailRow(label: "Target Platform", value: "tvOS 17.0+ (Apple TV 4K)", icon: "appletv")
-                detailRow(label: "Framework", value: "SwiftUI Native", icon: "swift")
-                detailRow(label: "Architecture", value: "arm64 (Apple Silicon A15 Bionic+)", icon: "cpu")
-            }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
-            )
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text("ATTRIBUTION NOTICE")
-                    .font(.system(size: 11, weight: .bold))
-                    .tracking(1.4)
-                    .foregroundColor(.white.opacity(0.40))
-                    .padding(.leading, 8)
+                sectionHeader("ABOUT ANODE")
                 
-                Text("This product uses the TMDB API and JustWatch discovery services but is not endorsed or certified by TMDB or JustWatch. All film artwork and logos remain the copyright of their respective studios.")
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundColor(.white.opacity(0.50))
-                    .lineSpacing(3)
-                    .padding(.horizontal, 12)
+                TVSettingsRowItem(
+                    title: "Application Version",
+                    value: "1.0.0 (Build 2026.09)"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Target Platform",
+                    value: "tvOS 17.0+"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Framework",
+                    value: "SwiftUI Native"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Architecture",
+                    value: "arm64 Apple Silicon"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "License",
+                    value: "MIT"
+                ) {}
+                
+                sectionFooter("Unified cinema and streaming discovery built for Apple TV.")
             }
         }
     }
@@ -676,62 +610,20 @@ public struct TVSettingsView: View {
     
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 11, weight: .bold))
+            .font(.system(size: 13, weight: .bold))
             .tracking(1.4)
             .foregroundColor(.white.opacity(0.40))
-            .padding(.leading, 8)
+            .padding(.leading, 12)
+            .padding(.top, 4)
     }
     
-    private func headerBanner(title: String, subtitle: String, icon: String, iconColor: Color) -> some View {
-        HStack(spacing: 20) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(iconColor)
-                    .frame(width: 64, height: 64)
-                Image(systemName: icon)
-                    .font(.system(size: 30, weight: .bold))
-                    .foregroundColor(.white)
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
-                Text(subtitle)
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(.white.opacity(0.65))
-                    .lineLimit(2)
-            }
-        }
-        .padding(24)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.06))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                )
-        )
-    }
-    
-    private func detailRow(label: String, value: String, icon: String, isGreen: Bool = false) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(isGreen ? .green : .white.opacity(0.60))
-                .frame(width: 24)
-            
-            Text(label)
-                .font(.system(size: 15, weight: .regular))
-                .foregroundColor(.white.opacity(0.70))
-            
-            Spacer()
-            
-            Text(value)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(isGreen ? .green : .white)
-        }
-        .padding(.vertical, 4)
+    private func sectionFooter(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 13, weight: .regular))
+            .foregroundColor(.white.opacity(0.45))
+            .lineSpacing(2)
+            .padding(.leading, 12)
+            .padding(.top, 2)
     }
 }
 
@@ -758,7 +650,7 @@ public struct AnodeLogoView: View {
     }
 }
 
-// MARK: - Root Settings Menu Row Button (Matching Apple TV Screenshot)
+// MARK: - Root Settings Menu Row Button (Matching Apple TV Design)
 
 private struct TVSettingsMenuRowButton: View {
     let title: String
@@ -782,28 +674,28 @@ private struct TVSettingsMenuRowLabel: View {
     var body: some View {
         HStack(spacing: 16) {
             Text(title)
-                .font(.system(size: 19, weight: isFocused ? .bold : .medium))
+                .font(.system(size: 21, weight: isFocused ? .bold : .medium))
                 .foregroundColor(isFocused ? .black : .white)
             
             Spacer()
             
             if showChevron {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundColor(isFocused ? Color.black.opacity(0.60) : Color.white.opacity(0.35))
             }
         }
-        .padding(.horizontal, 24)
-        .frame(height: 56)
+        .padding(.horizontal, 28)
+        .frame(height: 64)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(isFocused ? Color.white : Color.white.opacity(0.08))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(isFocused ? Color.white : Color.white.opacity(0.06), lineWidth: isFocused ? 2 : 1)
         )
-        .scaleEffect(isFocused ? 1.05 : 1.0)
+        .scaleEffect(isFocused ? 1.04 : 1.0)
         .zIndex(isFocused ? 10 : 1)
         .shadow(color: isFocused ? Color.white.opacity(0.40) : Color.clear, radius: 16, y: 4)
         .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isFocused)
@@ -838,114 +730,85 @@ private struct TVSettingsBackButtonLabel: View {
     }
 }
 
-// MARK: - Apple TV Action Button (Illuminated White Hover Matching App)
+// MARK: - Unified Apple TV Settings Row Item
 
-public struct TVSettingsActionButton: View {
+public struct TVSettingsRowItem: View {
     let title: String
-    let icon: String
+    var value: String? = nil
+    var icon: String? = nil
+    var isSelected: Bool = false
     var isDestructive: Bool = false
+    var showChevron: Bool = false
     let action: () -> Void
-    
-    public var body: some View {
-        Button(action: action) {
-            TVSettingsActionButtonLabel(title: title, icon: icon, isDestructive: isDestructive)
-        }
-        .buttonStyle(.tvCard)
-    }
-}
-
-private struct TVSettingsActionButtonLabel: View {
-    let title: String
-    let icon: String
-    let isDestructive: Bool
     
     @Environment(\.isFocused) private var isFocused: Bool
     
-    private var buttonFillColor: Color {
-        if isDestructive {
-            return isFocused ? Color.red : Color.red.opacity(0.20)
-        } else {
-            return isFocused ? Color.white : Color.white.opacity(0.12)
-        }
+    public init(
+        title: String,
+        value: String? = nil,
+        icon: String? = nil,
+        isSelected: Bool = false,
+        isDestructive: Bool = false,
+        showChevron: Bool = false,
+        action: @escaping () -> Void = {}
+    ) {
+        self.title = title
+        self.value = value
+        self.icon = icon
+        self.isSelected = isSelected
+        self.isDestructive = isDestructive
+        self.showChevron = showChevron
+        self.action = action
     }
-    
-    private var buttonTextColor: Color {
-        if isDestructive {
-            return .white
-        } else {
-            return isFocused ? .black : .white
-        }
-    }
-    
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 15, weight: .bold))
-            Text(title)
-                .font(.system(size: 15, weight: .bold))
-        }
-        .foregroundColor(buttonTextColor)
-        .padding(.horizontal, 22)
-        .padding(.vertical, 14)
-        .background(
-            Capsule()
-                .fill(buttonFillColor)
-        )
-        .overlay(
-            Capsule()
-                .stroke(isFocused ? Color.white : Color.clear, lineWidth: 1.5)
-        )
-        .scaleEffect(isFocused ? 1.04 : 1.0)
-        .shadow(color: isFocused ? (isDestructive ? Color.red.opacity(0.4) : Color.white.opacity(0.35)) : Color.clear, radius: 12, y: 4)
-        .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isFocused)
-    }
-}
-
-// MARK: - Apple TV Choice Button (Illuminated White Hover Matching App)
-
-public struct TVSettingsChoiceButton: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
     
     public var body: some View {
         Button(action: action) {
-            TVSettingsChoiceButtonLabel(title: title, isSelected: isSelected)
-        }
-        .buttonStyle(.tvCard)
-    }
-}
-
-private struct TVSettingsChoiceButtonLabel: View {
-    let title: String
-    let isSelected: Bool
-    
-    @Environment(\.isFocused) private var isFocused: Bool
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Text(title)
-                .font(.system(size: 16, weight: isFocused || isSelected ? .bold : .medium))
-                .foregroundColor(isFocused ? .black : .white)
-            Spacer()
-            if isSelected {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(isFocused ? .black : .cyan)
+            HStack(spacing: 16) {
+                if let icon = icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(isDestructive ? (isFocused ? .red : .red.opacity(0.90)) : (isFocused ? .black : .white))
+                }
+                
+                Text(title)
+                    .font(.system(size: 20, weight: isFocused || isSelected ? .bold : .medium))
+                    .foregroundColor(isDestructive ? (isFocused ? .red : .red.opacity(0.90)) : (isFocused ? .black : .white))
+                
+                Spacer()
+                
+                if let value = value {
+                    Text(value)
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundColor(isFocused ? Color.black.opacity(0.70) : Color.white.opacity(0.50))
+                }
+                
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(isFocused ? .black : .cyan)
+                }
+                
+                if showChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(isFocused ? Color.black.opacity(0.60) : Color.white.opacity(0.35))
+                }
             }
+            .padding(.horizontal, 24)
+            .frame(height: 60)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(isFocused ? Color.white : Color.white.opacity(0.08))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(isFocused ? Color.white : Color.white.opacity(0.06), lineWidth: isFocused ? 2 : 1)
+            )
+            .scaleEffect(isFocused ? 1.03 : 1.0)
+            .shadow(color: isFocused ? (isDestructive ? Color.red.opacity(0.35) : Color.white.opacity(0.40)) : Color.clear, radius: 14, y: 4)
+            .zIndex(isFocused ? 10 : 1)
+            .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isFocused)
         }
-        .padding(.horizontal, 20)
-        .frame(height: 52)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isFocused ? Color.white : (isSelected ? Color.white.opacity(0.14) : Color.white.opacity(0.06)))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isFocused ? Color.white : (isSelected ? Color.white.opacity(0.25) : Color.white.opacity(0.06)), lineWidth: isFocused ? 2 : 1)
-        )
-        .scaleEffect(isFocused ? 1.03 : 1.0)
-        .shadow(color: isFocused ? Color.white.opacity(0.35) : Color.clear, radius: 10, y: 4)
-        .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isFocused)
+        .buttonStyle(.tvCard)
     }
 }

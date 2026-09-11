@@ -16,6 +16,7 @@ public struct TVHomeView: View {
     @State private var heroLogoPath: String? = nil
     @State private var hoveredItem: MediaItem? = nil
     @State private var activeRowIndex: Int = -1
+    @State private var cachedRowCollections: HomeRowCollections? = nil
     @FocusState private var isHeroFocused: Bool
     
     private let timer = Timer.publish(every: 20.0, on: .main, in: .common).autoconnect()
@@ -78,16 +79,16 @@ public struct TVHomeView: View {
                     .coordinateSpace(name: "homeScroll")
                     .onChange(of: activeRowIndex) { _, newIndex in
                         if newIndex == 0 {
-                            withAnimation(.easeInOut(duration: 0.50)) {
+                            withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
                                 scrollProxy.scrollTo("row-0", anchor: UnitPoint(x: 0.5, y: 0.65))
                             }
                         } else if newIndex > 0 {
                             // Selected row sits higher on screen (not at top, but higher - Y ~ 260)
-                            withAnimation(.easeInOut(duration: 0.50)) {
+                            withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
                                 scrollProxy.scrollTo("row-\(newIndex)", anchor: UnitPoint(x: 0.5, y: 0.48))
                             }
                         } else if newIndex == -1 {
-                            withAnimation(.easeInOut(duration: 0.50)) {
+                            withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
                                 scrollProxy.scrollTo("heroSection", anchor: .top)
                             }
                         }
@@ -105,6 +106,14 @@ public struct TVHomeView: View {
                     heroIndex = (heroIndex + 1) % heroPool.count
                 }
             }
+        }
+        .task {
+            if cachedRowCollections == nil {
+                cachedRowCollections = buildRowCollections()
+            }
+        }
+        .onChange(of: engine.topTen.count) { _, _ in
+            cachedRowCollections = buildRowCollections()
         }
         .task(id: spotlightHero?.id) {
             if let hero = spotlightHero {
@@ -375,16 +384,20 @@ public struct TVHomeView: View {
     private func handleRowHover(_ item: MediaItem, rowIndex: Int) {
         if rowIndex == 0 {
             // Continue Watching row does NOT affect the background at all
-            withAnimation(.easeInOut(duration: 0.45)) {
-                self.hoveredItem = nil
+            if hoveredItem != nil {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
+                    self.hoveredItem = nil
+                }
             }
         } else {
-            withAnimation(.easeInOut(duration: 0.45)) {
-                self.hoveredItem = item
+            if hoveredItem?.id != item.id {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
+                    self.hoveredItem = item
+                }
             }
         }
         if activeRowIndex != rowIndex {
-            withAnimation(.easeInOut(duration: 0.50)) {
+            withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
                 self.activeRowIndex = rowIndex
                 AppNavigation.shared.isTopBarVisible = (rowIndex <= 0)
             }
@@ -421,7 +434,7 @@ public struct TVHomeView: View {
         return result
     }
     
-    private var rowCollections: HomeRowCollections {
+    private func buildRowCollections() -> HomeRowCollections {
         var seen = Set<Int>()
         
         // 1. Exclude Trakt Continue Watching items
@@ -460,6 +473,13 @@ public struct TVHomeView: View {
             upcoming: upcoming,
             topRated: topRated
         )
+    }
+    
+    private var rowCollections: HomeRowCollections {
+        if let cached = cachedRowCollections {
+            return cached
+        }
+        return buildRowCollections()
     }
     
     @ViewBuilder
