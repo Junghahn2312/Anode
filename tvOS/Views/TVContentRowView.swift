@@ -276,7 +276,7 @@ public struct TVContentRowView: View {
         onSelect: @escaping (MediaItem) -> Void
     ) {
         self.title = title
-        self.items = items
+        self.items = items.deduplicated()
         self.showCinemaBadge = showCinemaBadge
         self.isRowActive = isRowActive
         self.horizontalPadding = horizontalPadding
@@ -286,53 +286,54 @@ public struct TVContentRowView: View {
     }
     
     public var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Row Title
-            Text(title)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundColor(.white)
-                .padding(.horizontal, horizontalPadding)
-            
-            // Horizontal Card Carousel with Expanding Cards
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 28) {
-                    ForEach(items) { item in
-                        Button {
-                            onSelect(item)
-                        } label: {
-                            TVExpandingMediaCardView(
-                                item: item,
-                                normalWidth: 190,
-                                showCinemaBadge: showCinemaBadge,
-                                onMoveUp: onMoveUp
-                            ) { focused in
-                                withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
-                                    self.focusedItem = focused
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                // Row Title
+                Text(title)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, horizontalPadding)
+                
+                // Horizontal Card Carousel with Expanding Cards
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 28) {
+                        ForEach(items) { item in
+                            Button {
+                                onSelect(item)
+                            } label: {
+                                TVExpandingMediaCardView(
+                                    item: item,
+                                    normalWidth: 190,
+                                    showCinemaBadge: showCinemaBadge,
+                                    onMoveUp: onMoveUp
+                                ) { focused in
+                                    withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                                        self.focusedItem = focused
+                                    }
+                                    self.onHover?(focused)
                                 }
-                                self.onHover?(focused)
                             }
+                            .buttonStyle(.tvCard)
                         }
-                        .buttonStyle(.tvCard)
-                        .id(item.id)
+                    }
+                    .padding(.horizontal, horizontalPadding)
+                    .padding(.vertical, 24)
+                }
+                
+                // Inline Detail Panel - Fixed height ensures stable vertical row rhythm with zero layout shifting
+                ZStack(alignment: .leading) {
+                    if let active = focusedItem {
+                        TVRowInfoPanel(item: active)
+                            .opacity(isRowActive ? 1.0 : 0.0)
                     }
                 }
+                .frame(height: 72, alignment: .top)
+                .clipped()
                 .padding(.horizontal, horizontalPadding)
-                .padding(.vertical, 24)
+                .animation(.easeInOut(duration: 0.35), value: isRowActive)
             }
-            
-            // Inline Detail Panel - Fixed height ensures stable vertical row rhythm with zero layout shifting
-            ZStack(alignment: .leading) {
-                if let active = focusedItem {
-                    TVRowInfoPanel(item: active)
-                        .opacity(isRowActive ? 1.0 : 0.0)
-                }
-            }
-            .frame(height: 72, alignment: .top)
-            .clipped()
-            .padding(.horizontal, horizontalPadding)
-            .animation(.easeInOut(duration: 0.35), value: isRowActive)
+            .focusSection()
         }
-        .focusSection()
     }
 }
 
@@ -355,59 +356,60 @@ public struct TVLandscapeRowView: View {
         onSelect: @escaping (MediaItem) -> Void
     ) {
         self.title = title
-        self.items = items
+        self.items = items.deduplicated()
         self.isRowActive = isRowActive
         self.onHover = onHover
         self.onSelect = onSelect
     }
     
     public var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Row Title
-            Text(title)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 60)
-            
-            // Horizontal Card Carousel
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 34) {
-                    ForEach(items) { item in
-                        Button {
-                            onSelect(item)
-                        } label: {
-                            TVLandscapeCardView(
-                                item: item,
-                                width: 380,
-                                subtitle: item.releaseDate
-                            ) { focused in
-                                withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
-                                    self.focusedItem = focused
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                // Row Title
+                Text(title)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 60)
+                
+                // Horizontal Card Carousel
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 34) {
+                        ForEach(items) { item in
+                            Button {
+                                onSelect(item)
+                            } label: {
+                                TVLandscapeCardView(
+                                    item: item,
+                                    width: 380,
+                                    subtitle: item.releaseDate
+                                ) { focused in
+                                    withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                                        self.focusedItem = focused
+                                    }
+                                    self.onHover?(focused)
                                 }
-                                self.onHover?(focused)
                             }
+                            .buttonStyle(.tvCard)
                         }
-                        .buttonStyle(.tvCard)
-                        .id(item.id)
+                    }
+                    .padding(.horizontal, 60)
+                    .padding(.vertical, 24)
+                }
+                
+                // Inline Detail Panel - Fixed height ensures stable vertical row rhythm with zero layout shifting
+                ZStack(alignment: .leading) {
+                    if let active = focusedItem {
+                        TVRowInfoPanel(item: active)
+                            .opacity(isRowActive ? 1.0 : 0.0)
                     }
                 }
+                .frame(height: 72, alignment: .top)
+                .clipped()
                 .padding(.horizontal, 60)
-                .padding(.vertical, 24)
+                .animation(.easeInOut(duration: 0.35), value: isRowActive)
             }
-            
-            // Inline Detail Panel - Fixed height ensures stable vertical row rhythm with zero layout shifting
-            ZStack(alignment: .leading) {
-                if let active = focusedItem {
-                    TVRowInfoPanel(item: active)
-                        .opacity(isRowActive ? 1.0 : 0.0)
-                }
-            }
-            .frame(height: 72, alignment: .top)
-            .clipped()
-            .padding(.horizontal, 60)
-            .animation(.easeInOut(duration: 0.35), value: isRowActive)
+            .focusSection()
         }
-        .focusSection()
     }
 }
 
@@ -432,7 +434,7 @@ public struct TVTopTenRowView: View {
         onSelect: @escaping (MediaItem) -> Void
     ) {
         self.title = title
-        self.items = items
+        self.items = items.deduplicated()
         self.isRowActive = isRowActive
         self.onHover = onHover
         self.onMoveUp = onMoveUp
@@ -440,53 +442,54 @@ public struct TVTopTenRowView: View {
     }
     
     public var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Row Title
-            Text(title)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 60)
-            
-            // Horizontal Card Carousel
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 38) {
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        Button {
-                            onSelect(item)
-                        } label: {
-                            TVExpandingMediaCardView(
-                                item: item,
-                                normalWidth: 185,
-                                rank: index + 1,
-                                onMoveUp: onMoveUp
-                            ) { focused in
-                                withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
-                                    self.focusedItem = focused
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                // Row Title
+                Text(title)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 60)
+                
+                // Horizontal Card Carousel
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 38) {
+                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                            Button {
+                                onSelect(item)
+                            } label: {
+                                TVExpandingMediaCardView(
+                                    item: item,
+                                    normalWidth: 185,
+                                    rank: index + 1,
+                                    onMoveUp: onMoveUp
+                                ) { focused in
+                                    withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                                        self.focusedItem = focused
+                                    }
+                                    self.onHover?(focused)
                                 }
-                                self.onHover?(focused)
                             }
+                            .buttonStyle(.tvCard)
                         }
-                        .buttonStyle(.tvCard)
-                        .id(item.id)
+                    }
+                    .padding(.horizontal, 60)
+                    .padding(.vertical, 24)
+                }
+                
+                // Inline Detail Panel - Fixed height ensures stable vertical row rhythm with zero layout shifting
+                ZStack(alignment: .leading) {
+                    if let active = focusedItem {
+                        TVRowInfoPanel(item: active)
+                            .opacity(isRowActive ? 1.0 : 0.0)
                     }
                 }
+                .frame(height: 72, alignment: .top)
+                .clipped()
                 .padding(.horizontal, 60)
-                .padding(.vertical, 24)
+                .animation(.easeInOut(duration: 0.35), value: isRowActive)
             }
-            
-            // Inline Detail Panel - Fixed height ensures stable vertical row rhythm with zero layout shifting
-            ZStack(alignment: .leading) {
-                if let active = focusedItem {
-                    TVRowInfoPanel(item: active)
-                        .opacity(isRowActive ? 1.0 : 0.0)
-                }
-            }
-            .frame(height: 72, alignment: .top)
-            .clipped()
-            .padding(.horizontal, 60)
-            .animation(.easeInOut(duration: 0.35), value: isRowActive)
+            .focusSection()
         }
-        .focusSection()
     }
 }
 

@@ -50,3 +50,17 @@ public struct ContinueWatchingItem: Identifiable, Codable, Hashable, Sendable {
         return max(1, Int(remaining.rounded()))
     }
 }
+
+extension Array where Element == ContinueWatchingItem {
+    public func deduplicated() -> [ContinueWatchingItem] {
+        var seen = Set<String>()
+        return filter { item in
+            if seen.contains(item.id) {
+                return false
+            }
+            seen.insert(item.id)
+            return true
+        }
+    }
+}
+

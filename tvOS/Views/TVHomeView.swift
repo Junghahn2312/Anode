@@ -27,7 +27,7 @@ public struct TVHomeView: View {
         if !engine.heroSpotlights.isEmpty {
             return engine.heroSpotlights
         }
-        return Array((engine.cinemaNow + engine.trendingItems).prefix(6))
+        return Array((engine.cinemaNow + engine.trendingItems).deduplicated().prefix(6))
     }
     
     private var spotlightHero: MediaItem? {
@@ -120,6 +120,9 @@ public struct TVHomeView: View {
                     }
                 }
             }
+        }
+        .onAppear {
+            AppNavigation.shared.isTopBarVisible = true
         }
         .fullScreenCover(item: $selectedItem) { item in
             TVMediaDetailView(item: item)
@@ -394,7 +397,7 @@ public struct TVHomeView: View {
         if activeRowIndex != rowIndex {
             withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
                 self.activeRowIndex = rowIndex
-                AppNavigation.shared.isTopBarVisible = (rowIndex <= 0)
+                AppNavigation.shared.isTopBarVisible = true
             }
         }
     }

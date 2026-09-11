@@ -159,3 +159,17 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
         return URL(string: "https://image.tmdb.org/t/p/\(size)\(logoPath)")
     }
 }
+
+extension Array where Element == MediaItem {
+    public func deduplicated() -> [MediaItem] {
+        var seen = Set<Int>()
+        return filter { item in
+            if seen.contains(item.id) {
+                return false
+            }
+            seen.insert(item.id)
+            return true
+        }
+    }
+}
+

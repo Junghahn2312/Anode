@@ -12,50 +12,52 @@ public struct TVContinueWatchingRowView: View {
         onMoveUp: (() -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
     ) {
-        self.items = items
+        self.items = items.deduplicated()
         self.onHover = onHover
         self.onMoveUp = onMoveUp
         self.onSelect = onSelect
     }
     
     public var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Header: Background Trakt Sync Button (No Dropdown)
-            HStack {
-                TVContinueWatchingSyncButton()
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 60)
-            .focusSection()
-            
-            // Horizontal Carousel of 16:9 Landscape Continue Watching Cards
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 32) {
-                    ForEach(items) { cwItem in
-                        Button {
-                            onSelect(cwItem.item)
-                        } label: {
-                            TVContinueWatchingCardView(
-                                continueItem: cwItem,
-                                width: 340
-                            ) { focusedMedia in
-                                onHover?(focusedMedia)
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 14) {
+                // Header: Background Trakt Sync Button (No Dropdown)
+                HStack {
+                    TVContinueWatchingSyncButton()
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 60)
+                .focusSection()
+                
+                // Horizontal Carousel of 16:9 Landscape Continue Watching Cards
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 32) {
+                        ForEach(items) { cwItem in
+                            Button {
+                                onSelect(cwItem.item)
+                            } label: {
+                                TVContinueWatchingCardView(
+                                    continueItem: cwItem,
+                                    width: 340
+                                ) { focusedMedia in
+                                    onHover?(focusedMedia)
+                                }
                             }
-                        }
-                        .buttonStyle(.tvCard)
-                        .onMoveCommand { direction in
-                            if direction == .up {
-                                onMoveUp?()
+                            .buttonStyle(.tvCard)
+                            .onMoveCommand { direction in
+                                if direction == .up {
+                                    onMoveUp?()
+                                }
                             }
                         }
                     }
+                    .padding(.horizontal, 60)
+                    .padding(.vertical, 16)
                 }
-                .padding(.horizontal, 60)
-                .padding(.vertical, 16)
             }
+            .focusSection()
         }
-        .focusSection()
     }
 }
 

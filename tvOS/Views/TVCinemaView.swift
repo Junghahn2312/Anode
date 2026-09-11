@@ -51,6 +51,9 @@ public struct TVCinemaView: View {
             .ignoresSafeArea()
         }
         .ignoresSafeArea()
+        .onAppear {
+            AppNavigation.shared.isTopBarVisible = true
+        }
         .fullScreenCover(item: $selectedItem) { item in
             TVMediaDetailView(item: item)
         }
@@ -142,7 +145,7 @@ public struct TVCinemaView: View {
         if activeRowIndex != rowIndex {
             withAnimation(.easeInOut(duration: 0.50)) {
                 self.activeRowIndex = rowIndex
-                AppNavigation.shared.isTopBarVisible = (rowIndex <= 0)
+                AppNavigation.shared.isTopBarVisible = true
             }
         }
     }
@@ -151,8 +154,8 @@ public struct TVCinemaView: View {
     
     @ViewBuilder
     private var theatricalRowsSection: some View {
-        let exclusiveNow = engine.cinemaNow.filter { $0.isNowPlayingTheatrical }
-        let exclusiveUpcoming = engine.cinemaUpcoming.filter { $0.isUpcomingTheatrical }
+        let exclusiveNow = engine.cinemaNow.filter { $0.isNowPlayingTheatrical }.deduplicated()
+        let exclusiveUpcoming = engine.cinemaUpcoming.filter { $0.isUpcomingTheatrical }.deduplicated()
         
         VStack(alignment: .leading, spacing: 32) {
             // Row 0: Now in Theatres (Theatrical Exclusive)

@@ -73,6 +73,9 @@ public struct TVDiscoveryView: View {
             .ignoresSafeArea()
         }
         .ignoresSafeArea()
+        .onAppear {
+            AppNavigation.shared.isTopBarVisible = true
+        }
         .fullScreenCover(item: $selectedItem) { item in
             TVMediaDetailView(item: item)
         }
@@ -288,7 +291,7 @@ public struct TVDiscoveryView: View {
             }
             
             // Row 3: Critically Acclaimed on [Platform]
-            let acclaimed = (platformTopMovies + platformTopTV).filter { $0.rating >= 7.5 }
+            let acclaimed = (platformTopMovies + platformTopTV).filter { $0.rating >= 7.5 }.deduplicated()
             if !acclaimed.isEmpty {
                 TVContentRowView(
                     title: "Critically Acclaimed on \(provider.name)",
@@ -404,12 +407,12 @@ public struct TVDiscoveryView: View {
     private var filteredCatalogRows: some View {
         if let genre = selectedGenre {
             // Genre-Specific Rows
-            let allItems = (engine.popularMovies + engine.popularTV + engine.trendingItems)
+            let allItems = (engine.popularMovies + engine.popularTV + engine.trendingItems + engine.topRated).deduplicated()
             let genreFiltered = allItems.filter { item in
                 item.genreNames.contains { g in g.localizedCaseInsensitiveContains(genre.name) }
             }
-            let matchingMovies = genreFiltered.filter { $0.mediaType == .movie }
-            let matchingTV = genreFiltered.filter { $0.mediaType == .tvShow }
+            let matchingMovies = genreFiltered.filter { $0.mediaType == .movie }.deduplicated()
+            let matchingTV = genreFiltered.filter { $0.mediaType == .tvShow }.deduplicated()
             
             if selectedMediaType != .tvShows && !matchingMovies.isEmpty {
                 TVContentRowView(
@@ -435,7 +438,7 @@ public struct TVDiscoveryView: View {
                 .id("discovery-row-2")
             }
             
-            let topRatedGenre = genreFiltered.filter { $0.rating >= 8.0 }
+            let topRatedGenre = genreFiltered.filter { $0.rating >= 8.0 }.deduplicated()
             if !topRatedGenre.isEmpty {
                 TVContentRowView(
                     title: "Top Rated \(genre.name)",
@@ -535,7 +538,7 @@ public struct TVDiscoveryView: View {
                 
                 TVContentRowView(
                     title: "Critically Acclaimed Drama Series",
-                    items: (engine.popularTV + engine.trendingItems).filter { $0.mediaType == .tvShow && $0.rating >= 8.2 },
+                    items: (engine.popularTV + engine.trendingItems + engine.topRated).filter { $0.mediaType == .tvShow && $0.rating >= 7.8 }.deduplicated(),
                     isRowActive: activeRowIndex == 2,
                     onHover: { handleRowHover($0, rowIndex: 2) }
                 ) { item in
@@ -566,9 +569,7 @@ public struct TVDiscoveryView: View {
             withAnimation(.easeInOut(duration: 0.50)) {
                 self.activeRowIndex = rowIndex
             }
-            withAnimation(.easeInOut(duration: 0.35)) {
-                AppNavigation.shared.isTopBarVisible = (rowIndex <= 0)
-            }
+            AppNavigation.shared.isTopBarVisible = true
         }
     }
     
