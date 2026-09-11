@@ -15,6 +15,16 @@ public actor TMDBService: ContentProvider {
     private var episodesCache: [String: [TVEpisode]] = [:]
     private var logoCache: [Int: String] = [:]
     
+    public func clearMemoryCache() {
+        memoryCache.removeAll()
+        availabilityCache.removeAll()
+        creditsCache.removeAll()
+        videosCache.removeAll()
+        seasonsCache.removeAll()
+        episodesCache.removeAll()
+        logoCache.removeAll()
+    }
+    
     private static let genreMap: [Int: String] = [
         28: "Action",
         12: "Adventure",
@@ -416,6 +426,17 @@ public actor TMDBService: ContentProvider {
                     )
                     availabilityCache[id] = result
                     return result
+                } else {
+                    // TMDB returned 200 with zero providers globally: theatrical exclusive or unreleased
+                    let result = WatchAvailability(
+                        subscriptions: [],
+                        rentOptions: [],
+                        buyOptions: [],
+                        cinemaStatus: mediaType == .movie ? "Now in Theatres" : nil,
+                        attribution: "Theatrical release data provided by JustWatch & TMDB"
+                    )
+                    availabilityCache[id] = result
+                    return result
                 }
             }
         }
@@ -686,9 +707,9 @@ public actor TMDBService: ContentProvider {
             rent = [PurchaseOption(providerName: "Apple TV", price: "$3.99")]
             buy = [PurchaseOption(providerName: "Apple TV", price: "$9.99")]
         default:
-            subs = [.netflix, .primeVideo]
-            rent = [PurchaseOption(providerName: "Apple TV", price: "$3.99")]
-            buy = [PurchaseOption(providerName: "Apple TV", price: "$9.99")]
+            subs = []
+            rent = []
+            buy = []
         }
         
         return WatchAvailability(
@@ -812,128 +833,170 @@ private struct TMDBLogoDTO: Codable {
 public enum MockData {
     public static let cinemaMovies: [MediaItem] = [
         MediaItem(
-            id: 111,
-            title: "Alien: Romulus",
+            id: 969681,
+            title: "Spider-Man: Brand New Day",
             mediaType: .movie,
-            overview: "While scavenging the deep ends of a derelict space station, a group of young space colonizers come face to face with the most terrifying life form in the universe.",
-            posterPath: "/2uSWRTtCG336nuBiG8jOTEUKSy8.jpg",
-            backdropPath: "/iYqSQaWDttQIQzsxg9xHyg0bttG.jpg",
-            voteAverage: 8.2,
-            voteCount: 3820,
-            releaseDateString: "2026-08-16",
-            genreNames: ["Horror", "Sci-Fi", "Thriller"],
-            runtimeMinutes: 119,
-            tagline: "In space, no one can hear you scream.",
-            certification: "R",
-            streamingProviders: [],
-            trailers: [VideoTrailer(id: "ar1", name: "Official Trailer", key: "x0XDEhP4MQs")],
-            cast: [
-                CastMember(id: 41, name: "Cailee Spaeny", character: "Rain Carradine"),
-                CastMember(id: 42, name: "David Jonsson", character: "Andy"),
-                CastMember(id: 43, name: "Archie Renaux", character: "Tyler")
-            ],
-            logoPath: "/wb2OPyCSGLy7Ca5RquWF3VfOJKx.png",
-            inCinemas: true
-        ),
-        MediaItem(
-            id: 112,
-            title: "Beetlejuice Beetlejuice",
-            mediaType: .movie,
-            overview: "After a family tragedy, three generations of the Deetz family return home to Winter River. Still haunted by Beetlejuice, Lydia's life is turned upside down when her teenage daughter opens the portal to the Afterlife.",
-            posterPath: "/kKgQzkUCnQmeTPkyIwHly2t6ZFI.jpg",
-            backdropPath: "/kF8ljC7Y4p1UsmKBi2LxelZpqw.jpg",
-            voteAverage: 7.6,
-            voteCount: 2940,
-            releaseDateString: "2026-09-06",
-            genreNames: ["Comedy", "Fantasy", "Horror"],
-            runtimeMinutes: 105,
-            tagline: "The juice is loose.",
+            overview: "Peter Parker navigates life completely on his own in New York City while facing a new syndicate of criminals threatening the borough.",
+            posterPath: "/bjiS5ipwxb9JFy3XRRN4OAilSeX.jpg",
+            backdropPath: "/qeQJx07rK2xm8SD2sJxFKhE7gs0.jpg",
+            voteAverage: 8.4,
+            voteCount: 1820,
+            releaseDateString: "2026-07-29",
+            genreNames: ["Action", "Adventure", "Sci-Fi"],
+            runtimeMinutes: 135,
+            tagline: "A clean slate in a dangerous city.",
             certification: "PG-13",
             streamingProviders: [],
-            trailers: [VideoTrailer(id: "bb1", name: "Official Trailer", key: "As-vKW4ZboI")],
+            trailers: [VideoTrailer(id: "sp1", name: "Theatrical Trailer", key: "x0XDEhP4MQs")],
             cast: [
-                CastMember(id: 44, name: "Michael Keaton", character: "Beetlejuice"),
-                CastMember(id: 45, name: "Winona Ryder", character: "Lydia Deetz"),
-                CastMember(id: 46, name: "Jenna Ortega", character: "Astrid Deetz")
+                CastMember(id: 1136406, name: "Tom Holland", character: "Peter Parker / Spider-Man"),
+                CastMember(id: 505710, name: "Zendaya", character: "MJ")
             ],
-            logoPath: "/61Z6mL60ltShU393JkgBawAaeCw.png",
+            logoPath: "/vbZcDHC5IFylYuRnp3eyOs5rTV1.png",
             inCinemas: true
         ),
         MediaItem(
-            id: 113,
-            title: "Deadpool & Wolverine",
+            id: 1204680,
+            title: "Coyote vs. Acme",
             mediaType: .movie,
-            overview: "A listless Wade Wilson toils away in civilian life with his days as the morally flexible mercenary Deadpool behind him. But when his homeworld faces an existential threat, Wade must reluctantly suit-up again with an even more reluctant Wolverine.",
-            posterPath: "/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg",
-            backdropPath: "/by8z9Fe8y7p4jo2YlW2SZDnptyT.jpg",
-            voteAverage: 8.0,
-            voteCount: 6540,
-            releaseDateString: "2026-07-26",
-            genreNames: ["Action", "Comedy", "Sci-Fi"],
-            runtimeMinutes: 128,
-            tagline: "Come together.",
-            certification: "R",
-            streamingProviders: [],
-            trailers: [VideoTrailer(id: "dw1", name: "Official Trailer", key: "73_1biulkYk")],
-            cast: [
-                CastMember(id: 47, name: "Ryan Reynolds", character: "Wade Wilson / Deadpool"),
-                CastMember(id: 48, name: "Hugh Jackman", character: "Logan / Wolverine"),
-                CastMember(id: 49, name: "Emma Corrin", character: "Cassandra Nova")
-            ],
-            logoPath: "/2o48U3kMXGIqRAkKZQ3n5OTWSBy.png",
-            inCinemas: true
-        ),
-        MediaItem(
-            id: 115,
-            title: "The Substance",
-            mediaType: .movie,
-            overview: "A fading celebrity decides to use a black-market drug, a cell-replicating substance that temporarily creates a younger, better version of herself.",
-            posterPath: "/vhbQQdPnfLUxhdXhREITF5cYppT.jpg",
-            backdropPath: "/bVSOgrxasVJF6V71T7v2KfBRSzu.jpg",
+            overview: "After ACME products fail him one too many times in his pursuit of the Road Runner, Wile E. Coyote hires a human attorney to sue the conglomerate.",
+            posterPath: "/orkLtdgMGiO9rTVMqJ1kKwrnup1.jpg",
+            backdropPath: "/l9mFW9HQnAZ4r1ChZJHoOT3jaal.jpg",
             voteAverage: 8.1,
-            voteCount: 1950,
-            releaseDateString: "2026-09-01",
-            genreNames: ["Drama", "Horror", "Sci-Fi"],
-            runtimeMinutes: 141,
-            tagline: "Have you ever dreamt of a better version of yourself?",
-            certification: "R",
-            streamingProviders: [],
-            trailers: [VideoTrailer(id: "sub1", name: "Official Trailer", key: "LNlrGhPdnk8")],
-            cast: [
-                CastMember(id: 53, name: "Demi Moore", character: "Elisabeth Sparkle"),
-                CastMember(id: 54, name: "Margaret Qualley", character: "Sue"),
-                CastMember(id: 55, name: "Dennis Quaid", character: "Harvey")
-            ],
-            logoPath: "/1yw5B2rL7vneZq2RcWKqNVVjlOG.png",
-            inCinemas: true
-        ),
-        MediaItem(
-            id: 117,
-            title: "The Wild Robot",
-            mediaType: .movie,
-            overview: "After a shipwreck, an intelligent robot called Roz is stranded on an uninhabited island. To survive the harsh environment, Roz bonds with the island's animals and cares for an orphaned baby goose.",
-            posterPath: "/wTnV3PCVW5O92JMrFvvrRcV39RU.jpg",
-            backdropPath: "/1pmXyN3sKeYoUhu5VBZiDU4BX21.jpg",
-            voteAverage: 8.5,
-            voteCount: 3100,
-            releaseDateString: "2026-09-08",
-            genreNames: ["Animation", "Sci-Fi", "Family"],
-            runtimeMinutes: 102,
-            tagline: "Discover your true nature.",
+            voteCount: 1450,
+            releaseDateString: "2026-08-20",
+            genreNames: ["Comedy", "Family", "Animation"],
+            runtimeMinutes: 98,
+            tagline: "Justice will be beep-beeped.",
             certification: "PG",
             streamingProviders: [],
-            trailers: [VideoTrailer(id: "twr1", name: "Official Trailer", key: "67vbA5ZJb3k")],
+            trailers: [VideoTrailer(id: "cva1", name: "Official Trailer", key: "As-vKW4ZboI")],
             cast: [
-                CastMember(id: 59, name: "Lupita Nyong'o", character: "Roz (voice)"),
-                CastMember(id: 60, name: "Pedro Pascal", character: "Fink (voice)"),
-                CastMember(id: 61, name: "Kit Connor", character: "Brightbill (voice)")
+                CastMember(id: 12109, name: "Will Forte", character: "Kevin Avery"),
+                CastMember(id: 56446, name: "John Cena", character: "ACME Counsel"),
+                CastMember(id: 13184, name: "Lana Condor", character: "Paige")
             ],
-            logoPath: "/xvXJfGKjHHe1m4Usye198DCw7iJ.png",
+            logoPath: "/3m1raTve2RWZ0jfnUwHSnRtjVK3.png",
+            inCinemas: true
+        ),
+        MediaItem(
+            id: 1368337,
+            title: "The Odyssey",
+            mediaType: .movie,
+            overview: "An epic theatrical adaptation of Homer's legendary myth recounting Odysseus' ten-year voyage home to Ithaca following the fall of Troy.",
+            posterPath: "/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg",
+            backdropPath: "/RMXG8myu1aGlNUsRjtxzmpdMK0.jpg",
+            voteAverage: 8.3,
+            voteCount: 1280,
+            releaseDateString: "2026-07-15",
+            genreNames: ["Action", "Adventure", "History"],
+            runtimeMinutes: 165,
+            tagline: "The voyage that defined eternity.",
+            certification: "R",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "od1", name: "Cinematic Trailer", key: "LNlrGhPdnk8")],
+            cast: [
+                CastMember(id: 1892, name: "Matt Damon", character: "Odysseus"),
+                CastMember(id: 3456, name: "Charlize Theron", character: "Penelope")
+            ],
+            logoPath: "/kX6ZX4GL7km04332caiOVapR2lb.png",
+            inCinemas: true
+        ),
+        MediaItem(
+            id: 1375646,
+            title: "Colony",
+            mediaType: .movie,
+            overview: "A deep-space colonization vessel discovers an uncharted biosphere harboring an ancient architecture that awakens upon their landing.",
+            posterPath: "/tN799oUR0f1gUKDYdMNrDaY7I51.jpg",
+            backdropPath: "/hpBGCnzOvdtQoMyE48gvwp2y5yx.jpg",
+            voteAverage: 7.9,
+            voteCount: 1120,
+            releaseDateString: "2026-05-21",
+            genreNames: ["Sci-Fi", "Thriller", "Mystery"],
+            runtimeMinutes: 132,
+            tagline: "We were not the first.",
+            certification: "R",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "col1", name: "Teaser", key: "73_1biulkYk")],
+            cast: [
+                CastMember(id: 819, name: "Edward Norton", character: "Commander Vance"),
+                CastMember(id: 923, name: "Rebecca Hall", character: "Dr. Catherine Shaw")
+            ],
+            logoPath: "/hCK5tVvTG2c0SrOaPCWMlbMj69A.png",
+            inCinemas: true
+        ),
+        MediaItem(
+            id: 1393326,
+            title: "Ghost in the Cell",
+            mediaType: .movie,
+            overview: "A locked-down high-tech bio-research facility experiences an artificial intelligence containment breach during a midnight storm.",
+            posterPath: "/zxcMdx0w5Zmg8yZuuiS7CJ8vOea.jpg",
+            backdropPath: "/tK3QdOOrX4qEkmSlvrmc8cK7iOU.jpg",
+            voteAverage: 7.7,
+            voteCount: 940,
+            releaseDateString: "2026-04-16",
+            genreNames: ["Horror", "Sci-Fi", "Action"],
+            runtimeMinutes: 110,
+            tagline: "Locked inside with the anomaly.",
+            certification: "R",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "gitc1", name: "Trailer", key: "67vbA5ZJb3k")],
+            cast: [
+                CastMember(id: 1980, name: "Dan Stevens", character: "Dr. Isaac Cole"),
+                CastMember(id: 2450, name: "Maika Monroe", character: "Elena Rios")
+            ],
+            logoPath: "/pEzRWmKyXZYnqWQGisS8Q8CiXcb.png",
+            inCinemas: true
+        ),
+        MediaItem(
+            id: 1101412,
+            title: "Fall 2: Deadpoint",
+            mediaType: .movie,
+            overview: "Two technical mountaineers find themselves stranded on an isolated sheer mountain needle in the Swiss Alps after a cable car collapses.",
+            posterPath: "/fgSm5ylwiXbIHn8UbUXDjk9RRu4.jpg",
+            backdropPath: "/yQXU4rgJ5LVCzn16SeIg34T35lV.jpg",
+            voteAverage: 7.5,
+            voteCount: 890,
+            releaseDateString: "2026-09-01",
+            genreNames: ["Thriller", "Action"],
+            runtimeMinutes: 104,
+            tagline: "Nowhere to go but down.",
+            certification: "PG-13",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "f2_1", name: "Official Trailer", key: "Way9Dexny3w")],
+            cast: [
+                CastMember(id: 3012, name: "Grace Caroline Currey", character: "Becky Connor"),
+                CastMember(id: 4015, name: "Virginia Gardner", character: "Hunter")
+            ],
+            logoPath: "/zoJEVzPC6DLHQ5KzoyDQ5357B2z.png",
             inCinemas: true
         )
     ]
     
     public static let freshFromTheatres: [MediaItem] = [
+        MediaItem(
+            id: 402431,
+            title: "Wicked",
+            mediaType: .movie,
+            overview: "The untold story of the witches of Oz stars Cynthia Erivo as Elphaba and Ariana Grande as Glinda.",
+            posterPath: "/xDGbZ0JJ3mYaGKy4Nzd9Kph6M9L.jpg",
+            backdropPath: "/beuMhwEdoMpJhyoZiCldogaqsKI.jpg",
+            voteAverage: 7.8,
+            voteCount: 2680,
+            releaseDateString: "2024-11-22",
+            genreNames: ["Drama", "Fantasy", "Music"],
+            runtimeMinutes: 160,
+            tagline: "Everyone deserves the chance to fly.",
+            certification: "PG",
+            streamingProviders: [.appleTV, .primeVideo],
+            trailers: [VideoTrailer(id: "wk1", name: "Official Trailer", key: "6COmYeLsz4c")],
+            cast: [
+                CastMember(id: 62, name: "Cynthia Erivo", character: "Elphaba"),
+                CastMember(id: 63, name: "Ariana Grande", character: "Glinda")
+            ],
+            logoPath: "/oeSUu0CjuohGO6oIiFkxn4xHbrt.png",
+            inCinemas: false
+        ),
         MediaItem(
             id: 101,
             title: "Dune: Part Two",
@@ -956,6 +1019,98 @@ public enum MockData {
                 CastMember(id: 3, name: "Rebecca Ferguson", character: "Lady Jessica"),
                 CastMember(id: 4, name: "Javier Bardem", character: "Stilgar")
             ],
+            inCinemas: false
+        ),
+        MediaItem(
+            id: 111,
+            title: "Alien: Romulus",
+            mediaType: .movie,
+            overview: "While scavenging the deep ends of a derelict space station, a group of young space colonizers come face to face with the most terrifying life form in the universe.",
+            posterPath: "/2uSWRTtCG336nuBiG8jOTEUKSy8.jpg",
+            backdropPath: "/iYqSQaWDttQIQzsxg9xHyg0bttG.jpg",
+            voteAverage: 8.2,
+            voteCount: 3820,
+            releaseDateString: "2024-08-16",
+            genreNames: ["Horror", "Sci-Fi", "Thriller"],
+            runtimeMinutes: 119,
+            tagline: "In space, no one can hear you scream.",
+            certification: "R",
+            streamingProviders: [.appleTV, .primeVideo],
+            trailers: [VideoTrailer(id: "ar1", name: "Official Trailer", key: "x0XDEhP4MQs")],
+            cast: [
+                CastMember(id: 41, name: "Cailee Spaeny", character: "Rain Carradine"),
+                CastMember(id: 42, name: "David Jonsson", character: "Andy")
+            ],
+            logoPath: "/wb2OPyCSGLy7Ca5RquWF3VfOJKx.png",
+            inCinemas: false
+        ),
+        MediaItem(
+            id: 113,
+            title: "Deadpool & Wolverine",
+            mediaType: .movie,
+            overview: "A listless Wade Wilson toils away in civilian life with his days as the morally flexible mercenary Deadpool behind him. But when his homeworld faces an existential threat, Wade must reluctantly suit-up again with an even more reluctant Wolverine.",
+            posterPath: "/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg",
+            backdropPath: "/by8z9Fe8y7p4jo2YlW2SZDnptyT.jpg",
+            voteAverage: 8.0,
+            voteCount: 6540,
+            releaseDateString: "2024-07-26",
+            genreNames: ["Action", "Comedy", "Sci-Fi"],
+            runtimeMinutes: 128,
+            tagline: "Come together.",
+            certification: "R",
+            streamingProviders: [.disneyPlus],
+            trailers: [VideoTrailer(id: "dw1", name: "Official Trailer", key: "73_1biulkYk")],
+            cast: [
+                CastMember(id: 47, name: "Ryan Reynolds", character: "Wade Wilson / Deadpool"),
+                CastMember(id: 48, name: "Hugh Jackman", character: "Logan / Wolverine")
+            ],
+            logoPath: "/2o48U3kMXGIqRAkKZQ3n5OTWSBy.png",
+            inCinemas: false
+        ),
+        MediaItem(
+            id: 115,
+            title: "The Substance",
+            mediaType: .movie,
+            overview: "A fading celebrity decides to use a black-market drug, a cell-replicating substance that temporarily creates a younger, better version of herself.",
+            posterPath: "/vhbQQdPnfLUxhdXhREITF5cYppT.jpg",
+            backdropPath: "/bVSOgrxasVJF6V71T7v2KfBRSzu.jpg",
+            voteAverage: 8.1,
+            voteCount: 1950,
+            releaseDateString: "2024-09-20",
+            genreNames: ["Drama", "Horror", "Sci-Fi"],
+            runtimeMinutes: 141,
+            tagline: "Have you ever dreamt of a better version of yourself?",
+            certification: "R",
+            streamingProviders: [.appleTV, .primeVideo],
+            trailers: [VideoTrailer(id: "sub1", name: "Official Trailer", key: "LNlrGhPdnk8")],
+            cast: [
+                CastMember(id: 53, name: "Demi Moore", character: "Elisabeth Sparkle"),
+                CastMember(id: 54, name: "Margaret Qualley", character: "Sue")
+            ],
+            logoPath: "/1yw5B2rL7vneZq2RcWKqNVVjlOG.png",
+            inCinemas: false
+        ),
+        MediaItem(
+            id: 117,
+            title: "The Wild Robot",
+            mediaType: .movie,
+            overview: "After a shipwreck, an intelligent robot called Roz is stranded on an uninhabited island. To survive the harsh environment, Roz bonds with the island's animals and cares for an orphaned baby goose.",
+            posterPath: "/wTnV3PCVW5O92JMrFvvrRcV39RU.jpg",
+            backdropPath: "/1pmXyN3sKeYoUhu5VBZiDU4BX21.jpg",
+            voteAverage: 8.5,
+            voteCount: 3100,
+            releaseDateString: "2024-09-27",
+            genreNames: ["Animation", "Sci-Fi", "Family"],
+            runtimeMinutes: 102,
+            tagline: "Discover your true nature.",
+            certification: "PG",
+            streamingProviders: [.appleTV, .primeVideo],
+            trailers: [VideoTrailer(id: "twr1", name: "Official Trailer", key: "67vbA5ZJb3k")],
+            cast: [
+                CastMember(id: 59, name: "Lupita Nyong'o", character: "Roz (voice)"),
+                CastMember(id: 60, name: "Pedro Pascal", character: "Fink (voice)")
+            ],
+            logoPath: "/xvXJfGKjHHe1m4Usye198DCw7iJ.png",
             inCinemas: false
         ),
         MediaItem(
@@ -1823,117 +1978,169 @@ public enum MockData {
     
     public static let upcoming: [MediaItem] = [
         MediaItem(
-            id: 501,
-            title: "Gladiator II",
+            id: 806704,
+            title: "The Batman: Part II",
             mediaType: .movie,
-            overview: "Years after witnessing the death of the revered hero Maximus at the hands of his uncle, Lucius must enter the Colosseum after his home is conquered by the tyrannical Emperors who now lead Rome with an iron fist.",
-            posterPath: "/2cxhvwyEwRlysAmRH4iodkvo0z5.jpg",
-            backdropPath: "/tOqIwliWMovSIZ9DyvHcHI7p2im.jpg",
-            voteAverage: 7.6,
-            voteCount: 1840,
-            releaseDateString: "2026-11-20",
-            genreNames: ["Action", "Adventure", "Drama"],
-            runtimeMinutes: 148,
-            tagline: "What we do in life echoes in eternity.",
-            certification: "R",
-            streamingProviders: [],
-            trailers: [VideoTrailer(id: "t9", name: "Official Trailer", key: "4rgYUipGJNo")],
-            logoPath: "/jwXk1c2esVoEzVLplPiQubNVyFC.png",
-            inCinemas: false
-        ),
-        MediaItem(
-            id: 502,
-            title: "Nosferatu",
-            mediaType: .movie,
-            overview: "A gothic tale of obsession between a haunted young woman in 19th-century Germany and the ancient Transylvanian vampire who stalks her, bringing untold horror in his wake.",
-            posterPath: "/5qGIxdEO841C0tdY8vOdLoRVrr0.jpg",
-            backdropPath: "/gprjiZWY43vxSKngMha1wfb5TGG.jpg",
-            voteAverage: 7.9,
-            voteCount: 1200,
-            releaseDateString: "2026-12-25",
-            genreNames: ["Horror", "Drama", "Fantasy"],
-            runtimeMinutes: 132,
-            tagline: "He is coming.",
-            certification: "R",
-            streamingProviders: [],
-            trailers: [VideoTrailer(id: "t10", name: "Official Trailer", key: "dG91B3hHyY4")],
-            logoPath: "/pkAiCBNf5uDpqT2rCDmatRyhDiK.png",
-            inCinemas: false
-        ),
-        MediaItem(
-            id: 503,
-            title: "Mission: Impossible - The Final Reckoning",
-            mediaType: .movie,
-            overview: "Ethan Hunt and his IMF team face their greatest adversary yet as they race to stop an apocalyptic artificial intelligence threat known as the Entity before it reshapes global destiny.",
-            posterPath: "/iKPsC9EFUafRP9SrUznI61getVP.jpg",
-            backdropPath: "/538U9snNc2fpnOmYXAPUh3zn31H.jpg",
-            voteAverage: 8.3,
-            voteCount: 950,
-            releaseDateString: "2027-05-23",
-            genreNames: ["Action", "Adventure", "Thriller"],
+            overview: "The continuing saga of the Dark Knight in Gotham City as Bruce Wayne faces new threats arising from the criminal underworld.",
+            posterPath: "/r5fl4aMsmTjgc8DdDqQaM84roWp.jpg",
+            backdropPath: "/4uaHnYDDpUTj0nCg6YqBKab50YW.jpg",
+            voteAverage: 8.5,
+            voteCount: 1420,
+            releaseDateString: "2026-10-02",
+            genreNames: ["Action", "Crime", "Drama"],
             runtimeMinutes: 165,
-            tagline: "Our lives are the sum of our choices.",
+            tagline: "Unmask the truth.",
             certification: "PG-13",
             streamingProviders: [],
-            trailers: [VideoTrailer(id: "t11", name: "Teaser Trailer", key: "NOhDyZJ_318")],
-            logoPath: "/7yXEfWFDGpqIfq9wdpMOHcHbi8g.png",
+            trailers: [VideoTrailer(id: "bm2_1", name: "Teaser Announcement", key: "mqqft2x_Aa4")],
+            cast: [
+                CastMember(id: 11288, name: "Robert Pattinson", character: "Bruce Wayne / The Batman"),
+                CastMember(id: 6573, name: "Andy Serkis", character: "Alfred Pennyworth"),
+                CastMember(id: 2178, name: "Colin Farrell", character: "Oswald Cobblepot / The Penguin")
+            ],
+            logoPath: "/bdegQBZoIM1bqB0zjk6K1pb9nWY.png",
             inCinemas: false
         ),
         MediaItem(
-            id: 504,
-            title: "Captain America: Brave New World",
+            id: 83533,
+            title: "Avatar: Fire and Ash",
             mediaType: .movie,
-            overview: "Sam Wilson finds himself in the middle of an international incident after meeting with newly elected U.S. President Thaddeus Ross, uncovering a nefarious global plot.",
-            posterPath: "/pzIddUEMWhWzfvLI3TwxUG2wGoi.jpg",
-            backdropPath: "/ce3prrjh9ZehEl5JinNqr4jIeaB.jpg",
-            voteAverage: 7.8,
-            voteCount: 880,
-            releaseDateString: "2027-02-14",
+            overview: "Jake Sully and Neytiri encounter a new, aggressive volcanic clan of Na'vi known as the Ash People on Pandora.",
+            posterPath: "/bRBeSHfGHwkEpImlhxPmOcUsaeg.jpg",
+            backdropPath: "/u8DU5fkLoM5tTRukzPC31oGPxaQ.jpg",
+            voteAverage: 8.4,
+            voteCount: 1650,
+            releaseDateString: "2026-12-18",
+            genreNames: ["Sci-Fi", "Adventure", "Action"],
+            runtimeMinutes: 185,
+            tagline: "Return to Pandora.",
+            certification: "PG-13",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "av3_1", name: "Official Teaser", key: "d9MyW72ELq0")],
+            cast: [
+                CastMember(id: 65731, name: "Sam Worthington", character: "Jake Sully"),
+                CastMember(id: 8691, name: "Zoe Saldana", character: "Neytiri"),
+                CastMember(id: 10205, name: "Sigourney Weaver", character: "Kiri")
+            ],
+            logoPath: "/qzuSPiHF08bUZXPaXST24ANfoqK.png",
+            inCinemas: false
+        ),
+        MediaItem(
+            id: 1003596,
+            title: "Avengers: Doomsday",
+            mediaType: .movie,
+            overview: "The Avengers assemble to confront Doctor Doom across the collapsing multiverse in an epic conflict that will reshape reality.",
+            posterPath: "/jzPwsojjFStf5lR5Nm07w2hH56G.jpg",
+            backdropPath: "/s4v0UX1anfXm0UvloLsTTJ4v222.jpg",
+            voteAverage: 8.6,
+            voteCount: 2200,
+            releaseDateString: "2026-12-18",
             genreNames: ["Action", "Sci-Fi", "Adventure"],
-            runtimeMinutes: 125,
-            tagline: "A new world order.",
+            runtimeMinutes: 160,
+            tagline: "A new threat emerges.",
             certification: "PG-13",
             streamingProviders: [],
-            trailers: [VideoTrailer(id: "t12", name: "Official Trailer", key: "1pHDWnXmK7Y")],
-            logoPath: "/ubZE4IVOdOnZIp6mapDGooDYeJh.png",
+            trailers: [VideoTrailer(id: "avd1", name: "Hall H Announcement", key: "NOhDyZJ_318")],
+            cast: [
+                CastMember(id: 3223, name: "Robert Downey Jr.", character: "Victor von Doom / Doctor Doom"),
+                CastMember(id: 16828, name: "Chris Evans", character: "Steve Rogers"),
+                CastMember(id: 74568, name: "Chris Hemsworth", character: "Thor")
+            ],
+            logoPath: "/enJPk9TdYB4zCO1mIwiRYAb5yqY.png",
             inCinemas: false
         ),
         MediaItem(
-            id: 505,
-            title: "Wicked",
+            id: 569094,
+            title: "Spider-Man: Beyond the Spider-Verse",
             mediaType: .movie,
-            overview: "The untold story of the witches of Oz stars Cynthia Erivo as Elphaba and Ariana Grande as Glinda.",
-            posterPath: "/xDGbZ0JJ3mYaGKy4Nzd9Kph6M9L.jpg",
-            backdropPath: "/beuMhwEdoMpJhyoZiCldogaqsKI.jpg",
-            voteAverage: 7.8,
-            voteCount: 1680,
-            releaseDateString: "2026-11-27",
-            genreNames: ["Drama", "Fantasy", "Music"],
-            runtimeMinutes: 160,
-            tagline: "Everyone deserves the chance to fly.",
+            overview: "Miles Morales travels across parallel universes to save his father and rectify the fate of the Spider-Verse against overwhelming multiversal odds.",
+            posterPath: "/v2bbf5xVv43V7nS7U1G73Pq2B1f.jpg",
+            backdropPath: "/4HodYYKEIsGOdinkGi2Ucz6X9i0.jpg",
+            voteAverage: 8.8,
+            voteCount: 2400,
+            releaseDateString: "2027-04-16",
+            genreNames: ["Animation", "Action", "Sci-Fi"],
+            runtimeMinutes: 140,
+            tagline: "It's how you wear the mask.",
             certification: "PG",
             streamingProviders: [],
-            trailers: [VideoTrailer(id: "wk1", name: "Official Trailer", key: "6COmYeLsz4c")],
-            logoPath: "/oeSUu0CjuohGO6oIiFkxn4xHbrt.png",
+            trailers: [VideoTrailer(id: "sbv1", name: "First Look", key: "cqGjhVJWtEg")],
+            cast: [
+                CastMember(id: 587506, name: "Shameik Moore", character: "Miles Morales (voice)"),
+                CastMember(id: 54693, name: "Hailee Steinfeld", character: "Gwen Stacy (voice)"),
+                CastMember(id: 1100, name: "Oscar Isaac", character: "Miguel O'Hara (voice)")
+            ],
+            logoPath: "/w2sV9d3Qx1pG9X1qW2P1A2bC3d.png",
             inCinemas: false
         ),
         MediaItem(
-            id: 506,
-            title: "Smile 2",
+            id: 1003598,
+            title: "Avengers: Secret Wars",
             mediaType: .movie,
-            overview: "Global pop sensation Skye Riley begins experiencing increasingly terrifying and inexplicable events.",
-            posterPath: "/ht8Uv9QPv9y7K0RvUyJIaXOZTfd.jpg",
-            backdropPath: "/iR79ciqhtaZ9BE7YFA1HpCHQgX4.jpg",
-            voteAverage: 7.4,
-            voteCount: 1430,
-            releaseDateString: "2026-10-23",
-            genreNames: ["Horror", "Mystery"],
-            runtimeMinutes: 127,
-            tagline: "It will never let you go.",
-            certification: "R",
+            overview: "The grand conclusion to the Multiverse Saga brings the heroes of every reality together for the ultimate battle to preserve existence.",
+            posterPath: "/ng3cLwHkI4Z9RkC5V9W1aX1bY2.jpg",
+            backdropPath: "/bZqD1qX1m1fK1N1l1p1w1r1t1y.jpg",
+            voteAverage: 8.7,
+            voteCount: 1950,
+            releaseDateString: "2027-05-07",
+            genreNames: ["Action", "Sci-Fi", "Adventure"],
+            runtimeMinutes: 175,
+            tagline: "The destiny of all worlds.",
+            certification: "PG-13",
             streamingProviders: [],
-            trailers: [VideoTrailer(id: "s2", name: "Official Trailer", key: "0HY6QFlBzUY")],
-            logoPath: "/tOyHVKbXcSTXfF5XH1odzJQiq7l.png",
+            trailers: [VideoTrailer(id: "asw1", name: "Teaser", key: "1pHDWnXmK7Y")],
+            cast: [
+                CastMember(id: 3223, name: "Robert Downey Jr.", character: "Victor von Doom"),
+                CastMember(id: 71580, name: "Benedict Cumberbatch", character: "Doctor Strange")
+            ],
+            logoPath: "/enJPk9TdYB4zCO1mIwiRYAb5yqY.png",
+            inCinemas: false
+        ),
+        MediaItem(
+            id: 1228710,
+            title: "The Mandalorian & Grogu",
+            mediaType: .movie,
+            overview: "The Mandalorian and his young apprentice Grogu embark on a feature-length cinematic adventure across the Outer Rim of the galaxy.",
+            posterPath: "/fsSMj6TJ6qtMnpg6UIw8TzUeEyE.jpg",
+            backdropPath: "/ysLlsAxwgNSxBWHCgTKJrmjxpRQ.jpg",
+            voteAverage: 8.2,
+            voteCount: 1100,
+            releaseDateString: "2026-11-20",
+            genreNames: ["Action", "Sci-Fi", "Adventure"],
+            runtimeMinutes: 125,
+            tagline: "This is the way.",
+            certification: "PG-13",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "mg1", name: "Cinema Announcement", key: "aDyQxtg0V2w")],
+            cast: [
+                CastMember(id: 1253360, name: "Pedro Pascal", character: "Din Djarin / The Mandalorian"),
+                CastMember(id: 10182, name: "Sigourney Weaver", character: "Col. Ward")
+            ],
+            logoPath: "/xSj9QrjsR8fZnSuEt6e7QZvrqSy.png",
+            inCinemas: false
+        ),
+        MediaItem(
+            id: 533533,
+            title: "TRON: Ares",
+            mediaType: .movie,
+            overview: "A sophisticated program named Ares is sent from the digital world into the real world on a perilous mission, marking humankind's first encounter with A.I. beings.",
+            posterPath: "/chpWmskl3aKm1aTZqUHRCtviwPy.jpg",
+            backdropPath: "/pUNfHmVqfwRdILhCkU8TdysVOXo.jpg",
+            voteAverage: 7.9,
+            voteCount: 980,
+            releaseDateString: "2026-10-16",
+            genreNames: ["Sci-Fi", "Action", "Adventure"],
+            runtimeMinutes: 130,
+            tagline: "The grid has escaped.",
+            certification: "PG-13",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "ta1", name: "Official Teaser", key: "6COmYeLsz4c")],
+            cast: [
+                CastMember(id: 7499, name: "Jared Leto", character: "Ares"),
+                CastMember(id: 1245, name: "Jeff Bridges", character: "Kevin Flynn"),
+                CastMember(id: 18050, name: "Greta Lee", character: "Eve Kim")
+            ],
+            logoPath: "/7ZUfeMOiFrtBaI7D5hYWnI39nfg.png",
             inCinemas: false
         )
     ]

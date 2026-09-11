@@ -71,9 +71,19 @@ public struct TVRowInfoPanel: View {
                 if !item.formattedTheatricalReleaseDate.isEmpty {
                     Text("•")
                         .foregroundColor(.white.opacity(0.4))
-                    Text("In Cinemas: \(item.formattedTheatricalReleaseDate)")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white.opacity(0.85))
+                    if item.isUpcomingTheatrical {
+                        Text("Releases: \(item.formattedTheatricalReleaseDate)")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.85))
+                    } else if item.isNowPlayingTheatrical {
+                        Text("In Cinemas: \(item.formattedTheatricalReleaseDate)")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.85))
+                    } else {
+                        Text(item.formattedTheatricalReleaseDate)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.85))
+                    }
                 }
             }
             
