@@ -32,9 +32,9 @@ public struct TVLandscapeCardView: View {
                     .frame(width: width, height: height)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 
-                // Very subtle grey outline over poster on focus
+                // Crisp white outline over card on focus
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(isFocused ? Color(white: 0.55).opacity(0.7) : Color.clear, lineWidth: 1.5)
+                    .stroke(isFocused ? Color.white.opacity(0.85) : Color.clear, lineWidth: 2)
                 
                 // Subtle bottom gradient for readability
                 LinearGradient(
@@ -77,12 +77,12 @@ public struct TVLandscapeCardView: View {
                 }
                 .padding(10)
             }
-            .scaleEffect(isFocused ? 1.05 : 1.0)
+            .scaleEffect(isFocused ? 1.12 : 1.0)
             .shadow(
-                color: Color.black.opacity(isFocused ? 0.6 : 0.25),
-                radius: isFocused ? 18 : 6,
+                color: Color.black.opacity(isFocused ? 0.75 : 0.25),
+                radius: isFocused ? 24 : 6,
                 x: 0,
-                y: isFocused ? 8 : 2
+                y: isFocused ? 10 : 2
             )
             .animation(.spring(response: 0.24, dampingFraction: 0.85), value: isFocused)
         }

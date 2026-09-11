@@ -5,120 +5,76 @@ public struct TVCinemaView: View {
     @ObservedObject private var watchlist = WatchlistStore.shared
     
     @State private var selectedItem: MediaItem?
-    @State private var focusedItem: MediaItem?
     
     public init() {}
     
-    private var defaultCinemaHero: MediaItem? {
+    private var theatricalHero: MediaItem? {
         engine.cinemaNow.first ?? engine.cinemaMovies.first ?? engine.trendingItems.first
-    }
-    
-    private var currentHero: MediaItem? {
-        if let focusedItem {
-            return focusedItem
-        }
-        return defaultCinemaHero
     }
     
     public var body: some View {
         GeometryReader { screenGeo in
             ZStack(alignment: .topLeading) {
-                // Ambient Pure Black Base
-                Color.black.ignoresSafeArea()
-                
-                // Full-Bleed Atmospheric Backdrop & Fluid Color Bleed
-                if let hero = currentHero {
-                    ZStack(alignment: .topLeading) {
-                        // Ambient blurred color bleed extending smoothly underneath the rows
-                        CachedAsyncImage(url: hero.backdropURL(size: "w780"), contentMode: .fill)
-                            .frame(width: screenGeo.size.width, height: screenGeo.size.height)
-                            .blur(radius: 80)
-                            .opacity(0.38)
-                            .clipped()
-                        
-                        // Crisp Full-Bleed 4K Backdrop Image
-                        CachedAsyncImage(url: hero.backdropURL(size: "original"), contentMode: .fill)
-                            .frame(width: screenGeo.size.width, height: screenGeo.size.height, alignment: .top)
-                            .clipped()
-                            .id(hero.id)
-                            .transition(.opacity)
-                        
-                        // Left-to-right gradient for crisp text legibility
-                        LinearGradient(
-                            stops: [
-                                .init(color: Color.black.opacity(0.96), location: 0.0),
-                                .init(color: Color.black.opacity(0.85), location: 0.38),
-                                .init(color: Color.black.opacity(0.38), location: 0.65),
-                                .init(color: Color.clear, location: 0.90)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
-                        
-                        // Top-to-bottom fluid fade blending seamlessly into rows underneath
-                        LinearGradient(
-                            stops: [
-                                .init(color: Color.clear, location: 0.0),
-                                .init(color: Color.clear, location: 0.30),
-                                .init(color: Color.black.opacity(0.20), location: 0.44),
-                                .init(color: Color.black.opacity(0.65), location: 0.58),
-                                .init(color: Color.black.opacity(0.92), location: 0.76),
-                                .init(color: Color.black, location: 0.98)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
-                    }
+                // Continuous Cinematic Dark Canvas (Zero Black Bar Cuts)
+                Color(red: 0.04, green: 0.04, blue: 0.05)
                     .ignoresSafeArea()
-                    .animation(.easeInOut(duration: 0.35), value: hero.id)
+                
+                // Ambient Atmospheric Glow Spanning Full Screen
+                if let hero = theatricalHero {
+                    CachedAsyncImage(url: hero.backdropURL(size: "w780"), contentMode: .fill)
+                        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
+                        .blur(radius: 110)
+                        .opacity(0.32)
+                        .clipped()
+                        .ignoresSafeArea()
+                        .animation(.easeInOut(duration: 0.5), value: hero.id)
                 }
                 
-                // Foreground Layout:
-                // Top stationary cinema hero showcase (~46% height) + Scrollable rows (~54% height)
-                VStack(alignment: .leading, spacing: 0) {
-                    cinemaShowcaseSection(screenGeo: screenGeo)
-                        .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.46, alignment: .bottomLeading)
-                    
-                    // Scrollable Theatrical Rows
-                    ScrollView(.vertical, showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 36) {
+                // Unified Root Vertical ScrollView
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // 1. Theatrical Premiere Hero Section (~820pt, peeking first row below)
+                        if let hero = theatricalHero {
+                            cinemaHeroSection(hero: hero, screenGeo: screenGeo)
+                        }
+                        
+                        // 2. Theatrical Content Rows with Expanding Cards & Inline Detail Strips
+                        VStack(alignment: .leading, spacing: 32) {
                             // Now in Cinemas Row
                             if !engine.cinemaNow.isEmpty {
-                                cinemaRow(
+                                TVContentRowView(
                                     title: "Now in Cinemas",
-                                    subtitle: "Experience on the big screen this week",
                                     items: engine.cinemaNow,
-                                    isLandscape: false
-                                )
+                                    showCinemaBadge: true
+                                ) { item in
+                                    selectedItem = item
+                                }
                             }
                             
                             // Coming Soon to Cinemas Row (Landscape 16:9)
                             if !engine.cinemaUpcoming.isEmpty {
-                                cinemaRow(
+                                TVLandscapeRowView(
                                     title: "Coming Soon to Cinemas",
-                                    subtitle: "Upcoming theatrical releases hitting the big screen worldwide",
-                                    items: engine.cinemaUpcoming,
-                                    isLandscape: true
-                                )
+                                    items: engine.cinemaUpcoming
+                                ) { item in
+                                    selectedItem = item
+                                }
                             }
                             
                             // Critically Acclaimed Theatrical Releases
                             if !engine.cinemaMovies.isEmpty {
-                                cinemaRow(
+                                TVContentRowView(
                                     title: "Critically Acclaimed in Theatres",
-                                    subtitle: "Highest audience and critical reception",
-                                    items: engine.cinemaMovies.filter { $0.rating >= 7.5 },
-                                    isLandscape: false
-                                )
+                                    items: engine.cinemaMovies.filter { $0.rating >= 7.5 }
+                                ) { item in
+                                    selectedItem = item
+                                }
                             }
                         }
-                        .padding(.top, 16)
-                        .padding(.bottom, 90)
+                        .padding(.bottom, 120)
                     }
-                    .frame(width: screenGeo.size.width, height: screenGeo.size.height * 0.54)
                 }
+                .ignoresSafeArea()
             }
             .ignoresSafeArea()
         }
@@ -127,42 +83,75 @@ public struct TVCinemaView: View {
         }
     }
     
-    // MARK: - Cinema Showcase Section
+    // MARK: - Cinema Hero Showcase Section (~820pt, peeking first row below)
     
-    private func cinemaShowcaseSection(screenGeo: GeometryProxy) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Header Pill
-            HStack(spacing: 12) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 7, height: 7)
-                    
-                    Text("NOW IN THEATRES")
-                        .font(.system(size: 12, weight: .black))
-                        .tracking(2.0)
-                        .foregroundColor(.red)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule()
-                        .fill(Color.red.opacity(0.18))
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.red.opacity(0.35), lineWidth: 1)
-                        )
+    private func cinemaHeroSection(hero: MediaItem, screenGeo: GeometryProxy) -> some View {
+        ZStack(alignment: .bottomLeading) {
+            // Full-Bleed 4K Backdrop Artwork
+            CachedAsyncImage(url: hero.backdropURL(size: "original"), contentMode: .fill)
+                .frame(width: screenGeo.size.width, height: 820, alignment: .top)
+                .clipped()
+                .overlay(
+                    LinearGradient(
+                        stops: [
+                            .init(color: Color.black.opacity(0.96), location: 0.0),
+                            .init(color: Color.black.opacity(0.82), location: 0.38),
+                            .init(color: Color.black.opacity(0.32), location: 0.68),
+                            .init(color: Color.clear, location: 0.94)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
                 )
-                
-                Text("GLOBAL BOX OFFICE")
-                    .font(.system(size: 13, weight: .bold))
-                    .tracking(1.4)
-                    .foregroundColor(.white.opacity(0.55))
-            }
+                .overlay(
+                    LinearGradient(
+                        stops: [
+                            .init(color: Color.clear, location: 0.0),
+                            .init(color: Color.clear, location: 0.45),
+                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.35), location: 0.65),
+                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.80), location: 0.84),
+                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05), location: 1.0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .id(hero.id)
+                .transition(.opacity)
             
-            // Hero Metadata
-            if let hero = currentHero {
+            // Hero Content
+            VStack(alignment: .leading, spacing: 14) {
+                // Theatrical Header Pill
+                HStack(spacing: 12) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 7, height: 7)
+                        
+                        Text("NOW IN THEATRES")
+                            .font(.system(size: 11, weight: .black))
+                            .tracking(2.0)
+                            .foregroundColor(.red)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(Color.red.opacity(0.18))
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .overlay(
+                                Capsule().stroke(Color.red.opacity(0.35), lineWidth: 1)
+                            )
+                    )
+                    
+                    Text("GLOBAL BOX OFFICE")
+                        .font(.system(size: 13, weight: .bold))
+                        .tracking(1.4)
+                        .foregroundColor(.white.opacity(0.55))
+                }
+                .padding(.top, 140)
+                
+                // Hero Information
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 10) {
                         Text("THEATRICAL RELEASE")
@@ -200,18 +189,18 @@ public struct TVCinemaView: View {
                     }
                     
                     Text(hero.title)
-                        .font(.system(size: 42, weight: .heavy))
+                        .font(.system(size: 48, weight: .heavy))
                         .foregroundColor(.white)
                         .lineLimit(1)
-                        .shadow(color: Color.black.opacity(0.8), radius: 6, x: 0, y: 3)
+                        .shadow(color: Color.black.opacity(0.85), radius: 6, x: 0, y: 3)
                     
                     if !hero.overview.isEmpty {
                         Text(hero.overview)
                             .font(.system(size: 15, weight: .regular))
                             .foregroundColor(.white.opacity(0.85))
-                            .lineLimit(2)
-                            .lineSpacing(2)
-                            .frame(maxWidth: 720, alignment: .leading)
+                            .lineLimit(3)
+                            .lineSpacing(3)
+                            .frame(maxWidth: 780, alignment: .leading)
                     }
                     
                     HStack(spacing: 14) {
@@ -231,67 +220,12 @@ public struct TVCinemaView: View {
                     }
                     .padding(.top, 4)
                 }
-                .animation(.easeInOut(duration: 0.28), value: hero.id)
-            }
-        }
-        .padding(.horizontal, 60)
-        .padding(.top, 38)
-    }
-    
-    // MARK: - Cinema Row
-    
-    private func cinemaRow(title: String, subtitle: String?, items: [MediaItem], isLandscape: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
-                
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundColor(.white.opacity(0.5))
-                }
             }
             .padding(.horizontal, 60)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 32) {
-                    ForEach(items) { item in
-                        Button {
-                            selectedItem = item
-                        } label: {
-                            if isLandscape {
-                                TVLandscapeCardView(
-                                    item: item,
-                                    width: 380,
-                                    subtitle: item.releaseDate ?? "Coming Soon"
-                                ) { focused in
-                                    handleCardFocus(focused)
-                                }
-                            } else {
-                                TVMediaCardView(
-                                    item: item,
-                                    width: 210,
-                                    showCinemaBadge: true
-                                ) { focused in
-                                    handleCardFocus(focused)
-                                }
-                            }
-                        }
-                        .buttonStyle(.tvCard)
-                    }
-                }
-                .padding(.horizontal, 60)
-                .padding(.vertical, 24)
-            }
+            .padding(.bottom, 24)
         }
-    }
-    
-    private func handleCardFocus(_ item: MediaItem) {
-        withAnimation(.easeInOut(duration: 0.28)) {
-            self.focusedItem = item
-        }
+        .frame(width: screenGeo.size.width, height: 820)
+        .animation(.easeInOut(duration: 0.35), value: hero.id)
     }
 }
 

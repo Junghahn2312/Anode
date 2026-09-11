@@ -22,7 +22,9 @@ public struct TVSearchView: View {
         "Thriller"
     ]
     
+    // 5 balanced columns to fill the full width (1920px) without right-side black bars
     private let gridColumns = [
+        GridItem(.flexible(), spacing: 28),
         GridItem(.flexible(), spacing: 28),
         GridItem(.flexible(), spacing: 28),
         GridItem(.flexible(), spacing: 28),
@@ -37,28 +39,30 @@ public struct TVSearchView: View {
     
     public var body: some View {
         GeometryReader { screenGeo in
-            ZStack {
-                // Base Pure Black
-                Color.black.ignoresSafeArea()
+            ZStack(alignment: .topLeading) {
+                // Continuous Cinematic Dark Canvas (Zero Black Bar Cuts)
+                Color(red: 0.04, green: 0.04, blue: 0.05)
+                    .ignoresSafeArea()
                 
-                // Ambient Atmospheric Glow
+                // Ambient Atmospheric Glow Spanning Full 1920x1080 Viewport
                 if let item = ambientBackdropItem {
                     CachedAsyncImage(url: item.backdropURL(size: "w780"), contentMode: .fill)
                         .frame(width: screenGeo.size.width, height: screenGeo.size.height)
                         .blur(radius: 110)
-                        .opacity(0.22)
+                        .opacity(0.32)
                         .clipped()
                         .ignoresSafeArea()
+                        .animation(.easeInOut(duration: 0.5), value: item.id)
                 }
                 
-                HStack(alignment: .top, spacing: 44) {
-                    // Left Column: Search Bar & Curated Suggestion Rail (Frosted Glass)
-                    VStack(alignment: .leading, spacing: 20) {
-                        // Search Input with Frosted Glass
+                HStack(alignment: .top, spacing: 36) {
+                    // Left Rail: Search Input & Curated Trending Searches (Frosted Glass)
+                    VStack(alignment: .leading, spacing: 18) {
+                        // Search Field
                         HStack(spacing: 12) {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(.white.opacity(0.6))
+                                .foregroundColor(.white.opacity(0.65))
                             
                             TextField("Search...", text: $query)
                                 .font(.system(size: 22, weight: .medium))
@@ -84,12 +88,12 @@ public struct TVSearchView: View {
                             .font(.system(size: 11, weight: .bold))
                             .tracking(1.6)
                             .foregroundColor(.white.opacity(0.45))
-                            .padding(.top, 8)
-                            .padding(.horizontal, 8)
+                            .padding(.top, 4)
+                            .padding(.horizontal, 6)
                         
-                        // Suggestions List
+                        // Vertical Suggestions List
                         ScrollView(.vertical, showsIndicators: false) {
-                            VStack(alignment: .leading, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 8) {
                                 ForEach(suggestions, id: \.self) { suggestion in
                                     TVSearchSuggestionButton(
                                         title: suggestion,
@@ -102,20 +106,21 @@ public struct TVSearchView: View {
                                     }
                                 }
                             }
+                            .padding(.bottom, 60)
                         }
                     }
                     .frame(width: 320)
                     
-                    // Right Column: 4-Column Poster Grid
+                    // Right Content Area: 5-Column Full-Width Poster Grid (Zero Black Bars)
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             if !query.isEmpty {
                                 Text("Results for \"\(query)\"")
-                                    .font(.system(size: 26, weight: .bold))
+                                    .font(.system(size: 24, weight: .bold))
                                     .foregroundColor(.white)
                             } else {
                                 Text("Popular Discoveries")
-                                    .font(.system(size: 26, weight: .bold))
+                                    .font(.system(size: 24, weight: .bold))
                                     .foregroundColor(.white)
                             }
                             Spacer()
@@ -129,13 +134,13 @@ public struct TVSearchView: View {
                             VStack(spacing: 14) {
                                 Spacer()
                                 Image(systemName: "film")
-                                    .font(.system(size: 50, weight: .light))
+                                    .font(.system(size: 54, weight: .light))
                                     .foregroundColor(.white.opacity(0.3))
                                 Text("No matching titles found")
-                                    .font(.system(size: 20, weight: .medium))
+                                    .font(.system(size: 22, weight: .medium))
                                     .foregroundColor(.white.opacity(0.7))
                                 Text("Try searching for an actor, title, or genre")
-                                    .font(.system(size: 14))
+                                    .font(.system(size: 15))
                                     .foregroundColor(.white.opacity(0.4))
                                 Spacer()
                             }
@@ -152,15 +157,15 @@ public struct TVSearchView: View {
                                         .buttonStyle(.tvCard)
                                     }
                                 }
-                                .padding(.top, 6)
-                                .padding(.bottom, 60)
-                                .padding(.trailing, 20)
+                                .padding(.top, 4)
+                                .padding(.bottom, 100)
+                                .padding(.trailing, 10)
                             }
                         }
                     }
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .padding(.top, 48)
+                .padding(.top, 140)
                 .padding(.horizontal, 60)
             }
             .ignoresSafeArea()
@@ -186,7 +191,7 @@ private struct TVSearchSuggestionButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 17, weight: isFocused || isSelected ? .bold : .medium))
+                .font(.system(size: 16, weight: isFocused || isSelected ? .bold : .medium))
                 .foregroundColor(isFocused ? .black : (isSelected ? .white : .white.opacity(0.75)))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)

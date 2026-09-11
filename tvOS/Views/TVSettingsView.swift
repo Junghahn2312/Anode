@@ -8,42 +8,46 @@ public struct TVSettingsView: View {
     public init() {}
     
     public var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 42) {
-                // Header
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 12) {
-                        Text("SYSTEM PREFERENCES")
-                            .font(.system(size: 13, weight: .black))
-                            .tracking(2.2)
-                            .foregroundColor(.cyan)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(Color.cyan.opacity(0.18))
-                                    .background(.ultraThinMaterial, in: Capsule())
-                                    .overlay(
-                                        Capsule().stroke(Color.cyan.opacity(0.35), lineWidth: 1)
+        ZStack(alignment: .topLeading) {
+            Color(red: 0.04, green: 0.04, blue: 0.05)
+                .ignoresSafeArea()
+            
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 42) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 12) {
+                            Text("SYSTEM PREFERENCES")
+                                .font(.system(size: 13, weight: .black))
+                                .tracking(2.2)
+                                .foregroundColor(.cyan)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.cyan.opacity(0.18))
+                                        .background(.ultraThinMaterial, in: Capsule())
+                                        .overlay(
+                                            Capsule().stroke(Color.cyan.opacity(0.35), lineWidth: 1)
+                                        )
                                     )
-                            )
+                            
+                            Text("ANODE")
+                                .font(.system(size: 13, weight: .bold))
+                                .tracking(1.4)
+                                .foregroundColor(.white.opacity(0.5))
+                        }
                         
-                        Text("ANODE")
-                            .font(.system(size: 13, weight: .bold))
-                            .tracking(1.4)
-                            .foregroundColor(.white.opacity(0.5))
+                        Text("Settings")
+                            .font(.system(size: 44, weight: .bold))
+                            .foregroundColor(.white)
+                        
+                        Text("Catalog status, playback options, and local library preferences.")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.white.opacity(0.65))
                     }
-                    
-                    Text("Settings")
-                        .font(.system(size: 44, weight: .bold))
-                        .foregroundColor(.white)
-                    
-                    Text("Catalog status, playback options, and local library preferences.")
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundColor(.white.opacity(0.65))
-                }
-                .padding(.horizontal, 60)
-                .padding(.top, 48)
+                    .padding(.horizontal, 60)
+                    .padding(.top, 140)
                 
                 // Settings Grid / Panels
                 VStack(spacing: 28) {
@@ -128,8 +132,11 @@ public struct TVSettingsView: View {
                 }
                 .padding(.horizontal, 60)
             }
-            .padding(.bottom, 90)
+                .padding(.bottom, 100)
+            }
+            .ignoresSafeArea()
         }
+        .ignoresSafeArea()
         .alert("Clear My List?", isPresented: $showingClearAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Clear All", role: .destructive) {
