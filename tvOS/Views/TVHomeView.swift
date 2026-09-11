@@ -138,9 +138,13 @@ public struct TVHomeView: View {
                     )
                     .frame(width: screenWidth, height: screenHeight)
                     .clipped()
-                    .blur(radius: isCarouselOutOfView ? 40 : 0)
                     .id(bgItem.id)
                     .transition(.opacity)
+                    
+                    // Hardware-accelerated frosted glass overlay when carousel is out of view
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .opacity(isCarouselOutOfView ? 0.90 : 0.0)
                     
                     // Dark scrim for list contrast when carousel is out of view
                     Color.black.opacity(isCarouselOutOfView ? 0.42 : 0.0)

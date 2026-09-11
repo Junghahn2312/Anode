@@ -5,6 +5,7 @@ public struct TVSearchView: View {
     @State private var query: String = "Tom"
     @State private var selectedItem: MediaItem?
     @State private var focusedSearchItem: MediaItem?
+    @State private var activeRowIndex: Int = 0
     
     private let suggestions: [String] = [
         "Tom Cruise",
@@ -23,19 +24,21 @@ public struct TVSearchView: View {
         "Thriller"
     ]
     
-    // 5 balanced columns to fill the full width (1920px) without right-side black bars
-    private let gridColumns = [
-        GridItem(.flexible(), spacing: 28),
-        GridItem(.flexible(), spacing: 28),
-        GridItem(.flexible(), spacing: 28),
-        GridItem(.flexible(), spacing: 28),
-        GridItem(.flexible(), spacing: 28)
-    ]
-    
     public init() {}
     
     private var ambientBackdropItem: MediaItem? {
         focusedSearchItem ?? engine.searchResults.first ?? engine.cinemaMovies.first ?? engine.trendingItems.first
+    }
+    
+    private func handleRowHover(_ item: MediaItem, rowIndex: Int) {
+        withAnimation(.easeInOut(duration: 0.50)) {
+            self.focusedSearchItem = item
+        }
+        if activeRowIndex != rowIndex {
+            withAnimation(.easeInOut(duration: 0.50)) {
+                self.activeRowIndex = rowIndex
+            }
+        }
     }
     
     public var body: some View {
@@ -71,17 +74,18 @@ public struct TVSearchView: View {
                 .frame(width: screenWidth, height: screenHeight)
                 .ignoresSafeArea()
                 
-                HStack(alignment: .top, spacing: 36) {
+                HStack(alignment: .top, spacing: 48) {
                     // Left Rail: Search Input & Curated Trending Searches (Frosted Glass)
                     VStack(alignment: .leading, spacing: 18) {
-                        // Search Field
-                        HStack(spacing: 12) {
+                        // Perfectly Aligned Search Field
+                        HStack(alignment: .center, spacing: 14) {
                             Image(systemName: "magnifyingglass")
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(.white.opacity(0.65))
+                                .font(.system(size: 19, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.70))
                             
                             TextField("Search...", text: $query)
-                                .font(.system(size: 22, weight: .medium))
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 20, weight: .medium))
                                 .foregroundColor(.white)
                                 .onChange(of: query) { _, newValue in
                                     Task {
@@ -90,7 +94,7 @@ public struct TVSearchView: View {
                                 }
                         }
                         .padding(.horizontal, 18)
-                        .padding(.vertical, 14)
+                        .frame(height: 54)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .fill(.ultraThinMaterial)
@@ -126,80 +130,13 @@ public struct TVSearchView: View {
                         }
                     }
                     .frame(width: 320)
+                    .focusSection()
                     
-                    // Right Content Area: 5-Column Full-Width Poster Grid (Zero Black Bars)
+                    // Right Content Area: Results in Horizontal Expanding Card Rows (Zero Clipping/Merging)
                     VStack(alignment: .leading, spacing: 16) {
-                        HStack(alignment: .firstTextBaseline) {
-                            if !query.isEmpty {
-                                Text("Results for \"\(query)\"")
-                                    .font(.system(size: 24, weight: .bold))
-                                    .foregroundColor(.white)
-                            } else {
-                                Text("Popular Discoveries")
-                                    .font(.system(size: 24, weight: .bold))
-                                    .foregroundColor(.white)
-                            }
-                            Spacer()
-                        }
-                        
                         let displayItems = engine.searchResults.isEmpty && query.isEmpty
                             ? engine.cinemaMovies + engine.trendingItems
                             : engine.searchResults
-                        
-                        // Live Hover Inspection Preview Banner
-                        if let inspected = focusedSearchItem ?? displayItems.first {
-                            HStack(alignment: .center, spacing: 20) {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack(spacing: 12) {
-                                        Text(inspected.title)
-                                            .font(.system(size: 24, weight: .heavy))
-                                            .foregroundColor(.white)
-                                            .lineLimit(1)
-                                        
-                                        if !inspected.formattedRating.isEmpty {
-                                            RatingBadge(rating: inspected.formattedRating)
-                                        }
-                                        
-                                        if !inspected.yearString.isEmpty {
-                                            Text(inspected.yearString)
-                                                .font(.system(size: 14, weight: .semibold))
-                                                .foregroundColor(.white.opacity(0.75))
-                                        }
-                                        
-                                        if let genre = inspected.genreNames.first {
-                                            Text("•")
-                                                .foregroundColor(.white.opacity(0.4))
-                                            Text(genre)
-                                                .font(.system(size: 14, weight: .semibold))
-                                                .foregroundColor(.white.opacity(0.75))
-                                        }
-                                    }
-                                    
-                                    if !inspected.overview.isEmpty {
-                                        Text(inspected.overview)
-                                            .font(.system(size: 14, weight: .regular))
-                                            .foregroundColor(.white.opacity(0.85))
-                                            .lineLimit(2)
-                                            .lineSpacing(2)
-                                            .frame(maxWidth: 1100, alignment: .leading)
-                                    }
-                                }
-                                
-                                Spacer()
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(.ultraThinMaterial)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .stroke(Color.white.opacity(0.14), lineWidth: 1)
-                                    )
-                            )
-                            .id(inspected.id)
-                            .transition(.opacity)
-                        }
                         
                         if displayItems.isEmpty {
                             VStack(spacing: 14) {
@@ -218,24 +155,9 @@ public struct TVSearchView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {
                             ScrollView(.vertical, showsIndicators: false) {
-                                LazyVGrid(columns: gridColumns, spacing: 32) {
-                                    ForEach(displayItems) { item in
-                                        Button {
-                                            selectedItem = item
-                                        } label: {
-                                            TVMediaCardView(item: item, width: 220) { focusedItem in
-                                                withAnimation(.easeInOut(duration: 0.55)) {
-                                                    self.focusedSearchItem = focusedItem
-                                                }
-                                            }
-                                        }
-                                        .buttonStyle(.tvCard)
-                                        .zIndex(focusedSearchItem?.id == item.id ? 10 : 1)
-                                    }
-                                }
-                                .padding(.top, 8)
-                                .padding(.bottom, 100)
-                                .padding(.trailing, 10)
+                                searchRowsSection(displayItems: displayItems)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 120)
                             }
                         }
                     }
@@ -257,42 +179,140 @@ public struct TVSearchView: View {
             TVMediaDetailView(item: item)
         }
     }
+    
+    @ViewBuilder
+    private func searchRowsSection(displayItems: [MediaItem]) -> some View {
+        let movieResults = displayItems.filter { $0.mediaType == .movie }
+        let tvResults = displayItems.filter { $0.mediaType == .tvShow }
+        
+        VStack(alignment: .leading, spacing: 32) {
+            if !movieResults.isEmpty && !tvResults.isEmpty {
+                // Row 0: Movies
+                TVContentRowView(
+                    title: "Movies",
+                    items: movieResults,
+                    showCinemaBadge: false,
+                    isRowActive: activeRowIndex == 0,
+                    horizontalPadding: 0,
+                    onHover: { handleRowHover($0, rowIndex: 0) }
+                ) { item in
+                    selectedItem = item
+                }
+                
+                // Row 1: TV Shows & Series
+                TVContentRowView(
+                    title: "Series & TV Shows",
+                    items: tvResults,
+                    showCinemaBadge: false,
+                    isRowActive: activeRowIndex == 1,
+                    horizontalPadding: 0,
+                    onHover: { handleRowHover($0, rowIndex: 1) }
+                ) { item in
+                    selectedItem = item
+                }
+            } else if query.isEmpty {
+                // Discoveries when query is empty
+                TVContentRowView(
+                    title: "Popular Discoveries",
+                    items: displayItems,
+                    showCinemaBadge: false,
+                    isRowActive: activeRowIndex == 0,
+                    horizontalPadding: 0,
+                    onHover: { handleRowHover($0, rowIndex: 0) }
+                ) { item in
+                    selectedItem = item
+                }
+                
+                if !engine.cinemaMovies.isEmpty {
+                    TVContentRowView(
+                        title: "In Theatres",
+                        items: engine.cinemaMovies,
+                        showCinemaBadge: true,
+                        isRowActive: activeRowIndex == 1,
+                        horizontalPadding: 0,
+                        onHover: { handleRowHover($0, rowIndex: 1) }
+                    ) { item in
+                        selectedItem = item
+                    }
+                }
+            } else {
+                let topMatches = Array(displayItems.prefix(12))
+                let moreMatches = Array(displayItems.dropFirst(12))
+                
+                TVContentRowView(
+                    title: "Top Results for \"\(query)\"",
+                    items: topMatches,
+                    showCinemaBadge: false,
+                    isRowActive: activeRowIndex == 0,
+                    horizontalPadding: 0,
+                    onHover: { handleRowHover($0, rowIndex: 0) }
+                ) { item in
+                    selectedItem = item
+                }
+                
+                if !moreMatches.isEmpty {
+                    TVContentRowView(
+                        title: "More Results",
+                        items: moreMatches,
+                        showCinemaBadge: false,
+                        isRowActive: activeRowIndex == 1,
+                        horizontalPadding: 0,
+                        onHover: { handleRowHover($0, rowIndex: 1) }
+                    ) { item in
+                        selectedItem = item
+                    }
+                }
+            }
+        }
+    }
 }
+
+// MARK: - Refined Apple TV Search Suggestion Button
 
 private struct TVSearchSuggestionButton: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
     
-    @FocusState private var isFocused: Bool
-    
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.system(size: 16, weight: isFocused || isSelected ? .bold : .medium))
-                .foregroundColor(isFocused ? .black : (isSelected ? .white : .white.opacity(0.75)))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(isFocused ? Color.white : (isSelected ? Color.white.opacity(0.25) : Color.clear))
-                        .background(
-                            Group {
-                                if !isFocused && !isSelected {
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.ultraThinMaterial)
-                                }
-                            }
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(isFocused ? Color.clear : Color.white.opacity(isSelected ? 0.35 : 0.10), lineWidth: 1)
-                        )
-                )
+            TVSearchSuggestionLabel(title: title, isSelected: isSelected)
         }
         .buttonStyle(.plain)
-        .focused($isFocused)
-        .scaleEffect(isFocused ? 1.04 : 1.0)
-        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+    }
+}
+
+private struct TVSearchSuggestionLabel: View {
+    let title: String
+    let isSelected: Bool
+    @Environment(\.isFocused) private var isFocused: Bool
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .font(.system(size: 15, weight: isFocused || isSelected ? .bold : .medium))
+                .foregroundColor(.white)
+            
+            Spacer()
+            
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(isFocused ? .white : .cyan)
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 48)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(isFocused ? Color.white.opacity(0.24) : (isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.05)))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.white.opacity(isFocused ? 0.95 : (isSelected ? 0.25 : 0.08)), lineWidth: isFocused ? 2.5 : 1)
+        )
+        .scaleEffect(isFocused ? 1.03 : 1.0)
+        .shadow(color: isFocused ? Color.black.opacity(0.40) : Color.clear, radius: 10, y: 3)
+        .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isFocused)
     }
 }

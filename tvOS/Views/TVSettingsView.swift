@@ -780,6 +780,26 @@ private struct TVSettingsRowButtonLabel: View {
     
     @Environment(\.isFocused) private var isFocused: Bool
     
+    private var rowFillColor: Color {
+        if isFocused {
+            return Color.white.opacity(0.24)
+        } else if isSelected {
+            return Color.white.opacity(0.12)
+        } else {
+            return Color.white.opacity(0.05)
+        }
+    }
+    
+    private var rowStrokeColor: Color {
+        if isFocused {
+            return Color.white.opacity(0.95)
+        } else if isSelected {
+            return Color.white.opacity(0.25)
+        } else {
+            return Color.white.opacity(0.06)
+        }
+    }
+    
     var body: some View {
         HStack(spacing: 16) {
             ZStack {
@@ -793,31 +813,31 @@ private struct TVSettingsRowButtonLabel: View {
             
             Text(title)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(isFocused ? .black : .white)
+                .foregroundColor(.white)
             
             Spacer()
             
             Text(value)
                 .font(.system(size: 14, weight: .regular))
-                .foregroundColor(isFocused ? .black.opacity(0.70) : .white.opacity(0.55))
+                .foregroundColor(isFocused ? Color.white.opacity(0.85) : Color.white.opacity(0.55))
             
             Image(systemName: "chevron.right")
                 .font(.system(size: 13, weight: .bold))
-                .foregroundColor(isFocused ? .black.opacity(0.50) : .white.opacity(0.30))
+                .foregroundColor(isFocused ? Color.white.opacity(0.85) : Color.white.opacity(0.30))
         }
         .padding(.horizontal, 16)
         .frame(height: 64)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(isFocused ? Color.white : (isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.05)))
+                .fill(rowFillColor)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.white.opacity(isFocused ? 0.0 : (isSelected ? 0.20 : 0.06)), lineWidth: 1)
+                .stroke(rowStrokeColor, lineWidth: isFocused ? 2.5 : 1)
         )
         .scaleEffect(isFocused ? 1.03 : 1.0)
-        .shadow(color: isFocused ? Color.white.opacity(0.30) : Color.clear, radius: 10, y: 3)
-        .animation(.easeInOut(duration: 0.22), value: isFocused)
+        .shadow(color: isFocused ? Color.black.opacity(0.40) : Color.clear, radius: 12, y: 4)
+        .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isFocused)
         .onChange(of: isFocused) { _, focused in
             if focused {
                 onFocusAction()
@@ -849,6 +869,22 @@ private struct TVSettingsActionButtonLabel: View {
     
     @Environment(\.isFocused) private var isFocused: Bool
     
+    private var buttonFillColor: Color {
+        if isDestructive {
+            return isFocused ? Color.red.opacity(0.85) : Color.red.opacity(0.25)
+        } else {
+            return isFocused ? Color.white.opacity(0.26) : Color.white.opacity(0.10)
+        }
+    }
+    
+    private var buttonStrokeColor: Color {
+        if isDestructive {
+            return Color.red.opacity(isFocused ? 1.0 : 0.40)
+        } else {
+            return Color.white.opacity(isFocused ? 0.95 : 0.15)
+        }
+    }
+    
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
@@ -856,16 +892,20 @@ private struct TVSettingsActionButtonLabel: View {
             Text(title)
                 .font(.system(size: 15, weight: .bold))
         }
-        .foregroundColor(isFocused ? (isDestructive ? .white : .black) : (isDestructive ? .red : .white))
+        .foregroundColor(.white)
         .padding(.horizontal, 22)
         .padding(.vertical, 14)
         .background(
             Capsule()
-                .fill(isFocused ? (isDestructive ? Color.red : Color.white) : (isDestructive ? Color.red.opacity(0.20) : Color.white.opacity(0.12)))
+                .fill(buttonFillColor)
+        )
+        .overlay(
+            Capsule()
+                .stroke(buttonStrokeColor, lineWidth: isFocused ? 2.5 : 1)
         )
         .scaleEffect(isFocused ? 1.04 : 1.0)
-        .shadow(color: isFocused ? Color.white.opacity(0.30) : Color.clear, radius: 10, y: 4)
-        .animation(.easeInOut(duration: 0.20), value: isFocused)
+        .shadow(color: isFocused ? Color.black.opacity(0.45) : Color.clear, radius: 12, y: 4)
+        .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isFocused)
     }
 }
 
@@ -890,30 +930,50 @@ private struct TVSettingsChoiceButtonLabel: View {
     
     @Environment(\.isFocused) private var isFocused: Bool
     
+    private var choiceFillColor: Color {
+        if isFocused {
+            return Color.white.opacity(0.24)
+        } else if isSelected {
+            return Color.white.opacity(0.12)
+        } else {
+            return Color.white.opacity(0.06)
+        }
+    }
+    
+    private var choiceStrokeColor: Color {
+        if isFocused {
+            return Color.white.opacity(0.95)
+        } else if isSelected {
+            return Color.white.opacity(0.25)
+        } else {
+            return Color.white.opacity(0.08)
+        }
+    }
+    
     var body: some View {
         HStack(spacing: 12) {
             Text(title)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(isFocused ? .black : .white)
+                .foregroundColor(.white)
             Spacer()
             if isSelected {
                 Image(systemName: "checkmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(isFocused ? .black : .cyan)
+                    .foregroundColor(isFocused ? .white : .cyan)
             }
         }
         .padding(.horizontal, 18)
         .frame(height: 52)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isFocused ? Color.white : Color.white.opacity(0.06))
+                .fill(choiceFillColor)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.white.opacity(isFocused ? 0.0 : (isSelected ? 0.20 : 0.06)), lineWidth: 1)
+                .stroke(choiceStrokeColor, lineWidth: isFocused ? 2.5 : 1)
         )
         .scaleEffect(isFocused ? 1.02 : 1.0)
-        .shadow(color: isFocused ? Color.white.opacity(0.30) : Color.clear, radius: 10, y: 4)
-        .animation(.easeInOut(duration: 0.20), value: isFocused)
+        .shadow(color: isFocused ? Color.black.opacity(0.40) : Color.clear, radius: 10, y: 4)
+        .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isFocused)
     }
 }

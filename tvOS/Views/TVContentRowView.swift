@@ -228,10 +228,11 @@ public struct TVExpandingMediaCardView: View {
             y: isFocused ? 10 : 2
         )
         .animation(.spring(response: 0.42, dampingFraction: 0.88), value: isFocused)
-        .task(id: item.id) {
-            if item.logoPath != nil {
-                loadedLogoPath = item.logoPath
-            } else {
+        .task(id: isFocused) {
+            guard isFocused else { return }
+            if let logo = item.logoPath, !logo.isEmpty {
+                loadedLogoPath = logo
+            } else if loadedLogoPath == nil {
                 loadedLogoPath = await DiscoveryEngine.shared.fetchLogo(for: item)
             }
         }
@@ -250,6 +251,7 @@ public struct TVContentRowView: View {
     let items: [MediaItem]
     let showCinemaBadge: Bool
     let isRowActive: Bool
+    let horizontalPadding: CGFloat
     let onHover: ((MediaItem) -> Void)?
     let onSelect: (MediaItem) -> Void
     
@@ -260,6 +262,7 @@ public struct TVContentRowView: View {
         items: [MediaItem],
         showCinemaBadge: Bool = false,
         isRowActive: Bool = false,
+        horizontalPadding: CGFloat = 60,
         onHover: ((MediaItem) -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
     ) {
@@ -267,6 +270,7 @@ public struct TVContentRowView: View {
         self.items = items
         self.showCinemaBadge = showCinemaBadge
         self.isRowActive = isRowActive
+        self.horizontalPadding = horizontalPadding
         self.onHover = onHover
         self.onSelect = onSelect
     }
@@ -277,7 +281,7 @@ public struct TVContentRowView: View {
             Text(title)
                 .font(.system(size: 24, weight: .bold))
                 .foregroundColor(.white)
-                .padding(.horizontal, 60)
+                .padding(.horizontal, horizontalPadding)
             
             // Horizontal Card Carousel with Expanding Cards
             ScrollView(.horizontal, showsIndicators: false) {
@@ -300,7 +304,7 @@ public struct TVContentRowView: View {
                         .buttonStyle(.tvCard)
                     }
                 }
-                .padding(.horizontal, 60)
+                .padding(.horizontal, horizontalPadding)
                 .padding(.vertical, 24)
             }
             
@@ -313,7 +317,7 @@ public struct TVContentRowView: View {
                         .clipped()
                 }
             }
-            .padding(.horizontal, 60)
+            .padding(.horizontal, horizontalPadding)
             .animation(.easeInOut(duration: 0.50), value: isRowActive)
         }
         .focusSection()
