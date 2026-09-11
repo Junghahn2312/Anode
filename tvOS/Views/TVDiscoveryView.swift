@@ -151,7 +151,7 @@ public struct TVDiscoveryView: View {
                     .foregroundColor(.white.opacity(0.55))
             }
             .padding(.horizontal, 60)
-            .padding(.top, 54)
+            .padding(.top, 140)
             
             // Small Platform Tab Buttons
             ScrollView(.horizontal, showsIndicators: false) {
@@ -162,6 +162,7 @@ public struct TVDiscoveryView: View {
                             selectedProvider = nil
                             hoveredItem = nil
                             activeRowIndex = -1
+                            AppNavigation.shared.isTopBarVisible = true
                         }
                     } label: {
                         DiscoveryPlatformPillLabel(
@@ -173,6 +174,7 @@ public struct TVDiscoveryView: View {
                                 selectedProvider = nil
                                 hoveredItem = nil
                                 activeRowIndex = -1
+                                AppNavigation.shared.isTopBarVisible = true
                             }
                         }
                     }
@@ -185,6 +187,7 @@ public struct TVDiscoveryView: View {
                                 selectedProvider = provider
                                 hoveredItem = nil
                                 activeRowIndex = -1
+                                AppNavigation.shared.isTopBarVisible = true
                             }
                             Task { await loadPlatformContent(provider) }
                         } label: {
@@ -197,6 +200,7 @@ public struct TVDiscoveryView: View {
                                     selectedProvider = provider
                                     hoveredItem = nil
                                     activeRowIndex = -1
+                                    AppNavigation.shared.isTopBarVisible = true
                                 }
                                 Task { await loadPlatformContent(provider) }
                             }
@@ -233,6 +237,7 @@ public struct TVDiscoveryView: View {
                         selectedProvider = nil
                         hoveredItem = nil
                         activeRowIndex = -1
+                        AppNavigation.shared.isTopBarVisible = true
                     }
                 } label: {
                     HStack(spacing: 6) {
@@ -266,6 +271,7 @@ public struct TVDiscoveryView: View {
                     TVTopTenRowView(
                         title: "Top 10 Movies Trending on \(provider.name)",
                         items: Array(platformTopMovies.prefix(10)),
+                        isRowActive: activeRowIndex == 0,
                         onHover: { handleRowHover($0, rowIndex: 0) }
                     ) { item in
                         selectedItem = item
@@ -278,6 +284,7 @@ public struct TVDiscoveryView: View {
                     TVTopTenRowView(
                         title: "Top 10 TV Shows Trending on \(provider.name)",
                         items: Array(platformTopTV.prefix(10)),
+                        isRowActive: activeRowIndex == 1,
                         onHover: { handleRowHover($0, rowIndex: 1) }
                     ) { item in
                         selectedItem = item
@@ -290,6 +297,7 @@ public struct TVDiscoveryView: View {
                     TVContentRowView(
                         title: "New to \(provider.name)",
                         items: platformNew,
+                        isRowActive: activeRowIndex == 2,
                         onHover: { handleRowHover($0, rowIndex: 2) }
                     ) { item in
                         selectedItem = item
@@ -303,6 +311,7 @@ public struct TVDiscoveryView: View {
                     TVContentRowView(
                         title: "Critically Acclaimed on \(provider.name)",
                         items: acclaimed,
+                        isRowActive: activeRowIndex == 3,
                         onHover: { handleRowHover($0, rowIndex: 3) }
                     ) { item in
                         selectedItem = item
@@ -328,6 +337,7 @@ public struct TVDiscoveryView: View {
                                 selectedMediaType = filter
                                 hoveredItem = nil
                                 activeRowIndex = -1
+                                AppNavigation.shared.isTopBarVisible = true
                             }
                         } label: {
                             DiscoveryFilterPillLabel(
@@ -338,6 +348,7 @@ public struct TVDiscoveryView: View {
                                     selectedMediaType = filter
                                     hoveredItem = nil
                                     activeRowIndex = -1
+                                    AppNavigation.shared.isTopBarVisible = true
                                 }
                             }
                         }
@@ -355,6 +366,7 @@ public struct TVDiscoveryView: View {
                                 selectedGenre = nil
                                 hoveredItem = nil
                                 activeRowIndex = -1
+                                AppNavigation.shared.isTopBarVisible = true
                             }
                         } label: {
                             DiscoveryFilterPillLabel(
@@ -365,6 +377,7 @@ public struct TVDiscoveryView: View {
                                     selectedGenre = nil
                                     hoveredItem = nil
                                     activeRowIndex = -1
+                                    AppNavigation.shared.isTopBarVisible = true
                                 }
                             }
                         }
@@ -376,6 +389,7 @@ public struct TVDiscoveryView: View {
                                     selectedGenre = genre
                                     hoveredItem = nil
                                     activeRowIndex = -1
+                                    AppNavigation.shared.isTopBarVisible = true
                                 }
                             } label: {
                                 DiscoveryFilterPillLabel(
@@ -386,6 +400,7 @@ public struct TVDiscoveryView: View {
                                         selectedGenre = genre
                                         hoveredItem = nil
                                         activeRowIndex = -1
+                                        AppNavigation.shared.isTopBarVisible = true
                                     }
                                 }
                             }
@@ -399,9 +414,10 @@ public struct TVDiscoveryView: View {
             
             // Dedicated Section: Fresh from Theatres (New to Rent or Buy)
             if selectedMediaType != .tvShows && !engine.freshFromTheatres.isEmpty {
-                TVLandscapeRowView(
+                TVContentRowView(
                     title: "Fresh from Theatres (New to Rent or Buy)",
                     items: engine.freshFromTheatres,
+                    isRowActive: activeRowIndex == 0,
                     onHover: { handleRowHover($0, rowIndex: 0) }
                 ) { item in
                     selectedItem = item
@@ -431,6 +447,7 @@ public struct TVDiscoveryView: View {
                 TVContentRowView(
                     title: "\(genre.name) Movies",
                     items: matchingMovies,
+                    isRowActive: activeRowIndex == 1,
                     onHover: { handleRowHover($0, rowIndex: 1) }
                 ) { item in
                     selectedItem = item
@@ -442,6 +459,7 @@ public struct TVDiscoveryView: View {
                 TVContentRowView(
                     title: "\(genre.name) Series & Shows",
                     items: matchingTV,
+                    isRowActive: activeRowIndex == 2,
                     onHover: { handleRowHover($0, rowIndex: 2) }
                 ) { item in
                     selectedItem = item
@@ -454,6 +472,7 @@ public struct TVDiscoveryView: View {
                 TVContentRowView(
                     title: "Top Rated \(genre.name)",
                     items: topRatedGenre,
+                    isRowActive: activeRowIndex == 3,
                     onHover: { handleRowHover($0, rowIndex: 3) }
                 ) { item in
                     selectedItem = item
@@ -467,6 +486,7 @@ public struct TVDiscoveryView: View {
                 TVContentRowView(
                     title: "Trending Worldwide",
                     items: engine.trendingItems,
+                    isRowActive: activeRowIndex == 1,
                     onHover: { handleRowHover($0, rowIndex: 1) }
                 ) { item in
                     selectedItem = item
@@ -476,6 +496,7 @@ public struct TVDiscoveryView: View {
                 TVContentRowView(
                     title: "Popular Movies",
                     items: engine.popularMovies,
+                    isRowActive: activeRowIndex == 2,
                     onHover: { handleRowHover($0, rowIndex: 2) }
                 ) { item in
                     selectedItem = item
@@ -485,6 +506,7 @@ public struct TVDiscoveryView: View {
                 TVContentRowView(
                     title: "Popular TV Shows",
                     items: engine.popularTV,
+                    isRowActive: activeRowIndex == 3,
                     onHover: { handleRowHover($0, rowIndex: 3) }
                 ) { item in
                     selectedItem = item
@@ -494,6 +516,7 @@ public struct TVDiscoveryView: View {
                 TVContentRowView(
                     title: "Critically Acclaimed of All Time",
                     items: engine.topRated,
+                    isRowActive: activeRowIndex == 4,
                     onHover: { handleRowHover($0, rowIndex: 4) }
                 ) { item in
                     selectedItem = item
@@ -504,6 +527,7 @@ public struct TVDiscoveryView: View {
                 TVContentRowView(
                     title: "Trending Movies",
                     items: engine.popularMovies,
+                    isRowActive: activeRowIndex == 1,
                     onHover: { handleRowHover($0, rowIndex: 1) }
                 ) { item in
                     selectedItem = item
@@ -513,6 +537,7 @@ public struct TVDiscoveryView: View {
                 TVContentRowView(
                     title: "Top Rated Feature Films",
                     items: engine.topRated.filter { $0.mediaType == .movie },
+                    isRowActive: activeRowIndex == 2,
                     onHover: { handleRowHover($0, rowIndex: 2) }
                 ) { item in
                     selectedItem = item
@@ -522,6 +547,7 @@ public struct TVDiscoveryView: View {
                 TVContentRowView(
                     title: "New Digital Releases",
                     items: engine.newReleases.filter { $0.mediaType == .movie },
+                    isRowActive: activeRowIndex == 3,
                     onHover: { handleRowHover($0, rowIndex: 3) }
                 ) { item in
                     selectedItem = item
@@ -532,6 +558,7 @@ public struct TVDiscoveryView: View {
                 TVContentRowView(
                     title: "Trending Television Series",
                     items: engine.popularTV,
+                    isRowActive: activeRowIndex == 1,
                     onHover: { handleRowHover($0, rowIndex: 1) }
                 ) { item in
                     selectedItem = item
@@ -541,6 +568,7 @@ public struct TVDiscoveryView: View {
                 TVContentRowView(
                     title: "Critically Acclaimed Drama Series",
                     items: (engine.popularTV + engine.trendingItems).filter { $0.mediaType == .tvShow && $0.rating >= 8.2 },
+                    isRowActive: activeRowIndex == 2,
                     onHover: { handleRowHover($0, rowIndex: 2) }
                 ) { item in
                     selectedItem = item
@@ -550,6 +578,7 @@ public struct TVDiscoveryView: View {
                 TVContentRowView(
                     title: "Popular Streaming Series",
                     items: engine.trendingItems.filter { $0.mediaType == .tvShow },
+                    isRowActive: activeRowIndex == 3,
                     onHover: { handleRowHover($0, rowIndex: 3) }
                 ) { item in
                     selectedItem = item
@@ -567,6 +596,9 @@ public struct TVDiscoveryView: View {
         }
         if activeRowIndex != rowIndex {
             self.activeRowIndex = rowIndex
+        }
+        withAnimation(.easeInOut(duration: 0.35)) {
+            AppNavigation.shared.isTopBarVisible = (rowIndex <= 0)
         }
     }
     

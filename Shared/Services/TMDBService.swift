@@ -194,7 +194,7 @@ public actor TMDBService: ContentProvider {
             return cached
         }
         if let items = try? await getPagedMedia(
-            endpoint: "/discover/movie?with_watch_providers=\(provider.id)&sort_by=popularity.desc",
+            endpoint: "/discover/movie?with_watch_providers=\(provider.id)&watch_region=GB&sort_by=popularity.desc",
             type: .movie
         ), !items.isEmpty {
             var rankedList: [MediaItem] = []
@@ -206,9 +206,11 @@ public actor TMDBService: ContentProvider {
             memoryCache[cacheKey] = rankedList
             return rankedList
         }
-        let raw = (MockData.streamingCatalog[provider.id] ?? MockData.trendingItems + MockData.topRated).filter { $0.mediaType == .movie }
+        let catalog = MockData.streamingCatalog[provider.id] ?? []
+        let raw = catalog.filter { $0.mediaType == .movie }
+        let source = !raw.isEmpty ? raw : catalog
         var rankedList: [MediaItem] = []
-        for (idx, item) in raw.prefix(10).enumerated() {
+        for (idx, item) in source.prefix(10).enumerated() {
             var r = item
             r.rank = idx + 1
             rankedList.append(r)
@@ -223,7 +225,7 @@ public actor TMDBService: ContentProvider {
             return cached
         }
         if let items = try? await getPagedMedia(
-            endpoint: "/discover/tv?with_watch_providers=\(provider.id)&sort_by=popularity.desc",
+            endpoint: "/discover/tv?with_watch_providers=\(provider.id)&watch_region=GB&sort_by=popularity.desc",
             type: .tvShow
         ), !items.isEmpty {
             var rankedList: [MediaItem] = []
@@ -235,9 +237,11 @@ public actor TMDBService: ContentProvider {
             memoryCache[cacheKey] = rankedList
             return rankedList
         }
-        let raw = (MockData.streamingCatalog[provider.id] ?? MockData.trendingItems).filter { $0.mediaType == .tvShow }
+        let catalog = MockData.streamingCatalog[provider.id] ?? []
+        let raw = catalog.filter { $0.mediaType == .tvShow }
+        let source = !raw.isEmpty ? raw : catalog
         var rankedList: [MediaItem] = []
-        for (idx, item) in raw.prefix(10).enumerated() {
+        for (idx, item) in source.prefix(10).enumerated() {
             var r = item
             r.rank = idx + 1
             rankedList.append(r)
@@ -252,13 +256,14 @@ public actor TMDBService: ContentProvider {
             return cached
         }
         if let items = try? await getPagedMedia(
-            endpoint: "/discover/movie?with_watch_providers=\(provider.id)&sort_by=primary_release_date.desc",
+            endpoint: "/discover/movie?with_watch_providers=\(provider.id)&watch_region=GB&sort_by=primary_release_date.desc",
             type: .movie
         ), !items.isEmpty {
             memoryCache[cacheKey] = items
             return items
         }
-        let fallback = Array((MockData.streamingCatalog[provider.id] ?? MockData.newReleases).prefix(10))
+        let catalog = MockData.streamingCatalog[provider.id] ?? []
+        let fallback = Array(catalog.reversed().prefix(10))
         memoryCache[cacheKey] = fallback
         return fallback
     }
@@ -1179,6 +1184,38 @@ public enum MockData {
                 tagline: "Execution is everything.",
                 certification: "R",
                 streamingProviders: [.netflix]
+            ),
+            MediaItem(
+                id: 305,
+                title: "Society of the Snow",
+                mediaType: .movie,
+                overview: "In 1972, a Uruguayan rugby team's flight crashes onto a glacier in the heart of the Andes, where survivors must resort to extreme measures to stay alive.",
+                posterPath: "/2e853FDVSIso600RqCuOp003Q9y.jpg",
+                backdropPath: "/tLscOARAybtDUBIrIKVoF3BTSRk.jpg",
+                voteAverage: 8.0,
+                voteCount: 3100,
+                releaseDateString: "2023-12-15",
+                genreNames: ["Drama", "Adventure", "History"],
+                runtimeMinutes: 144,
+                tagline: "The impossible journey home.",
+                certification: "R",
+                streamingProviders: [.netflix]
+            ),
+            MediaItem(
+                id: 306,
+                title: "Stranger Things",
+                mediaType: .tvShow,
+                overview: "When a young boy vanishes, a small town uncovers a mystery involving secret experiments, terrifying supernatural forces and one strange little girl.",
+                posterPath: "/49WJfeN0moxb9IPfGn8AIqMGskD.jpg",
+                backdropPath: "/56v2KjBlU4XaOv9rVYEQypROD7P.jpg",
+                voteAverage: 8.6,
+                voteCount: 16500,
+                releaseDateString: "2016-07-15",
+                genreNames: ["Sci-Fi", "Drama", "Mystery"],
+                runtimeMinutes: 50,
+                tagline: "Every ending has a beginning.",
+                certification: "TV-14",
+                streamingProviders: [.netflix]
             )
         ],
         StreamingProvider.appleTV.id: [
@@ -1213,6 +1250,38 @@ public enum MockData {
                 genreNames: ["Comedy", "Drama"],
                 runtimeMinutes: 35,
                 tagline: "Kindness makes a comeback.",
+                certification: "TV-MA",
+                streamingProviders: [.appleTV]
+            ),
+            MediaItem(
+                id: 313,
+                title: "CODA",
+                mediaType: .movie,
+                overview: "As a CODA (Child of Deaf Adults), Ruby is the only hearing person in her deaf family. When the family's fishing business is threatened, Ruby finds herself torn between pursuing her love of music and her fear of abandoning her parents.",
+                posterPath: "/BzVjmm8SysUbh4niICj2vAncDq.jpg",
+                backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
+                voteAverage: 8.1,
+                voteCount: 2200,
+                releaseDateString: "2021-08-13",
+                genreNames: ["Drama", "Music"],
+                runtimeMinutes: 111,
+                tagline: "Every family has its own language.",
+                certification: "PG-13",
+                streamingProviders: [.appleTV]
+            ),
+            MediaItem(
+                id: 314,
+                title: "Silo",
+                mediaType: .tvShow,
+                overview: "In a ruined and toxic future, thousands live in a giant underground silo. When its sheriff breaks a cardinal rule, an engineer uncovers shocking truths about their world.",
+                posterPath: "/1N1s8ZzW3lU2Z13x8lq1q1p.jpg",
+                backdropPath: "/1Qf5ClZJpmEPJgBqBB03UvCVXzO.jpg",
+                voteAverage: 8.3,
+                voteCount: 2100,
+                releaseDateString: "2023-05-05",
+                genreNames: ["Sci-Fi", "Drama"],
+                runtimeMinutes: 55,
+                tagline: "The truth will surface.",
                 certification: "TV-MA",
                 streamingProviders: [.appleTV]
             )
@@ -1250,10 +1319,41 @@ public enum MockData {
                 tagline: "Loki's time has come.",
                 certification: "TV-14",
                 streamingProviders: [.disneyPlus]
+            ),
+            MediaItem(
+                id: 323,
+                title: "Poor Things",
+                mediaType: .movie,
+                overview: "Brought back to life by an unorthodox scientist, a young woman runs off with a debauched lawyer on a whirlwind adventure across continents.",
+                posterPath: "/kCGlIMHnOm8JPXq3rXM6c5wMxcT.jpg",
+                backdropPath: "/bQS43HSLZzMjZkcHJz4fUg7f6wm.jpg",
+                voteAverage: 7.8,
+                voteCount: 4200,
+                releaseDateString: "2023-12-08",
+                genreNames: ["Sci-Fi", "Romance", "Comedy"],
+                runtimeMinutes: 141,
+                tagline: "She's like nothing you've ever seen.",
+                certification: "R",
+                streamingProviders: [.disneyPlus]
+            ),
+            MediaItem(
+                id: 324,
+                title: "The Bear",
+                mediaType: .tvShow,
+                overview: "A young fine-dining chef comes home to Chicago to run his family Italian beef sandwich shop after a heartbreaking death in his family.",
+                posterPath: "/sHFl7mhn1g5i7P2tL6fQW0a3mUo.jpg",
+                backdropPath: "/2meX1nMdScFOoV4370rqHWFDxZ2.jpg",
+                voteAverage: 8.6,
+                voteCount: 3900,
+                releaseDateString: "2022-06-23",
+                genreNames: ["Drama", "Comedy"],
+                runtimeMinutes: 30,
+                tagline: "Every second counts.",
+                certification: "TV-MA",
+                streamingProviders: [.disneyPlus]
             )
         ],
         StreamingProvider.primeVideo.id: [
-            freshFromTheatres[3], // Oppenheimer
             MediaItem(
                 id: 331,
                 title: "The Boys",
@@ -1285,13 +1385,381 @@ public enum MockData {
                 tagline: "The end of the world is just the beginning.",
                 certification: "TV-MA",
                 streamingProviders: [.primeVideo]
+            ),
+            MediaItem(
+                id: 333,
+                title: "The Idea of You",
+                mediaType: .movie,
+                overview: "Solène Marchand, a 40-year-old single mother, begins an unexpected romance with 24-year-old Hayes Campbell, the lead singer of August Moon, the hottest boy band on the planet.",
+                posterPath: "/z121mtTxg5v9whDjy9spvBjeTeO.jpg",
+                backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+                voteAverage: 7.4,
+                voteCount: 1600,
+                releaseDateString: "2024-05-02",
+                genreNames: ["Romance", "Comedy", "Drama"],
+                runtimeMinutes: 115,
+                tagline: "Age is just a number.",
+                certification: "R",
+                streamingProviders: [.primeVideo]
+            ),
+            MediaItem(
+                id: 334,
+                title: "Road House",
+                mediaType: .movie,
+                overview: "Ex-UFC fighter Dalton takes a job as a bouncer at a Florida Keys roadhouse, only to discover that this paradise is not all it seems.",
+                posterPath: "/bXi6IQiCuHDvBh9YLG5dsXdPGio.jpg",
+                backdropPath: "/oe7mWXYY8MAqJvOKIPdaACvd3o5.jpg",
+                voteAverage: 7.0,
+                voteCount: 2200,
+                releaseDateString: "2024-03-21",
+                genreNames: ["Action", "Thriller"],
+                runtimeMinutes: 121,
+                tagline: "Fighting is what he does.",
+                certification: "R",
+                streamingProviders: [.primeVideo]
+            ),
+            MediaItem(
+                id: 335,
+                title: "Reacher",
+                mediaType: .tvShow,
+                overview: "Jack Reacher, a veteran military police investigator, enters civilian life travelling from town to town across the United States.",
+                posterPath: "/j73ytuz4015fGq2W1nK1E7k0fT5.jpg",
+                backdropPath: "/gmecR22SuKqB8i4O1GqL0Kz9w.jpg",
+                voteAverage: 8.1,
+                voteCount: 2400,
+                releaseDateString: "2022-02-03",
+                genreNames: ["Action", "Crime", "Drama"],
+                runtimeMinutes: 50,
+                tagline: "Payback is coming.",
+                certification: "TV-MA",
+                streamingProviders: [.primeVideo]
             )
         ],
         StreamingProvider.max.id: [
             freshFromTheatres[0], // Dune 2
             freshFromTheatres[1], // Civil War
             freshFromTheatres[2], // Furiosa
-            trendingItems[2]      // The Penguin
+            trendingItems[2],      // The Penguin
+            MediaItem(
+                id: 341,
+                title: "House of the Dragon",
+                mediaType: .tvShow,
+                overview: "The Targaryen dynasty is at the absolute apex of its power, with more than 15 dragons under their yoke. Most empires crumble from such heights.",
+                posterPath: "/1X4h40fcB4WWUmIBK0auT4zRBAV.jpg",
+                backdropPath: "/etjA2mG4V5zV6mO1O5wP4gQ3X9.jpg",
+                voteAverage: 8.4,
+                voteCount: 4700,
+                releaseDateString: "2022-08-21",
+                genreNames: ["Drama", "Action", "Fantasy"],
+                runtimeMinutes: 60,
+                tagline: "All must choose.",
+                certification: "TV-MA",
+                streamingProviders: [.max]
+            ),
+            MediaItem(
+                id: 342,
+                title: "The Batman",
+                mediaType: .movie,
+                overview: "In his second year of fighting crime, Batman uncovers corruption in Gotham City that connects to his own family while facing a serial killer known as the Riddler.",
+                posterPath: "/74xTEgt7R36Fpooo50r9T25onhq.jpg",
+                backdropPath: "/b0PlSFdDwbyK0cf5RxwDpaOJQvQ.jpg",
+                voteAverage: 7.7,
+                voteCount: 9600,
+                releaseDateString: "2022-03-04",
+                genreNames: ["Crime", "Mystery", "Thriller"],
+                runtimeMinutes: 176,
+                tagline: "Unmask the truth.",
+                certification: "PG-13",
+                streamingProviders: [.max]
+            )
+        ],
+        StreamingProvider.paramountPlus.id: [
+            MediaItem(
+                id: 351,
+                title: "Yellowstone",
+                mediaType: .tvShow,
+                overview: "Follow the Dutton family, led by John Dutton, who controls the largest contiguous ranch in the United States, under constant attack by those it borders.",
+                posterPath: "/peNC0eyc3TQJa6x4Td1IlRVUIpq.jpg",
+                backdropPath: "/1G6mP6uL0U4wQ5L7R3n2y.jpg",
+                voteAverage: 8.2,
+                voteCount: 2600,
+                releaseDateString: "2018-06-20",
+                genreNames: ["Western", "Drama"],
+                runtimeMinutes: 50,
+                tagline: "Power has a price.",
+                certification: "TV-MA",
+                streamingProviders: [.paramountPlus]
+            ),
+            MediaItem(
+                id: 352,
+                title: "Top Gun: Maverick",
+                mediaType: .movie,
+                overview: "After more than thirty years of service as one of the Navy’s top aviators, Pete Mitchell is where he belongs, pushing the envelope as a courageous test pilot.",
+                posterPath: "/62HCnUTziyWcpDaBO2i1DX17ljH.jpg",
+                backdropPath: "/odJ4hx6g6vBt4lBWKFD1tGLilAc.jpg",
+                voteAverage: 8.3,
+                voteCount: 8700,
+                releaseDateString: "2022-05-27",
+                genreNames: ["Action", "Drama"],
+                runtimeMinutes: 130,
+                tagline: "Feel the need for speed.",
+                certification: "PG-13",
+                streamingProviders: [.paramountPlus]
+            ),
+            MediaItem(
+                id: 353,
+                title: "Tulsa King",
+                mediaType: .tvShow,
+                overview: "Just after he is released from prison after 25 years, New York mafia capo Dwight Manfredi is unceremoniously exiled by his boss to set up shop in Tulsa, Oklahoma.",
+                posterPath: "/fwTv393FvDXlJp8zP9C5Q3K.jpg",
+                backdropPath: "/7wP2gH0R9z8Y5vT1mK.jpg",
+                voteAverage: 8.0,
+                voteCount: 1400,
+                releaseDateString: "2022-11-13",
+                genreNames: ["Crime", "Drama"],
+                runtimeMinutes: 42,
+                tagline: "Conquering new territory.",
+                certification: "TV-MA",
+                streamingProviders: [.paramountPlus]
+            )
+        ],
+        StreamingProvider.mubi.id: [
+            MediaItem(
+                id: 361,
+                title: "Aftersun",
+                mediaType: .movie,
+                overview: "Sophie reflects on the shared joy and private melancholy of a holiday she took with her father twenty years earlier as memories fill the gaps between footage.",
+                posterPath: "/4pukqLz0K4v0V0w7P9.jpg",
+                backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+                voteAverage: 7.8,
+                voteCount: 1200,
+                releaseDateString: "2022-10-21",
+                genreNames: ["Drama"],
+                runtimeMinutes: 102,
+                tagline: "Memories that stay.",
+                certification: "R",
+                streamingProviders: [.mubi]
+            ),
+            MediaItem(
+                id: 362,
+                title: "Past Lives",
+                mediaType: .movie,
+                overview: "Nora and Hae Sung, two deeply connected childhood friends, are wrested apart after Nora's family emigrates from South Korea. Decades later, they are reunited.",
+                posterPath: "/k3waqVXSnvCZWfJYNtdamTgTtTA.jpg",
+                backdropPath: "/2meX1nMdScFOoV4370rqHWFDxZ2.jpg",
+                voteAverage: 7.9,
+                voteCount: 1900,
+                releaseDateString: "2023-06-02",
+                genreNames: ["Romance", "Drama"],
+                runtimeMinutes: 106,
+                tagline: "In-Yun: connected across lifetimes.",
+                certification: "PG-13",
+                streamingProviders: [.mubi]
+            )
+        ],
+        StreamingProvider.crunchyroll.id: [
+            MediaItem(
+                id: 371,
+                title: "Demon Slayer: Kimetsu no Yaiba",
+                mediaType: .tvShow,
+                overview: "It is the Taisho Period in Japan. Tanjiro, a kindhearted boy who sells charcoal for a living, finds his family slaughtered by a demon.",
+                posterPath: "/xUfRZu2mi8jH69hmV1cr5F1LGDl.jpg",
+                backdropPath: "/nTvM4mhqZlHIUQRLxqPvLoooiWn.jpg",
+                voteAverage: 8.7,
+                voteCount: 6100,
+                releaseDateString: "2019-04-06",
+                genreNames: ["Animation", "Action", "Fantasy"],
+                runtimeMinutes: 24,
+                tagline: "Sever the bonds of fate.",
+                certification: "TV-MA",
+                streamingProviders: [.crunchyroll]
+            ),
+            MediaItem(
+                id: 372,
+                title: "Jujutsu Kaisen",
+                mediaType: .tvShow,
+                overview: "Yuji Itadori is a boy with tremendous physical strength, though he lives a completely ordinary high school life. One day, to save a classmate, he eats the finger of Ryomen Sukuna.",
+                posterPath: "/hFWScjl6vXnkWbYw0uQp8J9F4L.jpg",
+                backdropPath: "/2meX1nMdScFOoV4370rqHWFDxZ2.jpg",
+                voteAverage: 8.6,
+                voteCount: 3800,
+                releaseDateString: "2020-10-03",
+                genreNames: ["Animation", "Action", "Supernatural"],
+                runtimeMinutes: 24,
+                tagline: "Embrace the curse.",
+                certification: "TV-MA",
+                streamingProviders: [.crunchyroll]
+            )
+        ],
+        StreamingProvider.nowTV.id: [
+            MediaItem(
+                id: 381,
+                title: "The Regime",
+                mediaType: .tvShow,
+                overview: "Follow the story of a modern European regime as it begins to unravel over the course of a year within the palace walls.",
+                posterPath: "/z121mtTxg5v9whDjy9spvBjeTeO.jpg",
+                backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+                voteAverage: 7.2,
+                voteCount: 420,
+                releaseDateString: "2024-03-03",
+                genreNames: ["Drama", "Comedy"],
+                runtimeMinutes: 56,
+                tagline: "All power fades.",
+                certification: "TV-MA",
+                streamingProviders: [.nowTV]
+            ),
+            MediaItem(
+                id: 382,
+                title: "Wonka",
+                mediaType: .movie,
+                overview: "Willy Wonka – chock-full of ideas and determined to change the world one delectable bite at a time – is determined to prove that the best things in life begin with a dream.",
+                posterPath: "/qhb1qYHeY97Ol5zXO0Z0bQW9G.jpg",
+                backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
+                voteAverage: 7.2,
+                voteCount: 3100,
+                releaseDateString: "2023-12-06",
+                genreNames: ["Comedy", "Family", "Fantasy"],
+                runtimeMinutes: 116,
+                tagline: "Witness the origin.",
+                certification: "PG",
+                streamingProviders: [.nowTV]
+            )
+        ],
+        StreamingProvider.bbcIPlayer.id: [
+            MediaItem(
+                id: 391,
+                title: "Peaky Blinders",
+                mediaType: .tvShow,
+                overview: "A gangster family epic set in 1919 Birmingham, England and centered on a gang who sew razor blades in the peaks of their caps, and their fierce boss Tommy Shelby.",
+                posterPath: "/vUUqzWa2LnHIVqkaKVlVGkVcZIW.jpg",
+                backdropPath: "/w7Wp4z9Q0V3y1v.jpg",
+                voteAverage: 8.6,
+                voteCount: 9500,
+                releaseDateString: "2013-09-12",
+                genreNames: ["Drama", "Crime"],
+                runtimeMinutes: 60,
+                tagline: "By order of the Peaky Blinders.",
+                certification: "TV-MA",
+                streamingProviders: [.bbcIPlayer]
+            ),
+            MediaItem(
+                id: 392,
+                title: "Happy Valley",
+                mediaType: .tvShow,
+                overview: "Catherine Cawood is a strong-willed police sergeant in West Yorkshire, still coming to terms with the suicide of her teenage daughter eight years earlier.",
+                posterPath: "/7P4wQ9z1vK8y.jpg",
+                backdropPath: "/2meX1nMdScFOoV4370rqHWFDxZ2.jpg",
+                voteAverage: 8.4,
+                voteCount: 1100,
+                releaseDateString: "2014-04-29",
+                genreNames: ["Crime", "Drama"],
+                runtimeMinutes: 58,
+                tagline: "Justice takes resilience.",
+                certification: "TV-MA",
+                streamingProviders: [.bbcIPlayer]
+            )
+        ],
+        StreamingProvider.itvx.id: [
+            MediaItem(
+                id: 393,
+                title: "Broadchurch",
+                mediaType: .tvShow,
+                overview: "The murder of a young boy in a small coastal town brings a media frenzy, which threatens to tear the community apart.",
+                posterPath: "/1G6mP6uL0U4wQ5L7R3n2y.jpg",
+                backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
+                voteAverage: 8.2,
+                voteCount: 1600,
+                releaseDateString: "2013-03-04",
+                genreNames: ["Crime", "Drama", "Mystery"],
+                runtimeMinutes: 48,
+                tagline: "Secrets run deep.",
+                certification: "TV-14",
+                streamingProviders: [.itvx]
+            ),
+            MediaItem(
+                id: 394,
+                title: "The Duke",
+                mediaType: .movie,
+                overview: "In 1961, Kempton Bunton, a 60-year-old taxi driver, stole Goya's portrait of the Duke of Wellington from the National Gallery in London.",
+                posterPath: "/z121mtTxg5v9whDjy9spvBjeTeO.jpg",
+                backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+                voteAverage: 7.2,
+                voteCount: 450,
+                releaseDateString: "2022-02-25",
+                genreNames: ["Comedy", "Drama", "History"],
+                runtimeMinutes: 96,
+                tagline: "An extraordinarily true heist.",
+                certification: "PG-13",
+                streamingProviders: [.itvx]
+            )
+        ],
+        StreamingProvider.channel4.id: [
+            MediaItem(
+                id: 395,
+                title: "Derry Girls",
+                mediaType: .tvShow,
+                overview: "Amidst the political conflict of Northern Ireland in the 1990s, five high school friends navigate the universal challenges of being a teenager.",
+                posterPath: "/4pukqLz0K4v0V0w7P9.jpg",
+                backdropPath: "/2meX1nMdScFOoV4370rqHWFDxZ2.jpg",
+                voteAverage: 8.3,
+                voteCount: 1200,
+                releaseDateString: "2018-01-04",
+                genreNames: ["Comedy"],
+                runtimeMinutes: 22,
+                tagline: "Growing up in a turbulent time.",
+                certification: "TV-MA",
+                streamingProviders: [.channel4]
+            ),
+            MediaItem(
+                id: 396,
+                title: "It's A Sin",
+                mediaType: .tvShow,
+                overview: "A chronicle of four friends during a decade in which everything changed, including the rise of AIDS in 1980s London.",
+                posterPath: "/7P4wQ9z1vK8y.jpg",
+                backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
+                voteAverage: 8.5,
+                voteCount: 950,
+                releaseDateString: "2021-01-22",
+                genreNames: ["Drama"],
+                runtimeMinutes: 48,
+                tagline: "Remember the days.",
+                certification: "TV-MA",
+                streamingProviders: [.channel4]
+            )
+        ],
+        StreamingProvider.skyGo.id: [
+            MediaItem(
+                id: 397,
+                title: "Gangs of London",
+                mediaType: .tvShow,
+                overview: "When the head of a criminal organization is assassinated, the sudden power vacuum creates a battle between rival gangs on the streets of London.",
+                posterPath: "/1G6mP6uL0U4wQ5L7R3n2y.jpg",
+                backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+                voteAverage: 7.9,
+                voteCount: 880,
+                releaseDateString: "2020-04-23",
+                genreNames: ["Action", "Crime", "Drama"],
+                runtimeMinutes: 58,
+                tagline: "Blood runs the city.",
+                certification: "TV-MA",
+                streamingProviders: [.skyGo]
+            ),
+            MediaItem(
+                id: 398,
+                title: "The Beekeeper",
+                mediaType: .movie,
+                overview: "One man's brutal campaign for vengeance takes on national stakes after he is revealed to be a former operative of a powerful and clandestine organization.",
+                posterPath: "/A7EByudX0eOzlkQ2FIbogzyazm2.jpg",
+                backdropPath: "/4woSOUD0equCwXLwh2jiJD2q26S.jpg",
+                voteAverage: 7.4,
+                voteCount: 2600,
+                releaseDateString: "2024-01-12",
+                genreNames: ["Action", "Thriller"],
+                runtimeMinutes: 105,
+                tagline: "Expose the corrupt.",
+                certification: "R",
+                streamingProviders: [.skyGo]
+            )
         ]
     ]
     

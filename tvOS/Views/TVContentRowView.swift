@@ -112,24 +112,14 @@ public struct TVExpandingMediaCardView: View {
         normalWidth * 1.5
     }
     
-    private var expandedWidth: CGFloat {
-        cardHeight * 16.0 / 9.0
-    }
-    
     public var body: some View {
         ZStack(alignment: .bottomLeading) {
-            // Unfocused: Portrait Poster | Focused: 16:9 Backdrop (Image 2)
-            if isFocused {
-                CachedAsyncImage(url: item.backdropURL(size: "w780"))
-                    .frame(width: expandedWidth, height: cardHeight)
-                    .clipped()
-            } else {
-                CachedAsyncImage(url: item.posterURL(size: "w500"))
-                    .frame(width: normalWidth, height: cardHeight)
-                    .clipped()
-            }
+            // All posters always portrait
+            CachedAsyncImage(url: item.posterURL(size: "w500"))
+                .frame(width: normalWidth, height: cardHeight)
+                .clipped()
             
-            // Expanded Card Overlays (Image 2: Title & Badges on artwork)
+            // Expanded Card Overlays: Title & Badges on artwork when focused
             if isFocused {
                 LinearGradient(
                     colors: [Color.clear, Color.black.opacity(0.85)],
@@ -141,7 +131,7 @@ public struct TVExpandingMediaCardView: View {
                     Spacer()
                     
                     Text(item.title)
-                        .font(.system(size: 20, weight: .black))
+                        .font(.system(size: 18, weight: .black))
                         .foregroundColor(.white)
                         .lineLimit(1)
                         .shadow(color: .black.opacity(0.8), radius: 4, x: 0, y: 2)
@@ -171,7 +161,7 @@ public struct TVExpandingMediaCardView: View {
                         }
                     }
                 }
-                .padding(14)
+                .padding(12)
                 .transition(.opacity)
             } else {
                 VStack {
@@ -190,8 +180,9 @@ public struct TVExpandingMediaCardView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(isFocused ? Color.white.opacity(0.95) : Color.clear, lineWidth: 2.5)
         }
-        .frame(width: isFocused ? expandedWidth : normalWidth, height: cardHeight)
+        .frame(width: normalWidth, height: cardHeight)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .scaleEffect(isFocused ? 1.08 : 1.0)
         .zIndex(isFocused ? 10 : 1)
         .shadow(
             color: Color.black.opacity(isFocused ? 0.8 : 0.25),
@@ -199,7 +190,7 @@ public struct TVExpandingMediaCardView: View {
             x: 0,
             y: isFocused ? 10 : 2
         )
-        .animation(.spring(response: 0.45, dampingFraction: 0.88), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
         .onChange(of: isFocused) { _, focused in
             if focused {
                 onFocus?(item)
@@ -214,6 +205,7 @@ public struct TVContentRowView: View {
     let title: String
     let items: [MediaItem]
     let showCinemaBadge: Bool
+    let isRowActive: Bool
     let onHover: ((MediaItem) -> Void)?
     let onSelect: (MediaItem) -> Void
     
@@ -223,12 +215,14 @@ public struct TVContentRowView: View {
         title: String,
         items: [MediaItem],
         showCinemaBadge: Bool = false,
+        isRowActive: Bool = false,
         onHover: ((MediaItem) -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
     ) {
         self.title = title
         self.items = items
         self.showCinemaBadge = showCinemaBadge
+        self.isRowActive = isRowActive
         self.onHover = onHover
         self.onSelect = onSelect
     }
@@ -241,9 +235,9 @@ public struct TVContentRowView: View {
                 .foregroundColor(.white)
                 .padding(.horizontal, 60)
             
-            // Horizontal Card Carousel with Dynamic Expansion (Image 2)
+            // Horizontal Card Carousel with Portrait Cards & Slight Hover Extend
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 24) {
+                LazyHStack(spacing: 28) {
                     ForEach(items) { item in
                         Button {
                             onSelect(item)
@@ -253,7 +247,7 @@ public struct TVContentRowView: View {
                                 normalWidth: 190,
                                 showCinemaBadge: showCinemaBadge
                             ) { focused in
-                                withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
+                                withAnimation(.spring(response: 0.40, dampingFraction: 0.88)) {
                                     self.focusedItem = focused
                                 }
                                 self.onHover?(focused)
@@ -266,14 +260,15 @@ public struct TVContentRowView: View {
                 .padding(.vertical, 24)
             }
             
-            // Inline Detail Panel (Image 2)
-            if let active = focusedItem {
+            // Inline Detail Panel - Only displayed when this row is active
+            if isRowActive, let active = focusedItem {
                 TVRowInfoPanel(item: active)
                     .padding(.horizontal, 60)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .transition(.opacity)
                     .id(active.id)
             }
         }
+        .focusSection()
     }
 }
 
@@ -282,6 +277,7 @@ public struct TVContentRowView: View {
 public struct TVLandscapeRowView: View {
     let title: String
     let items: [MediaItem]
+    let isRowActive: Bool
     let onHover: ((MediaItem) -> Void)?
     let onSelect: (MediaItem) -> Void
     
@@ -290,11 +286,13 @@ public struct TVLandscapeRowView: View {
     public init(
         title: String,
         items: [MediaItem],
+        isRowActive: Bool = false,
         onHover: ((MediaItem) -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
     ) {
         self.title = title
         self.items = items
+        self.isRowActive = isRowActive
         self.onHover = onHover
         self.onSelect = onSelect
     }
@@ -332,14 +330,15 @@ public struct TVLandscapeRowView: View {
                 .padding(.vertical, 24)
             }
             
-            // Inline Detail Panel (Image 2)
-            if let active = focusedItem {
+            // Inline Detail Panel - Only displayed when this row is active
+            if isRowActive, let active = focusedItem {
                 TVRowInfoPanel(item: active)
                     .padding(.horizontal, 60)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .transition(.opacity)
                     .id(active.id)
             }
         }
+        .focusSection()
     }
 }
 
@@ -348,6 +347,7 @@ public struct TVLandscapeRowView: View {
 public struct TVTopTenRowView: View {
     let title: String
     let items: [MediaItem]
+    let isRowActive: Bool
     let onHover: ((MediaItem) -> Void)?
     let onSelect: (MediaItem) -> Void
     
@@ -356,11 +356,13 @@ public struct TVTopTenRowView: View {
     public init(
         title: String,
         items: [MediaItem],
+        isRowActive: Bool = false,
         onHover: ((MediaItem) -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
     ) {
         self.title = title
         self.items = items
+        self.isRowActive = isRowActive
         self.onHover = onHover
         self.onSelect = onSelect
     }
@@ -398,13 +400,14 @@ public struct TVTopTenRowView: View {
                 .padding(.vertical, 24)
             }
             
-            // Inline Detail Panel (Image 2)
-            if let active = focusedItem {
+            // Inline Detail Panel - Only displayed when this row is active
+            if isRowActive, let active = focusedItem {
                 TVRowInfoPanel(item: active)
                     .padding(.horizontal, 60)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .transition(.opacity)
                     .id(active.id)
             }
         }
+        .focusSection()
     }
 }

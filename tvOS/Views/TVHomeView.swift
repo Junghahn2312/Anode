@@ -14,7 +14,7 @@ public struct TVHomeView: View {
     @State private var hoveredItem: MediaItem? = nil
     @State private var activeRowIndex: Int = -1
     
-    private let timer = Timer.publish(every: 8.0, on: .main, in: .common).autoconnect()
+    private let timer = Timer.publish(every: 20.0, on: .main, in: .common).autoconnect()
     
     public init() {}
     
@@ -195,49 +195,6 @@ public struct TVHomeView: View {
             
             // Hero Typography, Metadata, Action Controls & Centered Pagination Dots
             VStack(alignment: .leading, spacing: 14) {
-                // Category & Availability Frosted Glass Badges
-                HStack(spacing: 12) {
-                    Text("ANODE SPOTLIGHT")
-                        .font(.system(size: 11, weight: .black))
-                        .tracking(2.0)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 5)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .overlay(
-                            Capsule().stroke(Color.white.opacity(0.20), lineWidth: 1)
-                        )
-                    
-                    if hero.inCinemas {
-                        Text("IN CINEMAS NOW")
-                            .font(.system(size: 11, weight: .black))
-                            .tracking(1.0)
-                            .foregroundColor(.red)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(.ultraThinMaterial, in: Capsule())
-                            .overlay(
-                                Capsule().stroke(Color.red.opacity(0.4), lineWidth: 1)
-                            )
-                    } else if let avail = heroAvailability, let primarySub = avail.subscriptions.first {
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(primarySub.brandColor)
-                                .frame(width: 7, height: 7)
-                            Text("STREAMING ON \(primarySub.name.uppercased())")
-                                .font(.system(size: 11, weight: .bold))
-                                .tracking(0.8)
-                                .foregroundColor(.white)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .overlay(
-                            Capsule().stroke(primarySub.brandColor.opacity(0.45), lineWidth: 1)
-                        )
-                    }
-                }
-                
                 // Hero Title: Transparent Logo Image (ClearArt) with Serif Fallback (Matching Photo 1)
                 Group {
                     if let logoPath = heroLogoPath ?? hero.logoPath,
@@ -303,36 +260,42 @@ public struct TVHomeView: View {
                         .shadow(color: Color.black.opacity(0.7), radius: 4, x: 0, y: 2)
                 }
                 
-                // Action Controls: [ Go to Movie ] Button (Matching Photo 1)
-                HStack(spacing: 16) {
-                    Button {
-                        selectedItem = hero
-                    } label: {
-                        TVHomePrimaryHeroButtonLabel(
-                            title: hero.mediaType == .tvShow ? "Go to Series" : "Go to Movie"
-                        ) {
-                            withAnimation(.easeInOut(duration: 0.45)) {
-                                self.hoveredItem = nil
-                                self.activeRowIndex = -1
+                // Action Controls: Full-width container with Left/Right carousel navigation & Focus section
+                HStack {
+                    HStack(spacing: 16) {
+                        Button {
+                            selectedItem = hero
+                        } label: {
+                            TVHomePrimaryHeroButtonLabel(
+                                title: hero.mediaType == .tvShow ? "Go to Series" : "Go to Movie"
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.45)) {
+                                    self.hoveredItem = nil
+                                    self.activeRowIndex = -1
+                                    AppNavigation.shared.isTopBarVisible = true
+                                }
                             }
                         }
-                    }
-                    .buttonStyle(.tvCard)
-                    
-                    Button {
-                        watchlist.toggleWatchlist(item: hero)
-                    } label: {
-                        TVHomeSecondaryBookmarkButtonLabel(
-                            isBookmarked: watchlist.contains(id: hero.id)
-                        ) {
-                            withAnimation(.easeInOut(duration: 0.45)) {
-                                self.hoveredItem = nil
-                                self.activeRowIndex = -1
+                        .buttonStyle(.tvCard)
+                        
+                        Button {
+                            watchlist.toggleWatchlist(item: hero)
+                        } label: {
+                            TVHomeSecondaryBookmarkButtonLabel(
+                                isBookmarked: watchlist.contains(id: hero.id)
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.45)) {
+                                    self.hoveredItem = nil
+                                    self.activeRowIndex = -1
+                                    AppNavigation.shared.isTopBarVisible = true
+                                }
                             }
                         }
+                        .buttonStyle(.tvCard)
                     }
-                    .buttonStyle(.tvCard)
+                    Spacer()
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .focusSection()
                 .padding(.top, 4)
                 
@@ -361,6 +324,17 @@ public struct TVHomeView: View {
         }
         .frame(width: screenWidth, height: screenHeight)
         .animation(.easeInOut(duration: 0.45), value: hero.id)
+        .onMoveCommand { direction in
+            if direction == .left {
+                withAnimation(.easeInOut(duration: 0.40)) {
+                    heroIndex = (heroIndex - 1 + heroPool.count) % max(1, heroPool.count)
+                }
+            } else if direction == .right {
+                withAnimation(.easeInOut(duration: 0.40)) {
+                    heroIndex = (heroIndex + 1) % max(1, heroPool.count)
+                }
+            }
+        }
     }
     
     // MARK: - Content Rows Section with Continue Watching & Subtle Ranked Numerals
@@ -378,6 +352,9 @@ public struct TVHomeView: View {
         }
         if activeRowIndex != rowIndex {
             self.activeRowIndex = rowIndex
+            withAnimation(.easeInOut(duration: 0.35)) {
+                AppNavigation.shared.isTopBarVisible = (rowIndex <= 0)
+            }
         }
     }
     
@@ -402,6 +379,7 @@ public struct TVHomeView: View {
                 TVTopTenRowView(
                     title: "Trending Films",
                     items: trendingFilms,
+                    isRowActive: activeRowIndex == 1,
                     onHover: { handleRowHover($0, rowIndex: 1) }
                 ) { item in
                     isUserInteracting = true
@@ -416,6 +394,7 @@ public struct TVHomeView: View {
                 TVTopTenRowView(
                     title: "Trending Series",
                     items: trendingSeries,
+                    isRowActive: activeRowIndex == 2,
                     onHover: { handleRowHover($0, rowIndex: 2) }
                 ) { item in
                     isUserInteracting = true
@@ -429,6 +408,7 @@ public struct TVHomeView: View {
                 TVTopTenRowView(
                     title: "Top 10 Today",
                     items: engine.topTen,
+                    isRowActive: activeRowIndex == 3,
                     onHover: { handleRowHover($0, rowIndex: 3) }
                 ) { item in
                     isUserInteracting = true
@@ -437,12 +417,13 @@ public struct TVHomeView: View {
                 .id("row-3")
             }
             
-            // Row 4: Popular
+            // Row 4: Popular (All posters portrait with hover extend)
             let popularItems = Array((engine.popularMovies + engine.popularTV).prefix(10))
             if !popularItems.isEmpty {
-                TVLandscapeRowView(
+                TVContentRowView(
                     title: "Popular",
                     items: popularItems,
+                    isRowActive: activeRowIndex == 4,
                     onHover: { handleRowHover($0, rowIndex: 4) }
                 ) { item in
                     isUserInteracting = true
@@ -456,6 +437,7 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "My List",
                     items: watchlist.items,
+                    isRowActive: activeRowIndex == 5,
                     onHover: { handleRowHover($0, rowIndex: 5) }
                 ) { item in
                     isUserInteracting = true
@@ -470,6 +452,7 @@ public struct TVHomeView: View {
                     title: "Now in Cinemas",
                     items: engine.cinemaNow,
                     showCinemaBadge: true,
+                    isRowActive: activeRowIndex == 6,
                     onHover: { handleRowHover($0, rowIndex: 6) }
                 ) { item in
                     isUserInteracting = true
@@ -483,6 +466,7 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "Trending on Netflix",
                     items: engine.netflixTrending,
+                    isRowActive: activeRowIndex == 7,
                     onHover: { handleRowHover($0, rowIndex: 7) }
                 ) { item in
                     isUserInteracting = true
@@ -496,6 +480,7 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "Trending on Disney+",
                     items: engine.disneyTrending,
+                    isRowActive: activeRowIndex == 8,
                     onHover: { handleRowHover($0, rowIndex: 8) }
                 ) { item in
                     isUserInteracting = true
@@ -509,6 +494,7 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "Trending on Prime Video",
                     items: engine.primeTrending,
+                    isRowActive: activeRowIndex == 9,
                     onHover: { handleRowHover($0, rowIndex: 9) }
                 ) { item in
                     isUserInteracting = true
@@ -522,6 +508,7 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "Trending on Apple TV+",
                     items: engine.appleTVTrending,
+                    isRowActive: activeRowIndex == 10,
                     onHover: { handleRowHover($0, rowIndex: 10) }
                 ) { item in
                     isUserInteracting = true
@@ -530,11 +517,12 @@ public struct TVHomeView: View {
                 .id("row-10")
             }
             
-            // Row 11: Coming Soon to Theatres (16:9 Landscape Variety Row)
+            // Row 11: Coming Soon to Theatres (Portrait Posters with Hover Extend)
             if !engine.cinemaUpcoming.isEmpty {
-                TVLandscapeRowView(
+                TVContentRowView(
                     title: "Coming Soon to Theatres",
                     items: engine.cinemaUpcoming,
+                    isRowActive: activeRowIndex == 11,
                     onHover: { handleRowHover($0, rowIndex: 11) }
                 ) { item in
                     isUserInteracting = true
@@ -548,6 +536,7 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "Critically Acclaimed",
                     items: engine.topRated,
+                    isRowActive: activeRowIndex == 12,
                     onHover: { handleRowHover($0, rowIndex: 12) }
                 ) { item in
                     isUserInteracting = true

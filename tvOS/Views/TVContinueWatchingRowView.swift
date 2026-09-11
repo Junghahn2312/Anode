@@ -17,26 +17,14 @@ public struct TVContinueWatchingRowView: View {
     
     public var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Header Pill: [ Continue Watching ▿ ] (Matching Photo 1)
-            HStack(spacing: 8) {
-                Text("Continue Watching")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.white)
-                
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.white.opacity(0.75))
+            // Header: Background Trakt Sync Button (No Dropdown)
+            HStack {
+                TVContinueWatchingSyncButton()
+                Spacer()
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(
-                Capsule()
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        Capsule().stroke(Color.white.opacity(0.18), lineWidth: 1)
-                    )
-            )
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 60)
+            .focusSection()
             
             // Horizontal Carousel of 16:9 Landscape Continue Watching Cards
             ScrollView(.horizontal, showsIndicators: false) {
@@ -59,6 +47,51 @@ public struct TVContinueWatchingRowView: View {
                 .padding(.vertical, 16)
             }
         }
+        .focusSection()
+    }
+}
+
+// MARK: - Dedicated Focusable Continue Watching Trakt Sync Button
+
+public struct TVContinueWatchingSyncButton: View {
+    @ObservedObject private var trakt = TraktStore.shared
+    @Environment(\.isFocused) private var isFocused: Bool
+    
+    public init() {}
+    
+    public var body: some View {
+        Button {
+            Task {
+                await trakt.refresh()
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Text("Continue Watching")
+                    .font(.system(size: 16, weight: .bold))
+                
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 12, weight: .bold))
+                    .rotationEffect(trakt.isSyncing ? .degrees(360) : .zero)
+                    .animation(trakt.isSyncing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: trakt.isSyncing)
+                
+                if trakt.isSyncing {
+                    Text("Syncing...")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(isFocused ? Color.black.opacity(0.8) : Color.white.opacity(0.85))
+                }
+            }
+            .foregroundColor(isFocused ? .black : .white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(isFocused ? Color.white : Color.white.opacity(0.12))
+            )
+            .overlay(
+                Capsule().stroke(Color.white.opacity(isFocused ? 1.0 : 0.22), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.tvCard)
     }
 }
 

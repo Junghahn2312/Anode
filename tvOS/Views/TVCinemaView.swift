@@ -11,7 +11,7 @@ public struct TVCinemaView: View {
     @State private var isUserInteracting: Bool = false
     @State private var heroLogoPath: String? = nil
     
-    private let timer = Timer.publish(every: 8.0, on: .main, in: .common).autoconnect()
+    private let timer = Timer.publish(every: 20.0, on: .main, in: .common).autoconnect()
     
     public init() {}
     
@@ -179,38 +179,8 @@ public struct TVCinemaView: View {
             Color.clear
                 .frame(width: screenWidth, height: screenHeight)
             
-            // Hero Content: Badges, Logo/Title, Metadata, Synopsis, Controls & Centered Pagination Dots
+            // Hero Content: Logo/Title, Metadata, Synopsis, Controls & Centered Pagination Dots
             VStack(alignment: .leading, spacing: 14) {
-                // Theatrical Badges
-                HStack(spacing: 12) {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: 7, height: 7)
-                        Text("IN CINEMAS NOW")
-                            .font(.system(size: 11, weight: .black))
-                            .tracking(2.0)
-                            .foregroundColor(.red)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 5)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .overlay(
-                        Capsule().stroke(Color.red.opacity(0.40), lineWidth: 1)
-                    )
-                    
-                    Text("THEATRICAL EXCLUSIVE")
-                        .font(.system(size: 11, weight: .black))
-                        .tracking(1.4)
-                        .foregroundColor(.white.opacity(0.85))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .overlay(
-                            Capsule().stroke(Color.white.opacity(0.20), lineWidth: 1)
-                        )
-                }
-                
                 // Official Transparent Title Logo or Typography Fallback
                 Group {
                     if let logoPath = heroLogoPath ?? hero.logoPath,
@@ -284,34 +254,40 @@ public struct TVCinemaView: View {
                         .shadow(color: Color.black.opacity(0.6), radius: 4, x: 0, y: 2)
                 }
                 
-                // Primary Action Button & Add to Watchlist
-                HStack(spacing: 14) {
-                    Button {
-                        selectedItem = hero
-                    } label: {
-                        TVCinemaPrimaryHeroButtonLabel(title: "Cinema Details") {
-                            withAnimation(.easeInOut(duration: 0.45)) {
-                                self.hoveredItem = nil
-                                self.activeRowIndex = -1
-                                self.isUserInteracting = true
+                // Primary Action Button & Add to Watchlist (Full Width Focus Section)
+                HStack {
+                    HStack(spacing: 14) {
+                        Button {
+                            selectedItem = hero
+                        } label: {
+                            TVCinemaPrimaryHeroButtonLabel(title: "Cinema Details") {
+                                withAnimation(.easeInOut(duration: 0.45)) {
+                                    self.hoveredItem = nil
+                                    self.activeRowIndex = -1
+                                    self.isUserInteracting = true
+                                    AppNavigation.shared.isTopBarVisible = true
+                                }
                             }
                         }
-                    }
-                    .buttonStyle(.tvCard)
-                    
-                    Button {
-                        watchlist.toggleWatchlist(item: hero)
-                    } label: {
-                        TVCinemaSecondaryBookmarkButtonLabel(isBookmarked: watchlist.contains(id: hero.id)) {
-                            withAnimation(.easeInOut(duration: 0.45)) {
-                                self.hoveredItem = nil
-                                self.activeRowIndex = -1
-                                self.isUserInteracting = true
+                        .buttonStyle(.tvCard)
+                        
+                        Button {
+                            watchlist.toggleWatchlist(item: hero)
+                        } label: {
+                            TVCinemaSecondaryBookmarkButtonLabel(isBookmarked: watchlist.contains(id: hero.id)) {
+                                withAnimation(.easeInOut(duration: 0.45)) {
+                                    self.hoveredItem = nil
+                                    self.activeRowIndex = -1
+                                    self.isUserInteracting = true
+                                    AppNavigation.shared.isTopBarVisible = true
+                                }
                             }
                         }
+                        .buttonStyle(.tvCard)
                     }
-                    .buttonStyle(.tvCard)
+                    Spacer()
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .focusSection()
                 .padding(.top, 4)
                 
@@ -334,6 +310,17 @@ public struct TVCinemaView: View {
         }
         .frame(width: screenWidth, height: screenHeight)
         .animation(.easeInOut(duration: 0.45), value: hero.id)
+        .onMoveCommand { direction in
+            if direction == .left {
+                withAnimation(.easeInOut(duration: 0.40)) {
+                    heroIndex = (heroIndex - 1 + heroPool.count) % max(1, heroPool.count)
+                }
+            } else if direction == .right {
+                withAnimation(.easeInOut(duration: 0.40)) {
+                    heroIndex = (heroIndex + 1) % max(1, heroPool.count)
+                }
+            }
+        }
     }
     
     // MARK: - Strict Theatrical Content Rows
@@ -344,6 +331,9 @@ public struct TVCinemaView: View {
         }
         if activeRowIndex != rowIndex {
             self.activeRowIndex = rowIndex
+            withAnimation(.easeInOut(duration: 0.35)) {
+                AppNavigation.shared.isTopBarVisible = (rowIndex <= 0)
+            }
         }
     }
     
@@ -359,6 +349,7 @@ public struct TVCinemaView: View {
                     title: "Now in Theatres (Theatrical Exclusive)",
                     items: exclusiveNow,
                     showCinemaBadge: true,
+                    isRowActive: activeRowIndex == 0,
                     onHover: { handleRowHover($0, rowIndex: 0) }
                 ) { item in
                     selectedItem = item
@@ -366,11 +357,12 @@ public struct TVCinemaView: View {
                 .id("cinema-row-0")
             }
             
-            // Row 1: Coming Soon to Theatres (Near Future)
+            // Row 1: Coming Soon to Theatres (Near Future - All Posters Portrait with Hover Extend)
             if !exclusiveUpcoming.isEmpty {
-                TVLandscapeRowView(
+                TVContentRowView(
                     title: "Coming Soon to Theatres (Near Future)",
                     items: exclusiveUpcoming,
+                    isRowActive: activeRowIndex == 1,
                     onHover: { handleRowHover($0, rowIndex: 1) }
                 ) { item in
                     selectedItem = item
@@ -385,6 +377,7 @@ public struct TVCinemaView: View {
                     title: "Top Box Office Hits (In Theatres Only)",
                     items: boxOfficeHits,
                     showCinemaBadge: true,
+                    isRowActive: activeRowIndex == 2,
                     onHover: { handleRowHover($0, rowIndex: 2) }
                 ) { item in
                     selectedItem = item
@@ -397,6 +390,7 @@ public struct TVCinemaView: View {
                 TVContentRowView(
                     title: "Upcoming Premium & IMAX Screenings",
                     items: Array(exclusiveUpcoming.suffix(from: min(2, exclusiveUpcoming.count))),
+                    isRowActive: activeRowIndex == 3,
                     onHover: { handleRowHover($0, rowIndex: 3) }
                 ) { item in
                     selectedItem = item
