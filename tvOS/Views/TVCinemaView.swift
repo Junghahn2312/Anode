@@ -162,7 +162,8 @@ public struct TVCinemaView: View {
                     items: exclusiveNow,
                     showCinemaBadge: true,
                     isRowActive: activeRowIndex == 0,
-                    onHover: { handleRowHover($0, rowIndex: 0) }
+                    onHover: { handleRowHover($0, rowIndex: 0) },
+                    onMoveUp: { AppNavigation.shared.focusTopBarTrigger += 1 }
                 ) { item in
                     selectedItem = item
                 }

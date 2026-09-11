@@ -19,6 +19,8 @@ public struct TVMediaDetailView: View {
     @State private var episodes: [TVEpisode] = []
     @State private var isLoadingEpisodes: Bool = false
     @State private var currentItem: MediaItem
+    @FocusState private var isHeroPlayFocused: Bool
+    @FocusState private var isBackFocused: Bool
     
     public init(item: MediaItem) {
         self.item = item
@@ -31,80 +33,47 @@ public struct TVMediaDetailView: View {
     }
     
     public var body: some View {
-        ZStack {
-            // Ambient Pure Black Background
-            Color.black.ignoresSafeArea()
+        GeometryReader { screenGeo in
+            let screenWidth = max(screenGeo.size.width, UIScreen.main.bounds.width)
+            let screenHeight = max(screenGeo.size.height, UIScreen.main.bounds.height)
             
-            // Full-bleed Ambient Color Bleed & 4K Backdrop
-            ZStack {
-                // Ambient blurred color bleed
-                CachedAsyncImage(url: item.backdropURL(size: "w780"), contentMode: .fill)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .blur(radius: 80)
-                    .opacity(0.38)
-                    .clipped()
+            ZStack(alignment: .topLeading) {
+                // Ambient Pure Black Background
+                Color.black.ignoresSafeArea()
                 
-                // Crisp 4K Backdrop
-                CachedAsyncImage(url: item.backdropURL(size: "original"), contentMode: .fill)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .clipped()
-                
-                // Fluid multi-stop gradient fade blending into lower content
-                LinearGradient(
-                    stops: [
-                        .init(color: Color.clear, location: 0.0),
-                        .init(color: Color.clear, location: 0.25),
-                        .init(color: Color.black.opacity(0.30), location: 0.45),
-                        .init(color: Color.black.opacity(0.70), location: 0.65),
-                        .init(color: Color.black.opacity(0.95), location: 0.85),
-                        .init(color: Color.black, location: 1.0)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
-            .ignoresSafeArea()
-            
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 38) {
-                    // Top Back Navigation
-                    HStack {
-                        Button {
-                            dismiss()
-                        } label: {
-                            TVBackButtonLabel()
-                        }
-                        .buttonStyle(.tvCard)
+                // Root Vertical ScrollView
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 38) {
+                        // Big Hero Section (Takes full initial presence like Home Hero)
+                        detailHeroShowcaseSection(screenWidth: screenWidth, screenHeight: screenHeight)
                         
-                        Spacer()
+                        // Content Below the Hero Fold
+                        VStack(alignment: .leading, spacing: 38) {
+                            // Dedicated Trailers Carousel
+                            trailersCarouselSection
+                            
+                            // Season Selector & Episode Grid (TV Shows)
+                            if item.mediaType == .tvShow {
+                                tvShowSeasonsAndEpisodesSection
+                            }
+                            
+                            // Where to Watch Section (Platforms only, zero prices, zero attributions)
+                            whereToWatchSection
+                                .padding(.horizontal, 60)
+                            
+                            // Cast Rail
+                            castRailSection
+                            
+                            // More Like This
+                            moreLikeThisSection
+                        }
+                        .padding(.bottom, 90)
                     }
-                    .padding(.horizontal, 60)
-                    .padding(.top, 40)
-                    
-                    // Hero Showcase Header (Matching Image 3)
-                    heroHeaderSection
-                        .padding(.horizontal, 60)
-                    
-                    // Season Selector & Episode Grid (For TV Shows - Matching Images 1 & 3)
-                    if item.mediaType == .tvShow {
-                        tvShowSeasonsAndEpisodesSection
-                    }
-                    
-                    // Dedicated Trailers Carousel (Matching Image 1)
-                    trailersCarouselSection
-                    
-                    // Where to Watch Section (Global Providers & Streaming)
-                    whereToWatchSection
-                        .padding(.horizontal, 60)
-                    
-                    // Cast Rail
-                    castRailSection
-                    
-                    // More Like This
-                    moreLikeThisSection
                 }
-                .padding(.bottom, 90)
+                .ignoresSafeArea()
             }
+            .frame(width: screenWidth, height: screenHeight)
+            .ignoresSafeArea()
         }
         .task(id: item.id) {
             async let enrichTask = engine.enrichItem(item)
@@ -136,66 +105,155 @@ public struct TVMediaDetailView: View {
         }
     }
     
-    // MARK: - Hero Header Section (Image 3)
+    // MARK: - Massive Hero Showcase Section (Matching Home Hero Presence)
     
-    private var heroHeaderSection: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            // Title Treatment
-            Text(currentItem.title.uppercased())
-                .font(.system(size: 56, weight: .black, design: .rounded))
-                .foregroundColor(.white)
-                .tracking(1.0)
-                .shadow(color: Color.black.opacity(0.8), radius: 6, x: 0, y: 3)
-            
-            // Metadata Line (Rating in vibrant green, Year, Genre, Certification, Runtime)
-            HStack(spacing: 14) {
-                if !currentItem.formattedRating.isEmpty {
-                    Text(currentItem.formattedRating)
-                        .font(.system(size: 16, weight: .black))
-                        .foregroundColor(Color(red: 0.3, green: 0.9, blue: 0.4))
-                }
+    private func detailHeroShowcaseSection(screenWidth: CGFloat, screenHeight: CGFloat) -> some View {
+        ZStack(alignment: .bottomLeading) {
+            // Full-bleed Backdrop & Vignettes
+            ZStack {
+                // Ambient color bleed
+                CachedAsyncImage(url: currentItem.backdropURL(size: "w780"), contentMode: .fill)
+                    .frame(width: screenWidth, height: 860)
+                    .blur(radius: 80)
+                    .opacity(0.38)
+                    .clipped()
                 
-                if !currentItem.yearString.isEmpty {
-                    Text(currentItem.yearString)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.85))
-                }
+                // Crisp 4K Backdrop
+                let backdrop = currentItem.backdropURL(size: "original") ?? currentItem.posterURL(size: "original")
+                CachedAsyncImage(url: backdrop, contentMode: .fill)
+                    .frame(width: screenWidth, height: 860, alignment: .top)
+                    .clipped()
                 
-                if let genre = currentItem.genreNames.first {
-                    Text("•")
-                        .foregroundColor(.white.opacity(0.4))
-                    Text(genre)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.85))
-                }
+                // Soft left vignette for logo & typography legibility
+                LinearGradient(
+                    stops: [
+                        .init(color: Color.black.opacity(0.85), location: 0.0),
+                        .init(color: Color.black.opacity(0.40), location: 0.45),
+                        .init(color: Color.clear, location: 0.70)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
                 
-                if let cert = currentItem.certification {
-                    Text("•")
-                        .foregroundColor(.white.opacity(0.4))
-                    Text(cert)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .stroke(Color.white.opacity(0.4), lineWidth: 1)
-                        )
-                }
+                // Soft top vignette for back button legibility
+                LinearGradient(
+                    stops: [
+                        .init(color: Color.black.opacity(0.70), location: 0.0),
+                        .init(color: Color.clear, location: 0.25)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
                 
-                if !currentItem.formattedRuntime.isEmpty {
-                    Text("•")
-                        .foregroundColor(.white.opacity(0.4))
-                    Text(currentItem.formattedRuntime)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.85))
-                }
+                // Bottom fade blending seamlessly into trailers and lower content
+                LinearGradient(
+                    stops: [
+                        .init(color: Color.clear, location: 0.35),
+                        .init(color: Color.black.opacity(0.60), location: 0.70),
+                        .init(color: Color.black, location: 1.0)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             }
+            .frame(width: screenWidth, height: 860)
+            .clipped()
             
-            // Action Buttons & Overview Line (Image 3)
-            HStack(alignment: .top, spacing: 28) {
-                HStack(spacing: 14) {
-                    // Primary White Action Button: Play / Watch Trailer
+            // Top Back Navigation Button
+            VStack {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        TVBackButtonLabel()
+                    }
+                    .buttonStyle(.tvCard)
+                    .focused($isBackFocused)
+                    Spacer()
+                }
+                .padding(.horizontal, 60)
+                .padding(.top, 40)
+                Spacer()
+            }
+            .frame(width: screenWidth, height: 860)
+            
+            // Hero Metadata, Logo Artwork & Action Buttons
+            VStack(alignment: .leading, spacing: 18) {
+                // ClearArt Transparent Logo Artwork or Stylized Title
+                Group {
+                    if let logoPath = currentItem.logoPath,
+                       let logoURL = URL(string: logoPath.hasPrefix("http") ? logoPath : "https://image.tmdb.org/t/p/w500\(logoPath)") {
+                        CachedAsyncImage(url: logoURL, contentMode: .fit)
+                            .frame(maxHeight: 120, alignment: .leading)
+                            .shadow(color: Color.black.opacity(0.90), radius: 8, x: 0, y: 3)
+                    } else {
+                        Text(currentItem.title.uppercased())
+                            .font(.system(size: 52, weight: .heavy, design: .serif))
+                            .foregroundColor(Color.white)
+                            .tracking(1.0)
+                            .shadow(color: Color.black.opacity(0.90), radius: 8, x: 0, y: 3)
+                            .lineLimit(2)
+                    }
+                }
+                .frame(maxWidth: 820, alignment: .leading)
+                
+                // Metadata Line (Year • Genre • Runtime • Certification • Rating)
+                HStack(spacing: 12) {
+                    if !currentItem.yearString.isEmpty {
+                        Text(currentItem.yearString)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.90))
+                    }
+                    
+                    if let genre = currentItem.genreNames.first {
+                        Text("•")
+                            .foregroundColor(.white.opacity(0.40))
+                        Text(genre)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.90))
+                    }
+                    
+                    if !currentItem.formattedRuntime.isEmpty {
+                        Text("•")
+                            .foregroundColor(.white.opacity(0.40))
+                        Text(currentItem.formattedRuntime)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.90))
+                    }
+                    
+                    if let cert = currentItem.certification {
+                        Text("•")
+                            .foregroundColor(.white.opacity(0.40))
+                        Text(cert)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                    .stroke(Color.white.opacity(0.40), lineWidth: 1)
+                            )
+                    }
+                    
+                    if !currentItem.formattedRating.isEmpty {
+                        Text("•")
+                            .foregroundColor(.white.opacity(0.40))
+                        RatingBadge(rating: currentItem.formattedRating)
+                    }
+                }
+                
+                // Synopsis Overview
+                if !currentItem.overview.isEmpty {
+                    Text(currentItem.overview)
+                        .font(.system(size: 15, weight: .regular))
+                        .foregroundColor(.white.opacity(0.85))
+                        .lineLimit(3)
+                        .lineSpacing(4)
+                        .frame(maxWidth: 820, alignment: .leading)
+                }
+                
+                // Action Buttons: Play / Watch Trailer + In My List
+                HStack(spacing: 16) {
                     Button {
                         if let trailer = (trailers.first ?? currentItem.trailers.first), let url = trailer.youtubeURL {
                             openURL(url)
@@ -204,28 +262,31 @@ public struct TVMediaDetailView: View {
                         TVPlayButtonLabel()
                     }
                     .buttonStyle(.tvCard)
+                    .focused($isHeroPlayFocused)
+                    .onMoveCommand { direction in
+                        if direction == .up {
+                            isBackFocused = true
+                        }
+                    }
                     
-                    // Secondary Bookmark Button
                     Button {
                         watchlist.toggleWatchlist(item: currentItem)
                     } label: {
                         TVBookmarkButtonLabel(isBookmarked: watchlist.contains(id: currentItem.id))
                     }
                     .buttonStyle(.tvCard)
+                    .onMoveCommand { direction in
+                        if direction == .up {
+                            isBackFocused = true
+                        }
+                    }
                 }
-                
-                // Synopsis to the right
-                if !currentItem.overview.isEmpty {
-                    Text(currentItem.overview)
-                        .font(.system(size: 15, weight: .regular))
-                        .foregroundColor(.white.opacity(0.82))
-                        .lineLimit(3)
-                        .lineSpacing(3)
-                        .frame(maxWidth: 820, alignment: .leading)
-                        .padding(.top, 4)
-                }
+                .padding(.top, 4)
             }
+            .padding(.horizontal, 60)
+            .padding(.bottom, 50)
         }
+        .frame(width: screenWidth, height: 860)
     }
     
     // MARK: - Season Selector & Episodes Section (Images 1 & 3)
@@ -247,6 +308,11 @@ public struct TVMediaDetailView: View {
                                 )
                             }
                             .buttonStyle(.tvCard)
+                            .onMoveCommand { direction in
+                                if direction == .up {
+                                    isHeroPlayFocused = true
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, 60)
@@ -307,6 +373,11 @@ public struct TVMediaDetailView: View {
                                     )
                                 }
                                 .buttonStyle(.tvCard)
+                                .onMoveCommand { direction in
+                                    if direction == .up {
+                                        isHeroPlayFocused = true
+                                    }
+                                }
                             }
                         }
                         .padding(.horizontal, 60)
@@ -317,21 +388,21 @@ public struct TVMediaDetailView: View {
         }
     }
     
-    // MARK: - Where to Watch Section
+    // MARK: - Where to Watch Section (Zero Prices, Zero Attributions)
     
     private var whereToWatchSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             Text("WHERE TO WATCH")
-                .font(.system(size: 12, weight: .black))
-                .tracking(1.4)
-                .foregroundColor(.white.opacity(0.45))
+                .font(.system(size: 13, weight: .black))
+                .tracking(1.5)
+                .foregroundColor(.white.opacity(0.50))
             
-            // Subscriptions
+            // Subscriptions / Streaming platforms
             if let subs = availability?.subscriptions, !subs.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Included with Subscription")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white.opacity(0.6))
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Stream On")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.70))
                     
                     HStack(spacing: 12) {
                         ForEach(subs, id: \.id) { sub in
@@ -344,51 +415,66 @@ public struct TVMediaDetailView: View {
                                     .foregroundColor(.white)
                             }
                             .padding(.horizontal, 14)
-                            .padding(.vertical, 7)
-                            .background(RoundedRectangle(cornerRadius: 16).fill(sub.brandColor.opacity(0.25)))
+                            .padding(.vertical, 8)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(sub.brandColor.opacity(0.25)))
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(sub.brandColor.opacity(0.50), lineWidth: 1))
                         }
                     }
                 }
             }
             
-            // Rent & Buy Options
-            if let rent = availability?.rentOptions, !rent.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Rent in 4K")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white.opacity(0.6))
+            // Purchase / Rent Platforms - NO PRICES, ONLY PROVIDER NAMES
+            let rentOrBuy = (availability?.rentOptions ?? []) + (availability?.buyOptions ?? [])
+            let uniqueProviders: [PurchaseOption] = {
+                var seen = Set<String>()
+                var list: [PurchaseOption] = []
+                for opt in rentOrBuy {
+                    if !seen.contains(opt.providerName) {
+                        seen.insert(opt.providerName)
+                        list.append(opt)
+                    }
+                }
+                return list
+            }()
+            
+            if !uniqueProviders.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Rent or Buy")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.70))
                     
                     HStack(spacing: 12) {
-                        ForEach(rent) { option in
+                        ForEach(uniqueProviders) { option in
                             HStack(spacing: 6) {
-                                Text(option.providerName)
+                                Image(systemName: "tv")
                                     .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(.white.opacity(0.8))
-                                Text(option.price)
-                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(.white.opacity(0.70))
+                                Text(option.providerName)
+                                    .font(.system(size: 14, weight: .bold))
                                     .foregroundColor(.white)
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.12)))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(0.12)))
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.18), lineWidth: 1))
                         }
                     }
                 }
             }
             
-            // Attribution
-            Text(availability?.attribution ?? "Streaming data provided by JustWatch & TMDB")
-                .font(.system(size: 11, weight: .regular))
-                .foregroundColor(.white.opacity(0.35))
-                .padding(.top, 2)
+            if (availability?.subscriptions.isEmpty ?? true) && uniqueProviders.isEmpty {
+                Text("Check streaming apps or local listings for release availability.")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.white.opacity(0.55))
+            }
         }
-        .padding(20)
-        .frame(maxWidth: 820, alignment: .leading)
+        .padding(24)
+        .frame(maxWidth: 860, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(.ultraThinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(Color.white.opacity(0.14), lineWidth: 1)
                 )
         )

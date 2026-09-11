@@ -2,7 +2,7 @@ import SwiftUI
 
 public struct TVSearchView: View {
     @ObservedObject private var engine = DiscoveryEngine.shared
-    @State private var query: String = "Tom"
+    @State private var query: String = ""
     @State private var selectedItem: MediaItem?
     @State private var focusedSearchItem: MediaItem?
     @State private var activeRowIndex: Int = 0
@@ -195,7 +195,8 @@ public struct TVSearchView: View {
                     showCinemaBadge: false,
                     isRowActive: activeRowIndex == 0,
                     horizontalPadding: 0,
-                    onHover: { handleRowHover($0, rowIndex: 0) }
+                    onHover: { handleRowHover($0, rowIndex: 0) },
+                    onMoveUp: { AppNavigation.shared.focusTopBarTrigger += 1 }
                 ) { item in
                     selectedItem = item
                 }
@@ -219,7 +220,8 @@ public struct TVSearchView: View {
                     showCinemaBadge: false,
                     isRowActive: activeRowIndex == 0,
                     horizontalPadding: 0,
-                    onHover: { handleRowHover($0, rowIndex: 0) }
+                    onHover: { handleRowHover($0, rowIndex: 0) },
+                    onMoveUp: { AppNavigation.shared.focusTopBarTrigger += 1 }
                 ) { item in
                     selectedItem = item
                 }
@@ -246,7 +248,8 @@ public struct TVSearchView: View {
                     showCinemaBadge: false,
                     isRowActive: activeRowIndex == 0,
                     horizontalPadding: 0,
-                    onHover: { handleRowHover($0, rowIndex: 0) }
+                    onHover: { handleRowHover($0, rowIndex: 0) },
+                    onMoveUp: { AppNavigation.shared.focusTopBarTrigger += 1 }
                 ) { item in
                     selectedItem = item
                 }

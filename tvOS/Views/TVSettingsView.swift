@@ -148,15 +148,17 @@ public struct TVSettingsView: View {
     // MARK: - Root Settings Screen (Matching Apple TV Settings Exactly)
     
     private var rootSettingsView: some View {
-        VStack(spacing: 24) {
-            // Centered Settings title (Apple TV Typography)
+        VStack(spacing: 36) {
+            // Centered Settings title moved down with generous breathing room
             Text("Settings")
                 .font(.system(size: 38, weight: .bold))
                 .foregroundColor(.white.opacity(0.90))
-                .padding(.top, 95)
+                .padding(.top, 160)
             
-            HStack(alignment: .center, spacing: 72) {
-                // Left: Large Squircle Card with Anode Logo
+            HStack(alignment: .center) {
+                Spacer()
+                
+                // Left: Large Squircle Card with Anode Logo (Centre Left of Screen)
                 ZStack {
                     RoundedRectangle(cornerRadius: 56, style: .continuous)
                         .fill(Color(red: 0.17, green: 0.17, blue: 0.20))
@@ -171,24 +173,26 @@ public struct TVSettingsView: View {
                 }
                 .frame(width: 440)
                 
-                // Right: Clean Vertical Settings Rows
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 12) {
-                        ForEach(SettingsSection.allCases) { section in
-                            TVSettingsMenuRowButton(
-                                title: section.title,
-                                showChevron: section.hasChevron
-                            ) {
-                                handleSectionClick(section)
-                            }
+                Spacer()
+                Spacer()
+                
+                // Right: Clean Vertical Settings Rows (Centre Right of Screen, Zero Clipping)
+                VStack(spacing: 12) {
+                    ForEach(SettingsSection.allCases) { section in
+                        TVSettingsMenuRowButton(
+                            title: section.title,
+                            showChevron: section.hasChevron
+                        ) {
+                            handleSectionClick(section)
                         }
                     }
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 4)
-                    .frame(width: 500)
                 }
-                .frame(width: 520, height: 560)
+                .padding(.vertical, 20)
+                .padding(.horizontal, 36)
+                .frame(width: 580)
                 .focusSection()
+                
+                Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -799,8 +803,9 @@ private struct TVSettingsMenuRowLabel: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(isFocused ? Color.white : Color.white.opacity(0.06), lineWidth: isFocused ? 2 : 1)
         )
-        .scaleEffect(isFocused ? 1.04 : 1.0)
-        .shadow(color: isFocused ? Color.white.opacity(0.35) : Color.clear, radius: 14, y: 4)
+        .scaleEffect(isFocused ? 1.05 : 1.0)
+        .zIndex(isFocused ? 10 : 1)
+        .shadow(color: isFocused ? Color.white.opacity(0.40) : Color.clear, radius: 16, y: 4)
         .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isFocused)
     }
 }

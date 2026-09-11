@@ -16,6 +16,7 @@ public struct TVHomeView: View {
     @State private var heroLogoPath: String? = nil
     @State private var hoveredItem: MediaItem? = nil
     @State private var activeRowIndex: Int = -1
+    @FocusState private var isHeroFocused: Bool
     
     private let timer = Timer.publish(every: 20.0, on: .main, in: .common).autoconnect()
     
@@ -292,11 +293,14 @@ public struct TVHomeView: View {
                             }
                         }
                         .buttonStyle(.tvCard)
+                        .focused($isHeroFocused)
                         .onMoveCommand { direction in
                             if direction == .left {
                                 withAnimation(.easeInOut(duration: 0.40)) {
                                     heroIndex = (heroIndex - 1 + heroPool.count) % max(1, heroPool.count)
                                 }
+                            } else if direction == .up {
+                                AppNavigation.shared.focusTopBarTrigger += 1
                             }
                         }
                         
@@ -319,6 +323,8 @@ public struct TVHomeView: View {
                                 withAnimation(.easeInOut(duration: 0.40)) {
                                     heroIndex = (heroIndex + 1) % max(1, heroPool.count)
                                 }
+                            } else if direction == .up {
+                                AppNavigation.shared.focusTopBarTrigger += 1
                             }
                         }
                     }
@@ -327,6 +333,15 @@ public struct TVHomeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .focusSection()
                 .padding(.top, 4)
+                .onChange(of: isHeroFocused) { _, focused in
+                    if focused {
+                        withAnimation(.easeInOut(duration: 0.40)) {
+                            self.hoveredItem = nil
+                            self.activeRowIndex = -1
+                            AppNavigation.shared.isTopBarVisible = true
+                        }
+                    }
+                }
                 
                 // Centered Carousel Page Indicator Dots (Matching Photo 1)
                 HStack {
@@ -376,14 +391,88 @@ public struct TVHomeView: View {
         }
     }
     
+    // MARK: - Cross-Row Media Deduplication Engine (Zero Repeated Titles)
+    
+    private struct HomeRowCollections {
+        let trendingFilms: [MediaItem]
+        let trendingSeries: [MediaItem]
+        let topTen: [MediaItem]
+        let popular: [MediaItem]
+        let cinema: [MediaItem]
+        let netflix: [MediaItem]
+        let disney: [MediaItem]
+        let prime: [MediaItem]
+        let apple: [MediaItem]
+        let upcoming: [MediaItem]
+        let topRated: [MediaItem]
+    }
+    
+    private func deduplicated(items: [MediaItem], seen: inout Set<Int>, limit: Int = 10) -> [MediaItem] {
+        var result: [MediaItem] = []
+        for item in items {
+            if !seen.contains(item.id) {
+                seen.insert(item.id)
+                result.append(item)
+                if result.count >= limit {
+                    break
+                }
+            }
+        }
+        return result
+    }
+    
+    private var rowCollections: HomeRowCollections {
+        var seen = Set<Int>()
+        
+        // 1. Exclude Trakt Continue Watching items
+        for cw in trakt.items {
+            seen.insert(cw.item.id)
+        }
+        
+        // 2. Preserve Top 10 Today official ranks (Priority seeding)
+        let topTen = Array(engine.topTen.prefix(10))
+        for item in topTen {
+            seen.insert(item.id)
+        }
+        
+        // 3. Deduplicate every subsequent row so zero titles repeat anywhere on Home
+        let trendingFilms = deduplicated(items: engine.popularMovies + engine.cinemaNow, seen: &seen, limit: 10)
+        let trendingSeries = deduplicated(items: engine.popularTV + engine.trendingItems.filter { $0.mediaType == .tvShow }, seen: &seen, limit: 10)
+        let popular = deduplicated(items: engine.popularMovies + engine.popularTV, seen: &seen, limit: 10)
+        let cinema = deduplicated(items: engine.cinemaNow, seen: &seen, limit: 10)
+        let netflix = deduplicated(items: engine.netflixTrending, seen: &seen, limit: 10)
+        let disney = deduplicated(items: engine.disneyTrending, seen: &seen, limit: 10)
+        let prime = deduplicated(items: engine.primeTrending, seen: &seen, limit: 10)
+        let apple = deduplicated(items: engine.appleTVTrending, seen: &seen, limit: 10)
+        let upcoming = deduplicated(items: engine.cinemaUpcoming, seen: &seen, limit: 10)
+        let topRated = deduplicated(items: engine.topRated, seen: &seen, limit: 10)
+        
+        return HomeRowCollections(
+            trendingFilms: trendingFilms,
+            trendingSeries: trendingSeries,
+            topTen: topTen,
+            popular: popular,
+            cinema: cinema,
+            netflix: netflix,
+            disney: disney,
+            prime: prime,
+            apple: apple,
+            upcoming: upcoming,
+            topRated: topRated
+        )
+    }
+    
     @ViewBuilder
     private var contentRowsSection: some View {
+        let rows = rowCollections
+        
         VStack(alignment: .leading, spacing: 32) {
             // Row 0: Continue Watching (Peeks in at bottom edge when at top of page, Photo 1)
             if !trakt.items.isEmpty {
                 TVContinueWatchingRowView(
                     items: trakt.items,
-                    onHover: { handleRowHover($0, rowIndex: 0) }
+                    onHover: { handleRowHover($0, rowIndex: 0) },
+                    onMoveUp: { isHeroFocused = true }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -392,13 +481,13 @@ public struct TVHomeView: View {
             }
             
             // Row 1: Trending Films (Subtle numerals in top-left corner of poster, Photo 2)
-            let trendingFilms = Array((engine.popularMovies + engine.cinemaNow).prefix(10))
-            if !trendingFilms.isEmpty {
+            if !rows.trendingFilms.isEmpty {
                 TVTopTenRowView(
                     title: "Trending Films",
-                    items: trendingFilms,
+                    items: rows.trendingFilms,
                     isRowActive: activeRowIndex == 1,
-                    onHover: { handleRowHover($0, rowIndex: 1) }
+                    onHover: { handleRowHover($0, rowIndex: 1) },
+                    onMoveUp: { isHeroFocused = true }
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -407,11 +496,10 @@ public struct TVHomeView: View {
             }
             
             // Row 2: Trending Series (Subtle numerals in top-left corner of poster, Photo 2)
-            let trendingSeries = Array((engine.popularTV + engine.trendingItems.filter { $0.mediaType == .tvShow }).prefix(10))
-            if !trendingSeries.isEmpty {
+            if !rows.trendingSeries.isEmpty {
                 TVTopTenRowView(
                     title: "Trending Series",
-                    items: trendingSeries,
+                    items: rows.trendingSeries,
                     isRowActive: activeRowIndex == 2,
                     onHover: { handleRowHover($0, rowIndex: 2) }
                 ) { item in
@@ -422,10 +510,10 @@ public struct TVHomeView: View {
             }
             
             // Row 3: Top 10 Today
-            if !engine.topTen.isEmpty {
+            if !rows.topTen.isEmpty {
                 TVTopTenRowView(
                     title: "Top 10 Today",
-                    items: engine.topTen,
+                    items: rows.topTen,
                     isRowActive: activeRowIndex == 3,
                     onHover: { handleRowHover($0, rowIndex: 3) }
                 ) { item in
@@ -436,11 +524,10 @@ public struct TVHomeView: View {
             }
             
             // Row 4: Popular (All posters portrait with hover extend)
-            let popularItems = Array((engine.popularMovies + engine.popularTV).prefix(10))
-            if !popularItems.isEmpty {
+            if !rows.popular.isEmpty {
                 TVContentRowView(
                     title: "Popular",
-                    items: popularItems,
+                    items: rows.popular,
                     isRowActive: activeRowIndex == 4,
                     onHover: { handleRowHover($0, rowIndex: 4) }
                 ) { item in
@@ -465,10 +552,10 @@ public struct TVHomeView: View {
             }
             
             // Row 6: Now in Cinemas
-            if !engine.cinemaNow.isEmpty {
+            if !rows.cinema.isEmpty {
                 TVContentRowView(
                     title: "Now in Cinemas",
-                    items: engine.cinemaNow,
+                    items: rows.cinema,
                     showCinemaBadge: true,
                     isRowActive: activeRowIndex == 6,
                     onHover: { handleRowHover($0, rowIndex: 6) }
@@ -480,10 +567,10 @@ public struct TVHomeView: View {
             }
             
             // Row 7: Trending on Netflix
-            if !engine.netflixTrending.isEmpty {
+            if !rows.netflix.isEmpty {
                 TVContentRowView(
                     title: "Trending on Netflix",
-                    items: engine.netflixTrending,
+                    items: rows.netflix,
                     isRowActive: activeRowIndex == 7,
                     onHover: { handleRowHover($0, rowIndex: 7) }
                 ) { item in
@@ -494,10 +581,10 @@ public struct TVHomeView: View {
             }
             
             // Row 8: Trending on Disney+
-            if !engine.disneyTrending.isEmpty {
+            if !rows.disney.isEmpty {
                 TVContentRowView(
                     title: "Trending on Disney+",
-                    items: engine.disneyTrending,
+                    items: rows.disney,
                     isRowActive: activeRowIndex == 8,
                     onHover: { handleRowHover($0, rowIndex: 8) }
                 ) { item in
@@ -508,10 +595,10 @@ public struct TVHomeView: View {
             }
             
             // Row 9: Trending on Prime Video
-            if !engine.primeTrending.isEmpty {
+            if !rows.prime.isEmpty {
                 TVContentRowView(
                     title: "Trending on Prime Video",
-                    items: engine.primeTrending,
+                    items: rows.prime,
                     isRowActive: activeRowIndex == 9,
                     onHover: { handleRowHover($0, rowIndex: 9) }
                 ) { item in
@@ -522,10 +609,10 @@ public struct TVHomeView: View {
             }
             
             // Row 10: Trending on Apple TV+
-            if !engine.appleTVTrending.isEmpty {
+            if !rows.apple.isEmpty {
                 TVContentRowView(
                     title: "Trending on Apple TV+",
-                    items: engine.appleTVTrending,
+                    items: rows.apple,
                     isRowActive: activeRowIndex == 10,
                     onHover: { handleRowHover($0, rowIndex: 10) }
                 ) { item in
@@ -536,10 +623,10 @@ public struct TVHomeView: View {
             }
             
             // Row 11: Coming Soon to Theatres (Portrait Posters with Hover Extend)
-            if !engine.cinemaUpcoming.isEmpty {
+            if !rows.upcoming.isEmpty {
                 TVContentRowView(
                     title: "Coming Soon to Theatres",
-                    items: engine.cinemaUpcoming,
+                    items: rows.upcoming,
                     isRowActive: activeRowIndex == 11,
                     onHover: { handleRowHover($0, rowIndex: 11) }
                 ) { item in
@@ -550,10 +637,10 @@ public struct TVHomeView: View {
             }
             
             // Row 12: Critically Acclaimed
-            if !engine.topRated.isEmpty {
+            if !rows.topRated.isEmpty {
                 TVContentRowView(
                     title: "Critically Acclaimed",
-                    items: engine.topRated,
+                    items: rows.topRated,
                     isRowActive: activeRowIndex == 12,
                     onHover: { handleRowHover($0, rowIndex: 12) }
                 ) { item in

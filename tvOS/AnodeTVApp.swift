@@ -5,6 +5,7 @@ public final class AppNavigation: ObservableObject {
     public static let shared = AppNavigation()
     @Published public var selectedTab: Int
     @Published public var isTopBarVisible: Bool = true
+    @Published public var focusTopBarTrigger: Int = 0
     
     public init() {
         let initial = UserDefaults.standard.integer(forKey: "InitialTab")
@@ -28,6 +29,8 @@ public let allTopTabs: [TopTabItem] = [
 
 public struct TVTopTabBarView: View {
     @Binding var selectedTab: Int
+    @ObservedObject private var nav = AppNavigation.shared
+    @FocusState private var focusedTab: Int?
     
     public var body: some View {
         HStack(spacing: 8) {
@@ -49,6 +52,7 @@ public struct TVTopTabBarView: View {
                     )
                 }
                 .buttonStyle(.tvCard)
+                .focused($focusedTab, equals: tab.id)
             }
         }
         .padding(.horizontal, 16)
@@ -63,6 +67,9 @@ public struct TVTopTabBarView: View {
         .padding(.top, 40)
         .frame(maxWidth: .infinity)
         .focusSection()
+        .onChange(of: nav.focusTopBarTrigger) { _, _ in
+            focusedTab = selectedTab
+        }
     }
 }
 

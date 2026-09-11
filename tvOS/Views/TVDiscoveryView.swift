@@ -250,7 +250,8 @@ public struct TVDiscoveryView: View {
                     title: "Top 10 Movies Trending on \(provider.name)",
                     items: Array(platformTopMovies.prefix(10)),
                     isRowActive: activeRowIndex == 0,
-                    onHover: { handleRowHover($0, rowIndex: 0) }
+                    onHover: { handleRowHover($0, rowIndex: 0) },
+                    onMoveUp: { AppNavigation.shared.focusTopBarTrigger += 1 }
                 ) { item in
                     selectedItem = item
                 }
@@ -384,7 +385,8 @@ public struct TVDiscoveryView: View {
                     title: "Fresh from Theatres (New to Rent or Buy)",
                     items: engine.freshFromTheatres,
                     isRowActive: activeRowIndex == 0,
-                    onHover: { handleRowHover($0, rowIndex: 0) }
+                    onHover: { handleRowHover($0, rowIndex: 0) },
+                    onMoveUp: { AppNavigation.shared.focusTopBarTrigger += 1 }
                 ) { item in
                     selectedItem = item
                 }

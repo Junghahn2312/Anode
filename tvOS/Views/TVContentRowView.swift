@@ -110,6 +110,7 @@ public struct TVExpandingMediaCardView: View {
     let normalWidth: CGFloat
     let showCinemaBadge: Bool
     let rank: Int?
+    let onMoveUp: (() -> Void)?
     let onFocus: ((MediaItem) -> Void)?
     
     @Environment(\.isFocused) private var isFocused: Bool
@@ -121,12 +122,14 @@ public struct TVExpandingMediaCardView: View {
         normalWidth: CGFloat = 190,
         showCinemaBadge: Bool = false,
         rank: Int? = nil,
+        onMoveUp: (() -> Void)? = nil,
         onFocus: ((MediaItem) -> Void)? = nil
     ) {
         self.item = item
         self.normalWidth = normalWidth
         self.showCinemaBadge = showCinemaBadge
         self.rank = rank
+        self.onMoveUp = onMoveUp
         self.onFocus = onFocus
     }
     
@@ -140,31 +143,31 @@ public struct TVExpandingMediaCardView: View {
     
     public var body: some View {
         ZStack(alignment: .bottomLeading) {
-            // Unfocused: Portrait Poster | Focused: 16:9 Landscape Backdrop
-            if isFocused {
-                let backdrop = item.backdropURL(size: "w780") ?? item.posterURL(size: "w500")
-                CachedAsyncImage(url: backdrop)
-                    .frame(width: expandedWidth, height: cardHeight)
-                    .clipped()
-            } else {
-                CachedAsyncImage(url: item.posterURL(size: "w500"))
-                    .frame(width: normalWidth, height: cardHeight)
-                    .clipped()
-            }
+            let backdrop = item.backdropURL(size: "w780") ?? item.posterURL(size: "w500")
             
-            // Overlays
-            if isFocused {
-                // Soft bottom gradient for logo legibility
+            // Poster Layer: smooth crossfade
+            CachedAsyncImage(url: item.posterURL(size: "w500"), contentMode: .fill)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .opacity(isFocused ? 0.0 : 1.0)
+            
+            // Backdrop Layer: smooth crossfade
+            CachedAsyncImage(url: backdrop, contentMode: .fill)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .opacity(isFocused ? 1.0 : 0.0)
+            
+            // Focused Overlays: Gradient and Logo Artwork
+            ZStack(alignment: .bottomLeading) {
                 LinearGradient(
                     stops: [
-                        .init(color: Color.clear, location: 0.25),
+                        .init(color: Color.clear, location: 0.20),
                         .init(color: Color.black.opacity(0.85), location: 1.0)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 
-                // ONLY the media's logo artwork (no text, no rating, no genre, no cinema badge)
                 VStack {
                     Spacer()
                     HStack {
@@ -186,9 +189,11 @@ public struct TVExpandingMediaCardView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 14)
                 }
-                .transition(.opacity)
-            } else {
-                // Unfocused state: subtle rank numeral if top 10, or rating badge
+            }
+            .opacity(isFocused ? 1.0 : 0.0)
+            
+            // Unfocused Overlays: Rank numeral or rating badge
+            ZStack(alignment: .topTrailing) {
                 if let rank = rank {
                     VStack {
                         HStack {
@@ -203,16 +208,12 @@ public struct TVExpandingMediaCardView: View {
                         Spacer()
                     }
                 } else if !item.formattedRating.isEmpty {
-                    VStack {
-                        HStack {
-                            Spacer()
-                            RatingBadge(rating: item.formattedRating)
-                                .padding(8)
-                        }
-                        Spacer()
-                    }
+                    RatingBadge(rating: item.formattedRating)
+                        .padding(8)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            .opacity(isFocused ? 0.0 : 1.0)
             
             // Crisp White Outline on Focus
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -227,7 +228,8 @@ public struct TVExpandingMediaCardView: View {
             x: 0,
             y: isFocused ? 10 : 2
         )
-        .animation(.spring(response: 0.42, dampingFraction: 0.88), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.82), value: isFocused)
+        .applyMoveUp(onMoveUp: onMoveUp)
         .task(id: isFocused) {
             guard isFocused else { return }
             let enriched = await DiscoveryEngine.shared.enrichItem(item)
@@ -253,6 +255,7 @@ public struct TVContentRowView: View {
     let isRowActive: Bool
     let horizontalPadding: CGFloat
     let onHover: ((MediaItem) -> Void)?
+    let onMoveUp: (() -> Void)?
     let onSelect: (MediaItem) -> Void
     
     @State private var focusedItem: MediaItem?
@@ -264,6 +267,7 @@ public struct TVContentRowView: View {
         isRowActive: Bool = false,
         horizontalPadding: CGFloat = 60,
         onHover: ((MediaItem) -> Void)? = nil,
+        onMoveUp: (() -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
     ) {
         self.title = title
@@ -272,6 +276,7 @@ public struct TVContentRowView: View {
         self.isRowActive = isRowActive
         self.horizontalPadding = horizontalPadding
         self.onHover = onHover
+        self.onMoveUp = onMoveUp
         self.onSelect = onSelect
     }
     
@@ -285,7 +290,7 @@ public struct TVContentRowView: View {
             
             // Horizontal Card Carousel with Expanding Cards
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 28) {
+                HStack(spacing: 28) {
                     ForEach(items) { item in
                         Button {
                             onSelect(item)
@@ -293,9 +298,10 @@ public struct TVContentRowView: View {
                             TVExpandingMediaCardView(
                                 item: item,
                                 normalWidth: 190,
-                                showCinemaBadge: showCinemaBadge
+                                showCinemaBadge: showCinemaBadge,
+                                onMoveUp: onMoveUp
                             ) { focused in
-                                withAnimation(.easeInOut(duration: 0.45)) {
+                                withAnimation(.easeInOut(duration: 0.35)) {
                                     self.focusedItem = focused
                                 }
                                 self.onHover?(focused)
@@ -405,6 +411,7 @@ public struct TVTopTenRowView: View {
     let items: [MediaItem]
     let isRowActive: Bool
     let onHover: ((MediaItem) -> Void)?
+    let onMoveUp: (() -> Void)?
     let onSelect: (MediaItem) -> Void
     
     @State private var focusedItem: MediaItem?
@@ -414,12 +421,14 @@ public struct TVTopTenRowView: View {
         items: [MediaItem],
         isRowActive: Bool = false,
         onHover: ((MediaItem) -> Void)? = nil,
+        onMoveUp: (() -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
     ) {
         self.title = title
         self.items = items
         self.isRowActive = isRowActive
         self.onHover = onHover
+        self.onMoveUp = onMoveUp
         self.onSelect = onSelect
     }
     
@@ -433,7 +442,7 @@ public struct TVTopTenRowView: View {
             
             // Horizontal Card Carousel
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 38) {
+                HStack(spacing: 38) {
                     ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                         Button {
                             onSelect(item)
@@ -441,9 +450,10 @@ public struct TVTopTenRowView: View {
                             TVExpandingMediaCardView(
                                 item: item,
                                 normalWidth: 185,
-                                rank: index + 1
+                                rank: index + 1,
+                                onMoveUp: onMoveUp
                             ) { focused in
-                                withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                                withAnimation(.easeInOut(duration: 0.35)) {
                                     self.focusedItem = focused
                                 }
                                 self.onHover?(focused)
@@ -469,5 +479,22 @@ public struct TVTopTenRowView: View {
             .animation(.easeInOut(duration: 0.50), value: isRowActive)
         }
         .focusSection()
+    }
+}
+
+// MARK: - Conditional Move Up Helper
+
+private extension View {
+    @ViewBuilder
+    func applyMoveUp(onMoveUp: (() -> Void)?) -> some View {
+        if let onMoveUp = onMoveUp {
+            self.onMoveCommand { direction in
+                if direction == .up {
+                    onMoveUp()
+                }
+            }
+        } else {
+            self
+        }
     }
 }

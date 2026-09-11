@@ -3,15 +3,18 @@ import SwiftUI
 public struct TVContinueWatchingRowView: View {
     let items: [ContinueWatchingItem]
     let onHover: ((MediaItem) -> Void)?
+    let onMoveUp: (() -> Void)?
     let onSelect: (MediaItem) -> Void
     
     public init(
         items: [ContinueWatchingItem],
         onHover: ((MediaItem) -> Void)? = nil,
+        onMoveUp: (() -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
     ) {
         self.items = items
         self.onHover = onHover
+        self.onMoveUp = onMoveUp
         self.onSelect = onSelect
     }
     
@@ -28,7 +31,7 @@ public struct TVContinueWatchingRowView: View {
             
             // Horizontal Carousel of 16:9 Landscape Continue Watching Cards
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 32) {
+                HStack(spacing: 32) {
                     ForEach(items) { cwItem in
                         Button {
                             onSelect(cwItem.item)
@@ -41,6 +44,11 @@ public struct TVContinueWatchingRowView: View {
                             }
                         }
                         .buttonStyle(.tvCard)
+                        .onMoveCommand { direction in
+                            if direction == .up {
+                                onMoveUp?()
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal, 60)
