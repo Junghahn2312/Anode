@@ -71,8 +71,8 @@ public final class DiscoveryEngine: ObservableObject {
         // Strict theatrical exclusivity: zero streaming availability
         let rawCinema = await cinemaTask
         let rawCinemaUp = await cinemaUpTask
-        let strictlyExclusiveCinema = rawCinema.filter { tmdb.isTheatricalExclusive($0) }
-        let strictlyExclusiveUpcoming = rawCinemaUp.filter { tmdb.isTheatricalExclusive($0) }
+        let strictlyExclusiveCinema = rawCinema.filter { $0.isNowPlayingTheatrical }
+        let strictlyExclusiveUpcoming = rawCinemaUp.filter { $0.isUpcomingTheatrical }
         
         self.cinemaNow = strictlyExclusiveCinema
         self.cinemaMovies = strictlyExclusiveCinema

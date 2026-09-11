@@ -117,19 +117,37 @@ public actor TMDBService: ContentProvider {
         if let cached = memoryCache["in_cinemas"], !cached.isEmpty {
             return cached
         }
-        if let items = try? await getPagedMedia(endpoint: "/movie/now_playing", type: .movie) {
-            let mapped = items.compactMap { item -> MediaItem? in
-                var m = item
-                m.inCinemas = true
-                guard isTheatricalExclusive(m) else { return nil }
-                return m
+        if let items = try? await getPagedMedia(endpoint: "/movie/now_playing", type: .movie), !items.isEmpty {
+            let verified = await withTaskGroup(of: MediaItem?.self) { group in
+                for item in items.prefix(15) {
+                    group.addTask {
+                        var m = item
+                        let avail = await self.fetchWatchAvailability(id: m.id, mediaType: .movie, region: "US")
+                        m.availability = avail
+                        m.inCinemas = true
+                        
+                        // Strict check: zero digital release (no streaming, no rent, no buy)
+                        guard m.isTheatricalExclusive else { return nil }
+                        
+                        // Must be currently playing (released on or before today)
+                        guard m.isNowPlayingTheatrical else { return nil }
+                        
+                        return m
+                    }
+                }
+                var list: [MediaItem] = []
+                for await res in group {
+                    if let res = res { list.append(res) }
+                }
+                return list
             }
-            if !mapped.isEmpty {
-                memoryCache["in_cinemas"] = mapped
-                return mapped
+            if !verified.isEmpty {
+                let sorted = verified.sorted { ($0.releaseDateString ?? "") > ($1.releaseDateString ?? "") }
+                memoryCache["in_cinemas"] = sorted
+                return sorted
             }
         }
-        var list = MockData.cinemaMovies.filter { isTheatricalExclusive($0) }
+        var list = MockData.cinemaMovies.filter { $0.isNowPlayingTheatrical }
         for i in 0..<list.count {
             list[i].inCinemas = true
         }
@@ -142,13 +160,36 @@ public actor TMDBService: ContentProvider {
             return cached
         }
         if let items = try? await getPagedMedia(endpoint: "/movie/upcoming", type: .movie), !items.isEmpty {
-            let exclusive = items.filter { isTheatricalExclusive($0) }
-            if !exclusive.isEmpty {
-                memoryCache["upcoming_cinemas"] = exclusive
-                return exclusive
+            let verified = await withTaskGroup(of: MediaItem?.self) { group in
+                for item in items.prefix(15) {
+                    group.addTask {
+                        var m = item
+                        let avail = await self.fetchWatchAvailability(id: m.id, mediaType: .movie, region: "US")
+                        m.availability = avail
+                        m.inCinemas = false
+                        
+                        // Strict check: zero digital release
+                        guard m.isTheatricalExclusive else { return nil }
+                        
+                        // Must be strictly upcoming (release date in future)
+                        guard m.isUpcomingTheatrical else { return nil }
+                        
+                        return m
+                    }
+                }
+                var list: [MediaItem] = []
+                for await res in group {
+                    if let res = res { list.append(res) }
+                }
+                return list
+            }
+            if !verified.isEmpty {
+                let sorted = verified.sorted { ($0.releaseDateString ?? "") < ($1.releaseDateString ?? "") }
+                memoryCache["upcoming_cinemas"] = sorted
+                return sorted
             }
         }
-        let items = MockData.upcoming.filter { isTheatricalExclusive($0) }
+        let items = MockData.upcoming.filter { $0.isUpcomingTheatrical }
         memoryCache["upcoming_cinemas"] = items
         return items
     }
@@ -775,11 +816,11 @@ public enum MockData {
             title: "Alien: Romulus",
             mediaType: .movie,
             overview: "While scavenging the deep ends of a derelict space station, a group of young space colonizers come face to face with the most terrifying life form in the universe.",
-            posterPath: "/b33nnKl1GSFbao8l3urDDujmmQh.jpg",
-            backdropPath: "/9SSEUrSqhljBMzRe4aBTh17r0aC.jpg",
+            posterPath: "/2uSWRTtCG336nuBiG8jOTEUKSy8.jpg",
+            backdropPath: "/iYqSQaWDttQIQzsxg9xHyg0bttG.jpg",
             voteAverage: 8.2,
             voteCount: 3820,
-            releaseDateString: "2024-08-16",
+            releaseDateString: "2026-08-16",
             genreNames: ["Horror", "Sci-Fi", "Thriller"],
             runtimeMinutes: 119,
             tagline: "In space, no one can hear you scream.",
@@ -791,6 +832,7 @@ public enum MockData {
                 CastMember(id: 42, name: "David Jonsson", character: "Andy"),
                 CastMember(id: 43, name: "Archie Renaux", character: "Tyler")
             ],
+            logoPath: "/wb2OPyCSGLy7Ca5RquWF3VfOJKx.png",
             inCinemas: true
         ),
         MediaItem(
@@ -798,11 +840,11 @@ public enum MockData {
             title: "Beetlejuice Beetlejuice",
             mediaType: .movie,
             overview: "After a family tragedy, three generations of the Deetz family return home to Winter River. Still haunted by Beetlejuice, Lydia's life is turned upside down when her teenage daughter opens the portal to the Afterlife.",
-            posterPath: "/kKgQzkUCUm0meqLiwVoqaSt2KiL.jpg",
-            backdropPath: "/1wP1phHo2CroOqzvWrkW9YTXJea.jpg",
+            posterPath: "/kKgQzkUCnQmeTPkyIwHly2t6ZFI.jpg",
+            backdropPath: "/kF8ljC7Y4p1UsmKBi2LxelZpqw.jpg",
             voteAverage: 7.6,
             voteCount: 2940,
-            releaseDateString: "2024-09-06",
+            releaseDateString: "2026-09-06",
             genreNames: ["Comedy", "Fantasy", "Horror"],
             runtimeMinutes: 105,
             tagline: "The juice is loose.",
@@ -814,6 +856,7 @@ public enum MockData {
                 CastMember(id: 45, name: "Winona Ryder", character: "Lydia Deetz"),
                 CastMember(id: 46, name: "Jenna Ortega", character: "Astrid Deetz")
             ],
+            logoPath: "/61Z6mL60ltShU393JkgBawAaeCw.png",
             inCinemas: true
         ),
         MediaItem(
@@ -822,10 +865,10 @@ public enum MockData {
             mediaType: .movie,
             overview: "A listless Wade Wilson toils away in civilian life with his days as the morally flexible mercenary Deadpool behind him. But when his homeworld faces an existential threat, Wade must reluctantly suit-up again with an even more reluctant Wolverine.",
             posterPath: "/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg",
-            backdropPath: "/yDHYTfA3R0jFYba16jBB1jv8uaC.jpg",
+            backdropPath: "/by8z9Fe8y7p4jo2YlW2SZDnptyT.jpg",
             voteAverage: 8.0,
             voteCount: 6540,
-            releaseDateString: "2024-07-26",
+            releaseDateString: "2026-07-26",
             genreNames: ["Action", "Comedy", "Sci-Fi"],
             runtimeMinutes: 128,
             tagline: "Come together.",
@@ -837,29 +880,7 @@ public enum MockData {
                 CastMember(id: 48, name: "Hugh Jackman", character: "Logan / Wolverine"),
                 CastMember(id: 49, name: "Emma Corrin", character: "Cassandra Nova")
             ],
-            inCinemas: true
-        ),
-        MediaItem(
-            id: 114,
-            title: "Wicked",
-            mediaType: .movie,
-            overview: "The untold story of the witches of Oz stars Cynthia Erivo as Elphaba, a young woman misunderstood because of her unusual green skin, and Ariana Grande as Glinda, a popular young woman gilded by privilege.",
-            posterPath: "/xDGbDeRNXhvBT8ddTXSuUTxQg95.jpg",
-            backdropPath: "/uVl9hkz8ndiqAOmfU5Gkbt7eTsl.jpg",
-            voteAverage: 7.8,
-            voteCount: 1680,
-            releaseDateString: "2024-11-20",
-            genreNames: ["Drama", "Fantasy", "Music"],
-            runtimeMinutes: 160,
-            tagline: "Everyone deserves the chance to fly.",
-            certification: "PG",
-            streamingProviders: [],
-            trailers: [VideoTrailer(id: "wk1", name: "Official Trailer", key: "6COmYeLsz4c")],
-            cast: [
-                CastMember(id: 50, name: "Cynthia Erivo", character: "Elphaba Thropp"),
-                CastMember(id: 51, name: "Ariana Grande", character: "Glinda Upland"),
-                CastMember(id: 52, name: "Jeff Goldblum", character: "The Wonderful Wizard of Oz")
-            ],
+            logoPath: "/2o48U3kMXGIqRAkKZQ3n5OTWSBy.png",
             inCinemas: true
         ),
         MediaItem(
@@ -867,11 +888,11 @@ public enum MockData {
             title: "The Substance",
             mediaType: .movie,
             overview: "A fading celebrity decides to use a black-market drug, a cell-replicating substance that temporarily creates a younger, better version of herself.",
-            posterPath: "/lQYXKq1WpI1fF10E0r6lVl523zV.jpg",
-            backdropPath: "/3s2j9u82L4x6Z9V5z0e7Q1r3w.jpg",
+            posterPath: "/vhbQQdPnfLUxhdXhREITF5cYppT.jpg",
+            backdropPath: "/bVSOgrxasVJF6V71T7v2KfBRSzu.jpg",
             voteAverage: 8.1,
             voteCount: 1950,
-            releaseDateString: "2024-09-20",
+            releaseDateString: "2026-09-01",
             genreNames: ["Drama", "Horror", "Sci-Fi"],
             runtimeMinutes: 141,
             tagline: "Have you ever dreamt of a better version of yourself?",
@@ -883,29 +904,7 @@ public enum MockData {
                 CastMember(id: 54, name: "Margaret Qualley", character: "Sue"),
                 CastMember(id: 55, name: "Dennis Quaid", character: "Harvey")
             ],
-            inCinemas: true
-        ),
-        MediaItem(
-            id: 116,
-            title: "Smile 2",
-            mediaType: .movie,
-            overview: "About to embark on a world tour, global pop sensation Skye Riley begins experiencing increasingly terrifying and inexplicable events.",
-            posterPath: "/aE85MnPIvj1aW0d2oGZf0G7zR4S.jpg",
-            backdropPath: "/wNAhuOZ3Zf84jCIpkRw8vFaEN8i.jpg",
-            voteAverage: 7.4,
-            voteCount: 1430,
-            releaseDateString: "2024-10-18",
-            genreNames: ["Horror", "Mystery"],
-            runtimeMinutes: 127,
-            tagline: "It will never let you go.",
-            certification: "R",
-            streamingProviders: [],
-            trailers: [VideoTrailer(id: "sm2", name: "Official Trailer", key: "0HY6QFlBz78")],
-            cast: [
-                CastMember(id: 56, name: "Naomi Scott", character: "Skye Riley"),
-                CastMember(id: 57, name: "Rosemarie DeWitt", character: "Elizabeth Riley"),
-                CastMember(id: 58, name: "Lukas Gage", character: "Lewis Fregoli")
-            ],
+            logoPath: "/1yw5B2rL7vneZq2RcWKqNVVjlOG.png",
             inCinemas: true
         ),
         MediaItem(
@@ -913,11 +912,11 @@ public enum MockData {
             title: "The Wild Robot",
             mediaType: .movie,
             overview: "After a shipwreck, an intelligent robot called Roz is stranded on an uninhabited island. To survive the harsh environment, Roz bonds with the island's animals and cares for an orphaned baby goose.",
-            posterPath: "/wTnV3PCVW5O92JMrZISSH229f3d.jpg",
-            backdropPath: "/7h6TqPB3ESmPFVosytMb9J73i97.jpg",
+            posterPath: "/wTnV3PCVW5O92JMrFvvrRcV39RU.jpg",
+            backdropPath: "/1pmXyN3sKeYoUhu5VBZiDU4BX21.jpg",
             voteAverage: 8.5,
             voteCount: 3100,
-            releaseDateString: "2024-09-27",
+            releaseDateString: "2026-09-08",
             genreNames: ["Animation", "Sci-Fi", "Family"],
             runtimeMinutes: 102,
             tagline: "Discover your true nature.",
@@ -929,6 +928,7 @@ public enum MockData {
                 CastMember(id: 60, name: "Pedro Pascal", character: "Fink (voice)"),
                 CastMember(id: 61, name: "Kit Connor", character: "Brightbill (voice)")
             ],
+            logoPath: "/xvXJfGKjHHe1m4Usye198DCw7iJ.png",
             inCinemas: true
         )
     ]
@@ -1828,16 +1828,17 @@ public enum MockData {
             mediaType: .movie,
             overview: "Years after witnessing the death of the revered hero Maximus at the hands of his uncle, Lucius must enter the Colosseum after his home is conquered by the tyrannical Emperors who now lead Rome with an iron fist.",
             posterPath: "/2cxhvwyEwRlysAmRH4iodkvo0z5.jpg",
-            backdropPath: "/euYIwmwkmz95mnXvufEmbL6ovhA.jpg",
+            backdropPath: "/tOqIwliWMovSIZ9DyvHcHI7p2im.jpg",
             voteAverage: 7.6,
             voteCount: 1840,
-            releaseDateString: "2024-11-22",
+            releaseDateString: "2026-11-20",
             genreNames: ["Action", "Adventure", "Drama"],
             runtimeMinutes: 148,
             tagline: "What we do in life echoes in eternity.",
             certification: "R",
             streamingProviders: [],
             trailers: [VideoTrailer(id: "t9", name: "Official Trailer", key: "4rgYUipGJNo")],
+            logoPath: "/jwXk1c2esVoEzVLplPiQubNVyFC.png",
             inCinemas: false
         ),
         MediaItem(
@@ -1846,16 +1847,17 @@ public enum MockData {
             mediaType: .movie,
             overview: "A gothic tale of obsession between a haunted young woman in 19th-century Germany and the ancient Transylvanian vampire who stalks her, bringing untold horror in his wake.",
             posterPath: "/5qGIxdEO841C0tdY8vOdLoRVrr0.jpg",
-            backdropPath: "/4c4k2j9u82L4x6Z9V5z0e7Q1r3w.jpg",
+            backdropPath: "/gprjiZWY43vxSKngMha1wfb5TGG.jpg",
             voteAverage: 7.9,
             voteCount: 1200,
-            releaseDateString: "2024-12-25",
+            releaseDateString: "2026-12-25",
             genreNames: ["Horror", "Drama", "Fantasy"],
             runtimeMinutes: 132,
             tagline: "He is coming.",
             certification: "R",
             streamingProviders: [],
             trailers: [VideoTrailer(id: "t10", name: "Official Trailer", key: "dG91B3hHyY4")],
+            logoPath: "/pkAiCBNf5uDpqT2rCDmatRyhDiK.png",
             inCinemas: false
         ),
         MediaItem(
@@ -1863,17 +1865,18 @@ public enum MockData {
             title: "Mission: Impossible - The Final Reckoning",
             mediaType: .movie,
             overview: "Ethan Hunt and his IMF team face their greatest adversary yet as they race to stop an apocalyptic artificial intelligence threat known as the Entity before it reshapes global destiny.",
-            posterPath: "/z121mtTxg5v9whDjy9spvBjeTeO.jpg",
-            backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+            posterPath: "/iKPsC9EFUafRP9SrUznI61getVP.jpg",
+            backdropPath: "/538U9snNc2fpnOmYXAPUh3zn31H.jpg",
             voteAverage: 8.3,
             voteCount: 950,
-            releaseDateString: "2025-05-23",
+            releaseDateString: "2027-05-23",
             genreNames: ["Action", "Adventure", "Thriller"],
             runtimeMinutes: 165,
             tagline: "Our lives are the sum of our choices.",
             certification: "PG-13",
             streamingProviders: [],
             trailers: [VideoTrailer(id: "t11", name: "Teaser Trailer", key: "NOhDyZJ_318")],
+            logoPath: "/7yXEfWFDGpqIfq9wdpMOHcHbi8g.png",
             inCinemas: false
         ),
         MediaItem(
@@ -1881,17 +1884,56 @@ public enum MockData {
             title: "Captain America: Brave New World",
             mediaType: .movie,
             overview: "Sam Wilson finds himself in the middle of an international incident after meeting with newly elected U.S. President Thaddeus Ross, uncovering a nefarious global plot.",
-            posterPath: "/sh7Rg8Er3tFcN9BpKIPOMvALgZd.jpg",
-            backdropPath: "/xJHokMbljvjADYdit5fK5VQsXEG.jpg",
+            posterPath: "/pzIddUEMWhWzfvLI3TwxUG2wGoi.jpg",
+            backdropPath: "/ce3prrjh9ZehEl5JinNqr4jIeaB.jpg",
             voteAverage: 7.8,
             voteCount: 880,
-            releaseDateString: "2025-02-14",
+            releaseDateString: "2027-02-14",
             genreNames: ["Action", "Sci-Fi", "Adventure"],
             runtimeMinutes: 125,
             tagline: "A new world order.",
             certification: "PG-13",
             streamingProviders: [],
             trailers: [VideoTrailer(id: "t12", name: "Official Trailer", key: "1pHDWnXmK7Y")],
+            logoPath: "/ubZE4IVOdOnZIp6mapDGooDYeJh.png",
+            inCinemas: false
+        ),
+        MediaItem(
+            id: 505,
+            title: "Wicked",
+            mediaType: .movie,
+            overview: "The untold story of the witches of Oz stars Cynthia Erivo as Elphaba and Ariana Grande as Glinda.",
+            posterPath: "/xDGbZ0JJ3mYaGKy4Nzd9Kph6M9L.jpg",
+            backdropPath: "/beuMhwEdoMpJhyoZiCldogaqsKI.jpg",
+            voteAverage: 7.8,
+            voteCount: 1680,
+            releaseDateString: "2026-11-27",
+            genreNames: ["Drama", "Fantasy", "Music"],
+            runtimeMinutes: 160,
+            tagline: "Everyone deserves the chance to fly.",
+            certification: "PG",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "wk1", name: "Official Trailer", key: "6COmYeLsz4c")],
+            logoPath: "/oeSUu0CjuohGO6oIiFkxn4xHbrt.png",
+            inCinemas: false
+        ),
+        MediaItem(
+            id: 506,
+            title: "Smile 2",
+            mediaType: .movie,
+            overview: "Global pop sensation Skye Riley begins experiencing increasingly terrifying and inexplicable events.",
+            posterPath: "/ht8Uv9QPv9y7K0RvUyJIaXOZTfd.jpg",
+            backdropPath: "/iR79ciqhtaZ9BE7YFA1HpCHQgX4.jpg",
+            voteAverage: 7.4,
+            voteCount: 1430,
+            releaseDateString: "2026-10-23",
+            genreNames: ["Horror", "Mystery"],
+            runtimeMinutes: 127,
+            tagline: "It will never let you go.",
+            certification: "R",
+            streamingProviders: [],
+            trailers: [VideoTrailer(id: "s2", name: "Official Trailer", key: "0HY6QFlBzUY")],
+            logoPath: "/tOyHVKbXcSTXfF5XH1odzJQiq7l.png",
             inCinemas: false
         )
     ]

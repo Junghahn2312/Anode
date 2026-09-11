@@ -73,12 +73,34 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
         voteAverage
     }
     
+    public var hasDigitalRelease: Bool {
+        if !streamingProviders.isEmpty { return true }
+        if let subs = availability?.subscriptions, !subs.isEmpty { return true }
+        if let rent = availability?.rentOptions, !rent.isEmpty { return true }
+        if let buy = availability?.buyOptions, !buy.isEmpty { return true }
+        return false
+    }
+    
     public var isTheatricalExclusive: Bool {
-        guard streamingProviders.isEmpty else { return false }
-        if let subs = availability?.subscriptions, !subs.isEmpty {
-            return false
-        }
-        return true
+        !hasDigitalRelease
+    }
+    
+    public var releaseDateObject: Date? {
+        guard let releaseDateString, !releaseDateString.isEmpty else { return nil }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.date(from: releaseDateString)
+    }
+    
+    public var isUpcomingTheatrical: Bool {
+        guard let date = releaseDateObject else { return false }
+        return date > Date() && isTheatricalExclusive
+    }
+    
+    public var isNowPlayingTheatrical: Bool {
+        guard let date = releaseDateObject else { return isTheatricalExclusive }
+        return date <= Date() && isTheatricalExclusive
     }
     
     public var releaseDate: String? {

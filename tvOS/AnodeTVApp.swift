@@ -118,17 +118,30 @@ struct AnodeTVApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack(alignment: .top) {
-                // Active Tab Content
-                Group {
+                // Active Tab Content with Smooth Soft Cross-Fade
+                ZStack {
                     switch nav.selectedTab {
-                    case 0: TVHomeView()
-                    case 1: TVDiscoveryView()
-                    case 2: TVCinemaView()
-                    case 3: TVSearchView()
-                    case 4: TVSettingsView()
-                    default: TVHomeView()
+                    case 0:
+                        TVHomeView()
+                            .transition(.opacity)
+                    case 1:
+                        TVDiscoveryView()
+                            .transition(.opacity)
+                    case 2:
+                        TVCinemaView()
+                            .transition(.opacity)
+                    case 3:
+                        TVSearchView()
+                            .transition(.opacity)
+                    case 4:
+                        TVSettingsView()
+                            .transition(.opacity)
+                    default:
+                        TVHomeView()
+                            .transition(.opacity)
                     }
                 }
+                .animation(.easeInOut(duration: 0.45), value: nav.selectedTab)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
                 

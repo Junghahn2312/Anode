@@ -22,6 +22,14 @@ public struct TopTenCardView: View {
     }
     
     public var body: some View {
+        #if os(tvOS)
+        TVExpandingMediaCardView(
+            item: item,
+            normalWidth: width,
+            rank: rank,
+            onFocus: onFocus
+        )
+        #else
         VStack(alignment: .leading, spacing: 8) {
             // Poster Card with subtle rank numeral in top-left corner
             ZStack(alignment: .topLeading) {
@@ -36,24 +44,8 @@ public struct TopTenCardView: View {
                     .shadow(color: Color.black.opacity(0.90), radius: 6, x: 0, y: 2)
                     .padding(.top, 10)
                     .padding(.leading, 12)
-                
-                #if os(tvOS)
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(isFocused ? Color.white.opacity(0.95) : Color.clear, lineWidth: 2.5)
-                #endif
             }
-            #if os(tvOS)
-            .scaleEffect(isFocused ? 1.08 : 1.0)
-            .shadow(
-                color: Color.black.opacity(isFocused ? 0.75 : 0.25),
-                radius: isFocused ? 24 : 6,
-                x: 0,
-                y: isFocused ? 10 : 2
-            )
-            .animation(.spring(response: 0.40, dampingFraction: 0.86), value: isFocused)
-            #else
             .shadow(color: Color.black.opacity(0.5), radius: 8, x: 0, y: 4)
-            #endif
             
             // Title & Year below card (Matching Photo 2)
             VStack(alignment: .leading, spacing: 3) {
@@ -71,12 +63,6 @@ public struct TopTenCardView: View {
             .frame(width: width, alignment: .leading)
         }
         .frame(width: width)
-        #if os(tvOS)
-        .onChange(of: isFocused) { _, focused in
-            if focused {
-                onFocus?(item)
-            }
-        }
         #endif
     }
 }

@@ -99,20 +99,24 @@ public struct TVExpandingMediaCardView: View {
     let item: MediaItem
     let normalWidth: CGFloat
     let showCinemaBadge: Bool
+    let rank: Int?
     let onFocus: ((MediaItem) -> Void)?
     
     @Environment(\.isFocused) private var isFocused: Bool
     @ObservedObject private var watchlist = WatchlistStore.shared
+    @State private var loadedLogoPath: String? = nil
     
     public init(
         item: MediaItem,
         normalWidth: CGFloat = 190,
         showCinemaBadge: Bool = false,
+        rank: Int? = nil,
         onFocus: ((MediaItem) -> Void)? = nil
     ) {
         self.item = item
         self.normalWidth = normalWidth
         self.showCinemaBadge = showCinemaBadge
+        self.rank = rank
         self.onFocus = onFocus
     }
     
@@ -138,69 +142,65 @@ public struct TVExpandingMediaCardView: View {
                     .clipped()
             }
             
-            // Expanded Card Overlays: Title & Badges on artwork when focused
+            // Overlays
             if isFocused {
+                // Soft bottom gradient for logo legibility
                 LinearGradient(
-                    colors: [Color.clear, Color.black.opacity(0.85)],
-                    startPoint: .center,
+                    stops: [
+                        .init(color: Color.clear, location: 0.25),
+                        .init(color: Color.black.opacity(0.85), location: 1.0)
+                    ],
+                    startPoint: .top,
                     endPoint: .bottom
                 )
                 
-                VStack(alignment: .leading, spacing: 6) {
+                // ONLY the media's logo artwork (no text, no rating, no genre, no cinema badge)
+                VStack {
                     Spacer()
-                    
-                    Text(item.title)
-                        .font(.system(size: 19, weight: .black))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                        .shadow(color: .black.opacity(0.8), radius: 4, x: 0, y: 2)
-                    
-                    HStack(spacing: 8) {
-                        if item.inCinemas || showCinemaBadge {
-                            Text("IN CINEMAS")
-                                .font(.system(size: 10, weight: .black))
-                                .tracking(0.8)
-                                .foregroundColor(.red)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 3)
-                                .background(.ultraThinMaterial, in: Capsule())
+                    HStack {
+                        if let logoPath = loadedLogoPath ?? item.logoPath,
+                           let logoURL = URL(string: logoPath.hasPrefix("http") ? logoPath : "https://image.tmdb.org/t/p/w500\(logoPath)") {
+                            CachedAsyncImage(url: logoURL, contentMode: .fit)
+                                .frame(maxWidth: expandedWidth * 0.58, maxHeight: cardHeight * 0.42, alignment: .bottomLeading)
+                                .shadow(color: Color.black.opacity(0.90), radius: 6, x: 0, y: 3)
+                        } else {
+                            Text(item.title.uppercased())
+                                .font(.system(size: 20, weight: .black, design: .serif))
+                                .tracking(1.8)
+                                .foregroundColor(.white)
+                                .lineLimit(2)
+                                .shadow(color: Color.black.opacity(0.95), radius: 6, x: 0, y: 3)
                         }
-                        
-                        if !item.formattedTheatricalReleaseDate.isEmpty && (item.inCinemas || showCinemaBadge) {
-                            Text(item.formattedTheatricalReleaseDate)
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.white.opacity(0.9))
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 3)
-                                .background(.ultraThinMaterial, in: Capsule())
-                        }
-                        
-                        if !item.formattedRating.isEmpty {
-                            RatingBadge(rating: item.formattedRating)
-                        }
-                        
-                        if let genre = item.genreNames.first {
-                            Text(genre)
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(.white.opacity(0.85))
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 3)
-                                .background(.ultraThinMaterial, in: Capsule())
-                        }
+                        Spacer()
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 14)
                 }
-                .padding(14)
                 .transition(.opacity)
             } else {
-                VStack {
-                    HStack {
+                // Unfocused state: subtle rank numeral if top 10, or rating badge
+                if let rank = rank {
+                    VStack {
+                        HStack {
+                            Text("\(rank)")
+                                .font(.system(size: 32, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .shadow(color: Color.black.opacity(0.90), radius: 6, x: 0, y: 2)
+                                .padding(.top, 10)
+                                .padding(.leading, 12)
+                            Spacer()
+                        }
                         Spacer()
-                        if !item.formattedRating.isEmpty {
+                    }
+                } else if !item.formattedRating.isEmpty {
+                    VStack {
+                        HStack {
+                            Spacer()
                             RatingBadge(rating: item.formattedRating)
                                 .padding(8)
                         }
+                        Spacer()
                     }
-                    Spacer()
                 }
             }
             
@@ -210,7 +210,7 @@ public struct TVExpandingMediaCardView: View {
         }
         .frame(width: isFocused ? expandedWidth : normalWidth, height: cardHeight)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .zIndex(isFocused ? 10 : 1)
+        .zIndex(isFocused ? 20 : 1)
         .shadow(
             color: Color.black.opacity(isFocused ? 0.8 : 0.25),
             radius: isFocused ? 24 : 6,
@@ -218,6 +218,13 @@ public struct TVExpandingMediaCardView: View {
             y: isFocused ? 10 : 2
         )
         .animation(.spring(response: 0.42, dampingFraction: 0.88), value: isFocused)
+        .task(id: item.id) {
+            if item.logoPath != nil {
+                loadedLogoPath = item.logoPath
+            } else {
+                loadedLogoPath = await DiscoveryEngine.shared.fetchLogo(for: item)
+            }
+        }
         .onChange(of: isFocused) { _, focused in
             if focused {
                 onFocus?(item)
@@ -417,10 +424,10 @@ public struct TVTopTenRowView: View {
                         Button {
                             onSelect(item)
                         } label: {
-                            TopTenCardView(
-                                rank: index + 1,
+                            TVExpandingMediaCardView(
                                 item: item,
-                                width: 175
+                                normalWidth: 185,
+                                rank: index + 1
                             ) { focused in
                                 withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
                                     self.focusedItem = focused
