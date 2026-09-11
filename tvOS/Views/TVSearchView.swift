@@ -6,6 +6,8 @@ public struct TVSearchView: View {
     @State private var selectedItem: MediaItem?
     @State private var focusedSearchItem: MediaItem?
     @State private var activeRowIndex: Int = 0
+    @State private var isShowingSearchPrompt: Bool = false
+    @State private var inputPromptText: String = ""
     
     private let suggestions: [String] = [
         "Tom Cruise",
@@ -77,32 +79,11 @@ public struct TVSearchView: View {
                 HStack(alignment: .top, spacing: 48) {
                     // Left Rail: Search Input & Curated Trending Searches (Frosted Glass)
                     VStack(alignment: .leading, spacing: 18) {
-                        // Perfectly Aligned Search Field
-                        HStack(alignment: .center, spacing: 14) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 19, weight: .semibold))
-                                .foregroundColor(.white.opacity(0.70))
-                            
-                            TextField("Search...", text: $query)
-                                .textFieldStyle(.plain)
-                                .font(.system(size: 20, weight: .medium))
-                                .foregroundColor(.white)
-                                .onChange(of: query) { _, newValue in
-                                    Task {
-                                        await engine.search(query: newValue)
-                                    }
-                                }
+                        // Unified Apple TV Search Bar (Zero Inner Shading / Seamless Pill)
+                        TVSearchBarButton(query: $query) {
+                            inputPromptText = query
+                            isShowingSearchPrompt = true
                         }
-                        .padding(.horizontal, 18)
-                        .frame(height: 54)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(.ultraThinMaterial)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                                )
-                        )
                         
                         Text("TRENDING SEARCHES")
                             .font(.system(size: 11, weight: .bold))
@@ -177,6 +158,26 @@ public struct TVSearchView: View {
         }
         .fullScreenCover(item: $selectedItem) { item in
             TVMediaDetailView(item: item)
+        }
+        .alert("Search Movies & TV Shows", isPresented: $isShowingSearchPrompt) {
+            TextField("Search titles, actors, genres...", text: $inputPromptText)
+            Button("Search") {
+                query = inputPromptText
+                Task {
+                    await engine.search(query: inputPromptText)
+                }
+            }
+            if !query.isEmpty {
+                Button("Clear Search", role: .destructive) {
+                    query = ""
+                    Task {
+                        await engine.search(query: "")
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Enter a search term or actor name to find matching movies and television series.")
         }
     }
     
@@ -278,7 +279,7 @@ private struct TVSearchSuggestionButton: View {
         Button(action: action) {
             TVSearchSuggestionLabel(title: title, isSelected: isSelected)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tvCard)
     }
 }
 
@@ -291,28 +292,177 @@ private struct TVSearchSuggestionLabel: View {
         HStack(spacing: 12) {
             Text(title)
                 .font(.system(size: 15, weight: isFocused || isSelected ? .bold : .medium))
-                .foregroundColor(.white)
+                .foregroundColor(isFocused ? .black : .white)
             
             Spacer()
             
             if isSelected {
                 Image(systemName: "checkmark")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(isFocused ? .white : .cyan)
+                    .foregroundColor(isFocused ? .black : .cyan)
             }
         }
         .padding(.horizontal, 16)
         .frame(height: 48)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isFocused ? Color.white.opacity(0.24) : (isSelected ? Color.white.opacity(0.12) : Color.white.opacity(0.05)))
+                .fill(isFocused ? Color.white : (isSelected ? Color.white.opacity(0.16) : Color.white.opacity(0.06)))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.white.opacity(isFocused ? 0.95 : (isSelected ? 0.25 : 0.08)), lineWidth: isFocused ? 2.5 : 1)
+                .stroke(isFocused ? Color.white : (isSelected ? Color.white.opacity(0.25) : Color.white.opacity(0.08)), lineWidth: isFocused ? 2 : 1)
         )
-        .scaleEffect(isFocused ? 1.03 : 1.0)
-        .shadow(color: isFocused ? Color.black.opacity(0.40) : Color.clear, radius: 10, y: 3)
+        .scaleEffect(isFocused ? 1.04 : 1.0)
+        .shadow(color: isFocused ? Color.white.opacity(0.35) : Color.clear, radius: 10, y: 3)
+        .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isFocused)
+    }
+}
+
+// MARK: - Dedicated Transparent Search Input Field (No Shading / Inset Vignette)
+
+final class TVTransparentTextField: UITextField {
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        clearBackgrounds()
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        clearBackgrounds()
+    }
+    
+    private func clearBackgrounds() {
+        self.backgroundColor = .clear
+        self.background = nil
+        self.disabledBackground = nil
+        self.layer.backgroundColor = UIColor.clear.cgColor
+        self.borderStyle = .none
+        
+        for subview in self.subviews {
+            let name = String(describing: type(of: subview))
+            if name.contains("Background") || name.contains("VisualEffect") || name.contains("Effect") || name.contains("Shadow") {
+                subview.isHidden = true
+                subview.alpha = 0
+            }
+        }
+    }
+}
+
+public struct TVSearchInputField: UIViewRepresentable {
+    @Binding var text: String
+    var placeholder: String
+    var onCommit: (() -> Void)? = nil
+    
+    public init(text: Binding<String>, placeholder: String, onCommit: (() -> Void)? = nil) {
+        self._text = text
+        self.placeholder = placeholder
+        self.onCommit = onCommit
+    }
+    
+    public final class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: TVSearchInputField
+        
+        public init(_ parent: TVSearchInputField) {
+            self.parent = parent
+        }
+        
+        public func textFieldDidChangeSelection(_ textField: UITextField) {
+            if self.parent.text != textField.text {
+                self.parent.text = textField.text ?? ""
+            }
+        }
+        
+        public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            parent.onCommit?()
+            return true
+        }
+    }
+    
+    public func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    public func makeUIView(context: Context) -> UITextField {
+        let tf = TVTransparentTextField()
+        tf.placeholder = placeholder
+        tf.text = text
+        tf.font = UIFont.systemFont(ofSize: 20, weight: .medium)
+        tf.textColor = .white
+        tf.borderStyle = .none
+        tf.backgroundColor = .clear
+        tf.layer.backgroundColor = UIColor.clear.cgColor
+        tf.background = nil
+        tf.disabledBackground = nil
+        tf.delegate = context.coordinator
+        tf.returnKeyType = .search
+        tf.autocorrectionType = .no
+        tf.autocapitalizationType = .none
+        tf.tintColor = .white
+        
+        tf.attributedPlaceholder = NSAttributedString(
+            string: placeholder,
+            attributes: [.foregroundColor: UIColor.white.withAlphaComponent(0.40)]
+        )
+        return tf
+    }
+    
+    public func updateUIView(_ uiView: UITextField, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+        }
+    }
+}
+
+
+// MARK: - Unified Apple TV Search Bar Button & Label
+
+private struct TVSearchBarButton: View {
+    @Binding var query: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            TVSearchBarLabel(query: query)
+        }
+        .buttonStyle(.tvCard)
+    }
+}
+
+private struct TVSearchBarLabel: View {
+    let query: String
+    @Environment(\.isFocused) private var isFocused: Bool
+    
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundColor(isFocused ? .black : .white.opacity(0.75))
+            
+            Text(query.isEmpty ? "Search movies, shows..." : query)
+                .font(.system(size: 19, weight: .medium))
+                .foregroundColor(isFocused ? .black : (query.isEmpty ? .white.opacity(0.45) : .white))
+                .lineLimit(1)
+            
+            Spacer()
+            
+            if !query.isEmpty {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(isFocused ? Color.black.opacity(0.60) : Color.white.opacity(0.40))
+            }
+        }
+        .padding(.horizontal, 18)
+        .frame(height: 54)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(isFocused ? Color.white : Color.white.opacity(0.10))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(isFocused ? Color.white : Color.white.opacity(0.15), lineWidth: isFocused ? 2 : 1)
+        )
+        .scaleEffect(isFocused ? 1.04 : 1.0)
+        .shadow(color: isFocused ? Color.white.opacity(0.35) : Color.clear, radius: 12, y: 4)
         .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isFocused)
     }
 }
