@@ -41,20 +41,31 @@ public struct TVSearchView: View {
     public var body: some View {
         GeometryReader { screenGeo in
             ZStack(alignment: .topLeading) {
-                // Continuous Cinematic Dark Canvas (Zero Black Bar Cuts)
-                Color(red: 0.04, green: 0.04, blue: 0.05)
-                    .ignoresSafeArea()
-                
-                // Ambient Atmospheric Glow Spanning Full 1920x1080 Viewport
-                if let item = ambientBackdropItem {
-                    CachedAsyncImage(url: item.backdropURL(size: "w780"), contentMode: .fill)
-                        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
-                        .blur(radius: 110)
-                        .opacity(0.32)
-                        .clipped()
+                // Fixed Full-Screen Background (100% Viewport, Zero Black Spaces)
+                ZStack {
+                    Color(red: 0.04, green: 0.04, blue: 0.05)
                         .ignoresSafeArea()
-                        .animation(.easeInOut(duration: 0.5), value: item.id)
+                    
+                    if let item = ambientBackdropItem {
+                        ZStack {
+                            CachedAsyncImage(
+                                url: item.backdropURL(size: "w1280") ?? item.posterURL(size: "original"),
+                                contentMode: .fill
+                            )
+                            .frame(width: screenGeo.size.width, height: screenGeo.size.height)
+                            .clipped()
+                            
+                            Rectangle()
+                                .fill(.ultraThinMaterial)
+                            
+                            Color.black.opacity(0.42)
+                        }
+                        .id(item.id)
+                        .transition(.opacity)
+                        .animation(.easeInOut(duration: 0.55), value: item.id)
+                    }
                 }
+                .ignoresSafeArea()
                 
                 HStack(alignment: .top, spacing: 36) {
                     // Left Rail: Search Input & Curated Trending Searches (Frosted Glass)
@@ -209,7 +220,7 @@ public struct TVSearchView: View {
                                             selectedItem = item
                                         } label: {
                                             TVMediaCardView(item: item, width: 220) { focusedItem in
-                                                withAnimation(.easeInOut(duration: 0.2)) {
+                                                withAnimation(.easeInOut(duration: 0.55)) {
                                                     self.focusedSearchItem = focusedItem
                                                 }
                                             }
@@ -276,6 +287,6 @@ private struct TVSearchSuggestionButton: View {
         .buttonStyle(.plain)
         .focused($isFocused)
         .scaleEffect(isFocused ? 1.04 : 1.0)
-        .animation(.easeInOut(duration: 0.18), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
     }
 }

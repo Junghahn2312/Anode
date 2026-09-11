@@ -199,7 +199,7 @@ public struct TVExpandingMediaCardView: View {
             x: 0,
             y: isFocused ? 10 : 2
         )
-        .animation(.spring(response: 0.32, dampingFraction: 0.82), value: isFocused)
+        .animation(.spring(response: 0.45, dampingFraction: 0.88), value: isFocused)
         .onChange(of: isFocused) { _, focused in
             if focused {
                 onFocus?(item)
@@ -214,6 +214,7 @@ public struct TVContentRowView: View {
     let title: String
     let items: [MediaItem]
     let showCinemaBadge: Bool
+    let onHover: ((MediaItem) -> Void)?
     let onSelect: (MediaItem) -> Void
     
     @State private var focusedItem: MediaItem?
@@ -222,11 +223,13 @@ public struct TVContentRowView: View {
         title: String,
         items: [MediaItem],
         showCinemaBadge: Bool = false,
+        onHover: ((MediaItem) -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
     ) {
         self.title = title
         self.items = items
         self.showCinemaBadge = showCinemaBadge
+        self.onHover = onHover
         self.onSelect = onSelect
     }
     
@@ -250,9 +253,10 @@ public struct TVContentRowView: View {
                                 normalWidth: 190,
                                 showCinemaBadge: showCinemaBadge
                             ) { focused in
-                                withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
+                                withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
                                     self.focusedItem = focused
                                 }
+                                self.onHover?(focused)
                             }
                         }
                         .buttonStyle(.tvCard)
@@ -278,6 +282,7 @@ public struct TVContentRowView: View {
 public struct TVLandscapeRowView: View {
     let title: String
     let items: [MediaItem]
+    let onHover: ((MediaItem) -> Void)?
     let onSelect: (MediaItem) -> Void
     
     @State private var focusedItem: MediaItem?
@@ -285,10 +290,12 @@ public struct TVLandscapeRowView: View {
     public init(
         title: String,
         items: [MediaItem],
+        onHover: ((MediaItem) -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
     ) {
         self.title = title
         self.items = items
+        self.onHover = onHover
         self.onSelect = onSelect
     }
     
@@ -312,9 +319,10 @@ public struct TVLandscapeRowView: View {
                                 width: 380,
                                 subtitle: item.releaseDate
                             ) { focused in
-                                withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
+                                withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
                                     self.focusedItem = focused
                                 }
+                                self.onHover?(focused)
                             }
                         }
                         .buttonStyle(.tvCard)
@@ -340,6 +348,7 @@ public struct TVLandscapeRowView: View {
 public struct TVTopTenRowView: View {
     let title: String
     let items: [MediaItem]
+    let onHover: ((MediaItem) -> Void)?
     let onSelect: (MediaItem) -> Void
     
     @State private var focusedItem: MediaItem?
@@ -347,10 +356,12 @@ public struct TVTopTenRowView: View {
     public init(
         title: String,
         items: [MediaItem],
+        onHover: ((MediaItem) -> Void)? = nil,
         onSelect: @escaping (MediaItem) -> Void
     ) {
         self.title = title
         self.items = items
+        self.onHover = onHover
         self.onSelect = onSelect
     }
     
@@ -374,9 +385,10 @@ public struct TVTopTenRowView: View {
                                 item: item,
                                 width: 175
                             ) { focused in
-                                withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
+                                withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
                                     self.focusedItem = focused
                                 }
+                                self.onHover?(focused)
                             }
                         }
                         .buttonStyle(.tvCard)

@@ -9,6 +9,7 @@ public struct TVDiscoveryView: View {
     @State private var providerItems: [MediaItem] = []
     @State private var selectedItem: MediaItem?
     @State private var isLoadingProvider: Bool = false
+    @State private var hoveredItem: MediaItem? = nil
     
     private let tmdb = TMDBService.shared
     
@@ -36,23 +37,15 @@ public struct TVDiscoveryView: View {
         }
     }
     
+    private var activeBackgroundItem: MediaItem? {
+        hoveredItem ?? categoryHero
+    }
+    
     public var body: some View {
         GeometryReader { screenGeo in
             ZStack(alignment: .topLeading) {
-                // Continuous Cinematic Dark Canvas (Zero Black Bar Cuts)
-                Color(red: 0.04, green: 0.04, blue: 0.05)
-                    .ignoresSafeArea()
-                
-                // Ambient Atmospheric Glow Spanning Full Screen
-                if let hero = categoryHero {
-                    CachedAsyncImage(url: hero.backdropURL(size: "w780"), contentMode: .fill)
-                        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
-                        .blur(radius: 110)
-                        .opacity(0.32)
-                        .clipped()
-                        .ignoresSafeArea()
-                        .animation(.easeInOut(duration: 0.5), value: hero.id)
-                }
+                // Fixed Full-Screen Background (100% Viewport, Zero Black Spaces)
+                rootBackground(screenGeo: screenGeo)
                 
                 // Unified Root Vertical ScrollView (Zero Black Bars)
                 ScrollView(.vertical, showsIndicators: false) {
@@ -96,52 +89,101 @@ public struct TVDiscoveryView: View {
         }
     }
     
+    // MARK: - Dynamic Full-Screen Background (Zero Black Spaces)
+    
+    private func rootBackground(screenGeo: GeometryProxy) -> some View {
+        ZStack {
+            Color(red: 0.04, green: 0.04, blue: 0.05)
+                .ignoresSafeArea()
+            
+            if let bgItem = activeBackgroundItem {
+                let backdropURL = bgItem.backdropURL(size: "w1280") ?? bgItem.posterURL(size: "original")
+                ZStack {
+                    if hoveredItem != nil {
+                        // Whole background blurred when hovering row cards
+                        CachedAsyncImage(
+                            url: backdropURL,
+                            contentMode: .fill
+                        )
+                        .frame(width: screenGeo.size.width + 40, height: screenGeo.size.height + 40)
+                        .clipped()
+                        .blur(radius: 35)
+                        
+                        Color.black.opacity(0.42)
+                    } else {
+                        // 1. Sharp backdrop artwork
+                        CachedAsyncImage(
+                            url: backdropURL,
+                            contentMode: .fill
+                        )
+                        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
+                        .clipped()
+                        
+                        // 2. Blurred lower region behind lists
+                        CachedAsyncImage(
+                            url: backdropURL,
+                            contentMode: .fill
+                        )
+                        .frame(width: screenGeo.size.width + 40, height: screenGeo.size.height + 40)
+                        .clipped()
+                        .blur(radius: 35)
+                        .mask(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .clear, location: 0.0),
+                                    .init(color: .clear, location: 0.45),
+                                    .init(color: .black, location: 0.68),
+                                    .init(color: .black, location: 1.0)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color.black.opacity(0.80), location: 0.0),
+                                .init(color: Color.black.opacity(0.35), location: 0.35),
+                                .init(color: Color.clear, location: 0.65)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color.black.opacity(0.70), location: 0.0),
+                                .init(color: Color.clear, location: 0.20)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color.clear, location: 0.40),
+                                .init(color: Color.black.opacity(0.35), location: 0.70),
+                                .init(color: Color.black.opacity(0.50), location: 1.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
+                }
+                .id(bgItem.id)
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.55), value: bgItem.id)
+            }
+        }
+        .ignoresSafeArea()
+    }
+    
     // MARK: - Category Hero Showcase Section (~820pt, peeking first row below)
     
     private func discoveryHeroSection(hero: MediaItem, screenGeo: GeometryProxy) -> some View {
         ZStack(alignment: .bottomLeading) {
-            // Full-Bleed 4K Backdrop Artwork (Spanning 100% Viewport Height)
-            CachedAsyncImage(url: hero.backdropURL(size: "original"), contentMode: .fill)
-                .frame(width: screenGeo.size.width, height: screenGeo.size.height, alignment: .top)
-                .clipped()
-                .overlay(
-                    // Soft left vignette for typography readability
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.black.opacity(0.80), location: 0.0),
-                            .init(color: Color.black.opacity(0.35), location: 0.35),
-                            .init(color: Color.clear, location: 0.65)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .overlay(
-                    // Soft top vignette for tab bar readability
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.black.opacity(0.70), location: 0.0),
-                            .init(color: Color.clear, location: 0.20)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .overlay(
-                    // Bottom fluid translucent fade allowing artwork to shine through bottom row
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.clear, location: 0.0),
-                            .init(color: Color.clear, location: 0.52),
-                            .init(color: Color.black.opacity(0.40), location: 0.72),
-                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.85), location: 1.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .id(hero.id)
-                .transition(.opacity)
+            Color.clear
+                .frame(width: screenGeo.size.width, height: screenGeo.size.height)
             
             // Hero Content & Filter Header
             VStack(alignment: .leading, spacing: 14) {
@@ -266,14 +308,22 @@ public struct TVDiscoveryView: View {
                         Button {
                             selectedItem = hero
                         } label: {
-                            DiscoveryHeroPrimaryButtonLabel()
+                            DiscoveryHeroPrimaryButtonLabel {
+                                withAnimation(.easeInOut(duration: 0.55)) {
+                                    self.hoveredItem = nil
+                                }
+                            }
                         }
                         .buttonStyle(.tvCard)
                         
                         Button {
                             watchlist.toggleWatchlist(item: hero)
                         } label: {
-                            DiscoveryHeroBookmarkButtonLabel(isBookmarked: watchlist.contains(id: hero.id))
+                            DiscoveryHeroBookmarkButtonLabel(isBookmarked: watchlist.contains(id: hero.id)) {
+                                withAnimation(.easeInOut(duration: 0.55)) {
+                                    self.hoveredItem = nil
+                                }
+                            }
                         }
                         .buttonStyle(.tvCard)
                     }
@@ -285,7 +335,13 @@ public struct TVDiscoveryView: View {
             .padding(.bottom, 280)
         }
         .frame(width: screenGeo.size.width, height: screenGeo.size.height)
-        .animation(.easeInOut(duration: 0.35), value: hero.id)
+        .animation(.easeInOut(duration: 0.45), value: hero.id)
+    }
+    
+    private func handleRowHover(_ item: MediaItem) {
+        withAnimation(.easeInOut(duration: 0.55)) {
+            self.hoveredItem = item
+        }
     }
     
     // MARK: - All Sections
@@ -293,22 +349,22 @@ public struct TVDiscoveryView: View {
     @ViewBuilder
     private var allDiscoverySections: some View {
         if !engine.trendingItems.isEmpty {
-            TVContentRowView(title: "Trending Worldwide", items: engine.trendingItems) { item in
+            TVContentRowView(title: "Trending Worldwide", items: engine.trendingItems, onHover: handleRowHover) { item in
                 selectedItem = item
             }
         }
         if !engine.popularMovies.isEmpty {
-            TVContentRowView(title: "Popular Movies", items: engine.popularMovies) { item in
+            TVContentRowView(title: "Popular Movies", items: engine.popularMovies, onHover: handleRowHover) { item in
                 selectedItem = item
             }
         }
         if !engine.popularTV.isEmpty {
-            TVContentRowView(title: "Popular TV Series", items: engine.popularTV) { item in
+            TVContentRowView(title: "Popular TV Series", items: engine.popularTV, onHover: handleRowHover) { item in
                 selectedItem = item
             }
         }
         if !engine.topRated.isEmpty {
-            TVContentRowView(title: "Critically Acclaimed", items: engine.topRated) { item in
+            TVContentRowView(title: "Critically Acclaimed", items: engine.topRated, onHover: handleRowHover) { item in
                 selectedItem = item
             }
         }
@@ -319,25 +375,25 @@ public struct TVDiscoveryView: View {
     @ViewBuilder
     private var moviesDiscoverySections: some View {
         if !engine.popularMovies.isEmpty {
-            TVContentRowView(title: "Trending Movies", items: engine.popularMovies) { item in
+            TVContentRowView(title: "Trending Movies", items: engine.popularMovies, onHover: handleRowHover) { item in
                 selectedItem = item
             }
         }
         let topMovies = engine.topRated.filter { $0.mediaType == .movie }
         if !topMovies.isEmpty {
-            TVContentRowView(title: "Highest Rated Movies", items: topMovies) { item in
+            TVContentRowView(title: "Highest Rated Movies", items: topMovies, onHover: handleRowHover) { item in
                 selectedItem = item
             }
         }
         if !engine.cinemaNow.isEmpty {
-            TVContentRowView(title: "Now in Theatres", items: engine.cinemaNow, showCinemaBadge: true) { item in
+            TVContentRowView(title: "Now in Theatres", items: engine.cinemaNow, showCinemaBadge: true, onHover: handleRowHover) { item in
                 selectedItem = item
             }
         }
         if !engine.newReleases.isEmpty {
             let newMovies = engine.newReleases.filter { $0.mediaType == .movie }
             if !newMovies.isEmpty {
-                TVContentRowView(title: "New Releases", items: newMovies) { item in
+                TVContentRowView(title: "New Releases", items: newMovies, onHover: handleRowHover) { item in
                     selectedItem = item
                 }
             }
@@ -349,28 +405,28 @@ public struct TVDiscoveryView: View {
     @ViewBuilder
     private var tvShowsDiscoverySections: some View {
         if !engine.popularTV.isEmpty {
-            TVContentRowView(title: "Popular TV Series", items: engine.popularTV) { item in
+            TVContentRowView(title: "Popular TV Series", items: engine.popularTV, onHover: handleRowHover) { item in
                 selectedItem = item
             }
         }
         let topTV = engine.topRated.filter { $0.mediaType == .tvShow }
         if !topTV.isEmpty {
-            TVContentRowView(title: "Critically Acclaimed Series", items: topTV) { item in
+            TVContentRowView(title: "Critically Acclaimed Series", items: topTV, onHover: handleRowHover) { item in
                 selectedItem = item
             }
         }
         if !engine.netflixTrending.isEmpty {
-            TVContentRowView(title: "Trending on Netflix", items: engine.netflixTrending.filter { $0.mediaType == .tvShow }) { item in
+            TVContentRowView(title: "Trending on Netflix", items: engine.netflixTrending.filter { $0.mediaType == .tvShow }, onHover: handleRowHover) { item in
                 selectedItem = item
             }
         }
         if !engine.disneyTrending.isEmpty {
-            TVContentRowView(title: "Trending on Disney+", items: engine.disneyTrending.filter { $0.mediaType == .tvShow }) { item in
+            TVContentRowView(title: "Trending on Disney+", items: engine.disneyTrending.filter { $0.mediaType == .tvShow }, onHover: handleRowHover) { item in
                 selectedItem = item
             }
         }
         if !engine.appleTVTrending.isEmpty {
-            TVContentRowView(title: "Trending on Apple TV+", items: engine.appleTVTrending.filter { $0.mediaType == .tvShow }) { item in
+            TVContentRowView(title: "Trending on Apple TV+", items: engine.appleTVTrending.filter { $0.mediaType == .tvShow }, onHover: handleRowHover) { item in
                 selectedItem = item
             }
         }
@@ -381,13 +437,13 @@ public struct TVDiscoveryView: View {
     @ViewBuilder
     private var streamingDiscoverySections: some View {
         let displayItems = providerItems.isEmpty ? engine.streamingItems : providerItems
-        TVContentRowView(title: "Trending on \(selectedProvider.name)", items: displayItems) { item in
+        TVContentRowView(title: "Trending on \(selectedProvider.name)", items: displayItems, onHover: handleRowHover) { item in
             selectedItem = item
         }
         
         let topRated = displayItems.filter { $0.rating >= 7.8 }
         if !topRated.isEmpty {
-            TVContentRowView(title: "Highest Rated on \(selectedProvider.name)", items: topRated) { item in
+            TVContentRowView(title: "Highest Rated on \(selectedProvider.name)", items: topRated, onHover: handleRowHover) { item in
                 selectedItem = item
             }
         }
@@ -429,7 +485,7 @@ private struct DiscoveryFilterPillLabel: View {
                     )
             )
             .scaleEffect(isFocused ? 1.05 : 1.0)
-            .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
+            .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
     }
 }
 
@@ -466,11 +522,12 @@ private struct StreamingProviderPillLabel: View {
                 )
         )
         .scaleEffect(isFocused ? 1.05 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
     }
 }
 
 private struct DiscoveryHeroPrimaryButtonLabel: View {
+    var onFocus: (() -> Void)? = nil
     @Environment(\.isFocused) private var isFocused: Bool
     
     var body: some View {
@@ -499,12 +556,18 @@ private struct DiscoveryHeroPrimaryButtonLabel: View {
                 .stroke(isFocused ? Color(white: 0.9) : Color.white.opacity(0.2), lineWidth: 1.5)
         )
         .scaleEffect(isFocused ? 1.05 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                onFocus?()
+            }
+        }
     }
 }
 
 private struct DiscoveryHeroBookmarkButtonLabel: View {
     let isBookmarked: Bool
+    var onFocus: (() -> Void)? = nil
     @Environment(\.isFocused) private var isFocused: Bool
     
     var body: some View {
@@ -533,6 +596,11 @@ private struct DiscoveryHeroBookmarkButtonLabel: View {
                 .stroke(isFocused ? Color(white: 0.85) : Color.white.opacity(0.18), lineWidth: 1.5)
         )
         .scaleEffect(isFocused ? 1.05 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                onFocus?()
+            }
+        }
     }
 }

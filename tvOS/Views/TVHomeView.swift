@@ -9,6 +9,7 @@ public struct TVHomeView: View {
     @State private var isUserInteracting: Bool = false
     @State private var selectedItem: MediaItem?
     @State private var heroAvailability: WatchAvailability?
+    @State private var hoveredItem: MediaItem? = nil
     
     private let timer = Timer.publish(every: 8.0, on: .main, in: .common).autoconnect()
     
@@ -26,23 +27,15 @@ public struct TVHomeView: View {
         return heroPool[heroIndex % heroPool.count]
     }
     
+    private var activeBackgroundItem: MediaItem? {
+        hoveredItem ?? spotlightHero
+    }
+    
     public var body: some View {
         GeometryReader { screenGeo in
             ZStack(alignment: .topLeading) {
-                // Continuous Cinematic Dark Base (Zero Black Bar Cuts)
-                Color(red: 0.04, green: 0.04, blue: 0.05)
-                    .ignoresSafeArea()
-                
-                // Ambient Atmospheric Glow Spanning Full Screen Height
-                if let hero = spotlightHero {
-                    CachedAsyncImage(url: hero.backdropURL(size: "w780"), contentMode: .fill)
-                        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
-                        .blur(radius: 110)
-                        .opacity(0.32)
-                        .clipped()
-                        .ignoresSafeArea()
-                        .animation(.easeInOut(duration: 0.6), value: hero.id)
-                }
+                // Fixed Full-Screen Background (100% Viewport, Zero Black Spaces)
+                rootBackground(screenGeo: screenGeo)
                 
                 // Unified Root Vertical ScrollView (Continuous Natural Flow)
                 ScrollView(.vertical, showsIndicators: false) {
@@ -82,52 +75,108 @@ public struct TVHomeView: View {
         }
     }
     
+    // MARK: - Dynamic Full-Screen Background (Zero Black Spaces)
+    
+    private func rootBackground(screenGeo: GeometryProxy) -> some View {
+        ZStack {
+            // Dark base color to guarantee zero harsh flashes
+            Color(red: 0.04, green: 0.04, blue: 0.05)
+                .ignoresSafeArea()
+            
+            if let bgItem = activeBackgroundItem {
+                let backdropURL = bgItem.backdropURL(size: "w1280") ?? bgItem.posterURL(size: "original")
+                ZStack {
+                    if hoveredItem != nil {
+                        // When hovering over an item in any list/row:
+                        // Entire background is the softly blurred cover art of the hovered item
+                        CachedAsyncImage(
+                            url: backdropURL,
+                            contentMode: .fill
+                        )
+                        .frame(width: screenGeo.size.width + 40, height: screenGeo.size.height + 40)
+                        .clipped()
+                        .blur(radius: 35)
+                        
+                        // Scrim for perfect contrast with lists and typography
+                        Color.black.opacity(0.42)
+                    } else {
+                        // When at hero / top of page:
+                        // 1. Sharp backdrop artwork
+                        CachedAsyncImage(
+                            url: backdropURL,
+                            contentMode: .fill
+                        )
+                        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
+                        .clipped()
+                        
+                        // 2. Blurred lower region behind lists
+                        CachedAsyncImage(
+                            url: backdropURL,
+                            contentMode: .fill
+                        )
+                        .frame(width: screenGeo.size.width + 40, height: screenGeo.size.height + 40)
+                        .clipped()
+                        .blur(radius: 35)
+                        .mask(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .clear, location: 0.0),
+                                    .init(color: .clear, location: 0.45),
+                                    .init(color: .black, location: 0.68),
+                                    .init(color: .black, location: 1.0)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        
+                        // Soft left vignette for typography readability
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color.black.opacity(0.80), location: 0.0),
+                                .init(color: Color.black.opacity(0.35), location: 0.35),
+                                .init(color: Color.clear, location: 0.65)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        
+                        // Soft top vignette for tab bar readability
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color.black.opacity(0.70), location: 0.0),
+                                .init(color: Color.clear, location: 0.20)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        
+                        // Translucent tint behind lists to ensure full legibility with zero black voids
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color.clear, location: 0.40),
+                                .init(color: Color.black.opacity(0.35), location: 0.70),
+                                .init(color: Color.black.opacity(0.50), location: 1.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
+                }
+                .id(bgItem.id)
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.55), value: bgItem.id)
+            }
+        }
+        .ignoresSafeArea()
+    }
+    
     // MARK: - Massive Hero Showcase Section (~840pt, 80% screen, peeking first row below)
     
     private func heroShowcaseSection(hero: MediaItem, screenGeo: GeometryProxy) -> some View {
         ZStack(alignment: .bottomLeading) {
-            // Full-Bleed 4K Backdrop Artwork (Spanning 100% Screen Height)
-            CachedAsyncImage(url: hero.backdropURL(size: "original"), contentMode: .fill)
-                .frame(width: screenGeo.size.width, height: screenGeo.size.height, alignment: .top)
-                .clipped()
-                .overlay(
-                    // Soft left vignette for typography readability
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.black.opacity(0.80), location: 0.0),
-                            .init(color: Color.black.opacity(0.35), location: 0.35),
-                            .init(color: Color.clear, location: 0.65)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .overlay(
-                    // Soft top vignette for tab bar readability
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.black.opacity(0.70), location: 0.0),
-                            .init(color: Color.clear, location: 0.20)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .overlay(
-                    // Bottom fluid translucent fade allowing artwork to shine through bottom row
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.clear, location: 0.0),
-                            .init(color: Color.clear, location: 0.52),
-                            .init(color: Color.black.opacity(0.40), location: 0.72),
-                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.85), location: 1.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .id(hero.id)
-                .transition(.opacity)
+            Color.clear
+                .frame(width: screenGeo.size.width, height: screenGeo.size.height)
             
             // Hero Typography, Metadata & Action Controls
             VStack(alignment: .leading, spacing: 14) {
@@ -228,14 +277,26 @@ public struct TVHomeView: View {
                     Button {
                         selectedItem = hero
                     } label: {
-                        TVHomePrimaryHeroButtonLabel(title: hero.mediaType == .tvShow ? "Go to Series" : "View Details")
+                        TVHomePrimaryHeroButtonLabel(
+                            title: hero.mediaType == .tvShow ? "Go to Series" : "View Details"
+                        ) {
+                            withAnimation(.easeInOut(duration: 0.55)) {
+                                self.hoveredItem = nil
+                            }
+                        }
                     }
                     .buttonStyle(.tvCard)
                     
                     Button {
                         watchlist.toggleWatchlist(item: hero)
                     } label: {
-                        TVHomeSecondaryBookmarkButtonLabel(isBookmarked: watchlist.contains(id: hero.id))
+                        TVHomeSecondaryBookmarkButtonLabel(
+                            isBookmarked: watchlist.contains(id: hero.id)
+                        ) {
+                            withAnimation(.easeInOut(duration: 0.55)) {
+                                self.hoveredItem = nil
+                            }
+                        }
                     }
                     .buttonStyle(.tvCard)
                 }
@@ -251,7 +312,7 @@ public struct TVHomeView: View {
                         Capsule()
                             .fill(isActive ? Color.white : Color.white.opacity(0.35))
                             .frame(width: isActive ? 22 : 6, height: 6)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.75), value: isActive)
+                            .animation(.spring(response: 0.40, dampingFraction: 0.85), value: isActive)
                     }
                 }
                 .padding(.horizontal, 12)
@@ -268,10 +329,16 @@ public struct TVHomeView: View {
             .padding(.bottom, 280)
         }
         .frame(width: screenGeo.size.width, height: screenGeo.size.height)
-        .animation(.easeInOut(duration: 0.35), value: hero.id)
+        .animation(.easeInOut(duration: 0.45), value: hero.id)
     }
     
     // MARK: - Content Rows Section with Expanding Cards & Inline Detail Strips
+    
+    private func handleRowHover(_ item: MediaItem) {
+        withAnimation(.easeInOut(duration: 0.55)) {
+            self.hoveredItem = item
+        }
+    }
     
     @ViewBuilder
     private var contentRowsSection: some View {
@@ -281,7 +348,8 @@ public struct TVHomeView: View {
             if !popularItems.isEmpty {
                 TVLandscapeRowView(
                     title: "Popular",
-                    items: popularItems
+                    items: popularItems,
+                    onHover: handleRowHover
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -292,7 +360,8 @@ public struct TVHomeView: View {
             if !watchlist.items.isEmpty {
                 TVContentRowView(
                     title: "My List",
-                    items: watchlist.items
+                    items: watchlist.items,
+                    onHover: handleRowHover
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -303,7 +372,8 @@ public struct TVHomeView: View {
             if !engine.topTen.isEmpty {
                 TVTopTenRowView(
                     title: "Top 10 Today",
-                    items: engine.topTen
+                    items: engine.topTen,
+                    onHover: handleRowHover
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -314,7 +384,8 @@ public struct TVHomeView: View {
             if !engine.trendingItems.isEmpty {
                 TVContentRowView(
                     title: "Trending Now",
-                    items: engine.trendingItems
+                    items: engine.trendingItems,
+                    onHover: handleRowHover
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -326,7 +397,8 @@ public struct TVHomeView: View {
                 TVContentRowView(
                     title: "Now in Cinemas",
                     items: engine.cinemaNow,
-                    showCinemaBadge: true
+                    showCinemaBadge: true,
+                    onHover: handleRowHover
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -337,7 +409,8 @@ public struct TVHomeView: View {
             if !engine.netflixTrending.isEmpty {
                 TVContentRowView(
                     title: "Trending on Netflix",
-                    items: engine.netflixTrending
+                    items: engine.netflixTrending,
+                    onHover: handleRowHover
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -348,7 +421,8 @@ public struct TVHomeView: View {
             if !engine.disneyTrending.isEmpty {
                 TVContentRowView(
                     title: "Trending on Disney+",
-                    items: engine.disneyTrending
+                    items: engine.disneyTrending,
+                    onHover: handleRowHover
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -359,7 +433,8 @@ public struct TVHomeView: View {
             if !engine.primeTrending.isEmpty {
                 TVContentRowView(
                     title: "Trending on Prime Video",
-                    items: engine.primeTrending
+                    items: engine.primeTrending,
+                    onHover: handleRowHover
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -370,7 +445,8 @@ public struct TVHomeView: View {
             if !engine.appleTVTrending.isEmpty {
                 TVContentRowView(
                     title: "Trending on Apple TV+",
-                    items: engine.appleTVTrending
+                    items: engine.appleTVTrending,
+                    onHover: handleRowHover
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -381,7 +457,8 @@ public struct TVHomeView: View {
             if !engine.popularMovies.isEmpty {
                 TVContentRowView(
                     title: "Popular Movies",
-                    items: engine.popularMovies
+                    items: engine.popularMovies,
+                    onHover: handleRowHover
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -392,7 +469,8 @@ public struct TVHomeView: View {
             if !engine.cinemaUpcoming.isEmpty {
                 TVLandscapeRowView(
                     title: "Coming Soon to Theatres",
-                    items: engine.cinemaUpcoming
+                    items: engine.cinemaUpcoming,
+                    onHover: handleRowHover
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -403,7 +481,8 @@ public struct TVHomeView: View {
             if !engine.topRated.isEmpty {
                 TVContentRowView(
                     title: "Critically Acclaimed",
-                    items: engine.topRated
+                    items: engine.topRated,
+                    onHover: handleRowHover
                 ) { item in
                     isUserInteracting = true
                     selectedItem = item
@@ -417,6 +496,7 @@ public struct TVHomeView: View {
 
 private struct TVHomePrimaryHeroButtonLabel: View {
     let title: String
+    var onFocus: (() -> Void)? = nil
     @Environment(\.isFocused) private var isFocused: Bool
     
     var body: some View {
@@ -445,12 +525,18 @@ private struct TVHomePrimaryHeroButtonLabel: View {
                 .stroke(isFocused ? Color(white: 0.9) : Color.white.opacity(0.2), lineWidth: 1.5)
         )
         .scaleEffect(isFocused ? 1.05 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                onFocus?()
+            }
+        }
     }
 }
 
 private struct TVHomeSecondaryBookmarkButtonLabel: View {
     let isBookmarked: Bool
+    var onFocus: (() -> Void)? = nil
     @Environment(\.isFocused) private var isFocused: Bool
     
     var body: some View {
@@ -479,6 +565,11 @@ private struct TVHomeSecondaryBookmarkButtonLabel: View {
                 .stroke(isFocused ? Color(white: 0.85) : Color.white.opacity(0.18), lineWidth: 1.5)
         )
         .scaleEffect(isFocused ? 1.05 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                onFocus?()
+            }
+        }
     }
 }

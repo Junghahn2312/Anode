@@ -492,7 +492,7 @@ private struct TVBackButtonLabel: View {
                 )
         )
         .scaleEffect(isFocused ? 1.05 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
     }
 }
 
@@ -519,7 +519,7 @@ private struct TVPlayButtonLabel: View {
         )
         .scaleEffect(isFocused ? 1.06 : 1.0)
         .shadow(color: Color.white.opacity(isFocused ? 0.35 : 0.0), radius: isFocused ? 12 : 0, x: 0, y: 0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
     }
 }
 
@@ -548,7 +548,7 @@ private struct TVBookmarkButtonLabel: View {
                     .stroke(isFocused ? Color(white: 0.85) : Color.white.opacity(0.18), lineWidth: 1.5)
             )
             .scaleEffect(isFocused ? 1.06 : 1.0)
-            .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
+            .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
     }
 }
 
@@ -579,7 +579,7 @@ private struct SeasonTabLabel: View {
                     .stroke(isFocused ? Color(white: 0.65).opacity(0.8) : Color.white.opacity(0.14), lineWidth: 1.2)
             )
             .scaleEffect(isFocused ? 1.04 : 1.0)
-            .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
+            .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
     }
 }
 
@@ -613,7 +613,7 @@ private struct TVEpisodeCardView: View {
             }
             .scaleEffect(isFocused ? 1.05 : 1.0)
             .shadow(color: Color.black.opacity(isFocused ? 0.6 : 0.25), radius: isFocused ? 16 : 6, x: 0, y: isFocused ? 8 : 2)
-            .animation(.spring(response: 0.24, dampingFraction: 0.85), value: isFocused)
+            .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
             
             // Metadata below card (Image 1)
             VStack(alignment: .leading, spacing: 4) {
@@ -701,6 +701,6 @@ private struct TVTrailerCardView: View {
         }
         .scaleEffect(isFocused ? 1.05 : 1.0)
         .shadow(color: Color.black.opacity(isFocused ? 0.6 : 0.25), radius: isFocused ? 16 : 6, x: 0, y: isFocused ? 8 : 2)
-        .animation(.spring(response: 0.24, dampingFraction: 0.85), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
     }
 }

@@ -92,7 +92,7 @@ public struct TVMediaCardView: View {
             x: 0,
             y: isFocused ? 10 : 2
         )
-        .animation(.spring(response: 0.24, dampingFraction: 0.85), value: isFocused)
+        .animation(.spring(response: 0.40, dampingFraction: 0.86), value: isFocused)
         .onChange(of: isFocused) { _, focused in
             if focused {
                 onFocus?(item)

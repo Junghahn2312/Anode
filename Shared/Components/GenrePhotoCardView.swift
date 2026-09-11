@@ -82,7 +82,7 @@ public struct GenrePhotoCardView: View {
             x: 0,
             y: isFocused ? 8 : 4
         )
-        .animation(.easeInOut(duration: 0.22), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
         .focused($isFocused)
         .onChange(of: isFocused) { _, focused in
             if focused {

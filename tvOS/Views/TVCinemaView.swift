@@ -5,6 +5,7 @@ public struct TVCinemaView: View {
     @ObservedObject private var watchlist = WatchlistStore.shared
     
     @State private var selectedItem: MediaItem?
+    @State private var hoveredItem: MediaItem? = nil
     
     public init() {}
     
@@ -12,23 +13,15 @@ public struct TVCinemaView: View {
         engine.cinemaNow.first ?? engine.cinemaMovies.first ?? engine.trendingItems.first
     }
     
+    private var activeBackgroundItem: MediaItem? {
+        hoveredItem ?? theatricalHero
+    }
+    
     public var body: some View {
         GeometryReader { screenGeo in
             ZStack(alignment: .topLeading) {
-                // Continuous Cinematic Dark Canvas (Zero Black Bar Cuts)
-                Color(red: 0.04, green: 0.04, blue: 0.05)
-                    .ignoresSafeArea()
-                
-                // Ambient Atmospheric Glow Spanning Full Screen
-                if let hero = theatricalHero {
-                    CachedAsyncImage(url: hero.backdropURL(size: "w780"), contentMode: .fill)
-                        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
-                        .blur(radius: 110)
-                        .opacity(0.32)
-                        .clipped()
-                        .ignoresSafeArea()
-                        .animation(.easeInOut(duration: 0.5), value: hero.id)
-                }
+                // Fixed Full-Screen Background (100% Viewport, Zero Black Spaces)
+                rootBackground(screenGeo: screenGeo)
                 
                 // Unified Root Vertical ScrollView (Zero Black Bars)
                 ScrollView(.vertical, showsIndicators: false) {
@@ -48,7 +41,8 @@ public struct TVCinemaView: View {
                                 TVContentRowView(
                                     title: "Now in Cinemas",
                                     items: engine.cinemaNow,
-                                    showCinemaBadge: true
+                                    showCinemaBadge: true,
+                                    onHover: handleRowHover
                                 ) { item in
                                     selectedItem = item
                                 }
@@ -58,7 +52,8 @@ public struct TVCinemaView: View {
                             if !engine.cinemaUpcoming.isEmpty {
                                 TVLandscapeRowView(
                                     title: "Coming Soon to Cinemas",
-                                    items: engine.cinemaUpcoming
+                                    items: engine.cinemaUpcoming,
+                                    onHover: handleRowHover
                                 ) { item in
                                     selectedItem = item
                                 }
@@ -68,7 +63,8 @@ public struct TVCinemaView: View {
                             if !engine.cinemaMovies.isEmpty {
                                 TVContentRowView(
                                     title: "Critically Acclaimed in Theatres",
-                                    items: engine.cinemaMovies.filter { $0.rating >= 7.5 }
+                                    items: engine.cinemaMovies.filter { $0.rating >= 7.5 },
+                                    onHover: handleRowHover
                                 ) { item in
                                     selectedItem = item
                                 }
@@ -87,52 +83,111 @@ public struct TVCinemaView: View {
         }
     }
     
+    // MARK: - Dynamic Full-Screen Background (Zero Black Spaces)
+    
+    private func rootBackground(screenGeo: GeometryProxy) -> some View {
+        ZStack {
+            // Dark base color to guarantee zero harsh flashes
+            Color(red: 0.04, green: 0.04, blue: 0.05)
+                .ignoresSafeArea()
+            
+            if let bgItem = activeBackgroundItem {
+                let backdropURL = bgItem.backdropURL(size: "w1280") ?? bgItem.posterURL(size: "original")
+                ZStack {
+                    if hoveredItem != nil {
+                        // When hovering over an item in any list/row:
+                        CachedAsyncImage(
+                            url: backdropURL,
+                            contentMode: .fill
+                        )
+                        .frame(width: screenGeo.size.width + 40, height: screenGeo.size.height + 40)
+                        .clipped()
+                        .blur(radius: 35)
+                        
+                        Color.black.opacity(0.42)
+                    } else {
+                        // 1. Sharp backdrop artwork
+                        CachedAsyncImage(
+                            url: backdropURL,
+                            contentMode: .fill
+                        )
+                        .frame(width: screenGeo.size.width, height: screenGeo.size.height)
+                        .clipped()
+                        
+                        // 2. Blurred lower region behind lists
+                        CachedAsyncImage(
+                            url: backdropURL,
+                            contentMode: .fill
+                        )
+                        .frame(width: screenGeo.size.width + 40, height: screenGeo.size.height + 40)
+                        .clipped()
+                        .blur(radius: 35)
+                        .mask(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .clear, location: 0.0),
+                                    .init(color: .clear, location: 0.45),
+                                    .init(color: .black, location: 0.68),
+                                    .init(color: .black, location: 1.0)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        
+                        // Soft left vignette for typography readability
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color.black.opacity(0.80), location: 0.0),
+                                .init(color: Color.black.opacity(0.35), location: 0.35),
+                                .init(color: Color.clear, location: 0.65)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        
+                        // Soft top vignette for tab bar readability
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color.black.opacity(0.70), location: 0.0),
+                                .init(color: Color.clear, location: 0.20)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        
+                        // Translucent tint behind lists to ensure full legibility with zero black voids
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color.clear, location: 0.40),
+                                .init(color: Color.black.opacity(0.35), location: 0.70),
+                                .init(color: Color.black.opacity(0.50), location: 1.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
+                }
+                .id(bgItem.id)
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.55), value: bgItem.id)
+            }
+        }
+        .ignoresSafeArea()
+    }
+    
+    private func handleRowHover(_ item: MediaItem) {
+        withAnimation(.easeInOut(duration: 0.55)) {
+            self.hoveredItem = item
+        }
+    }
+    
     // MARK: - Cinema Hero Showcase Section (~820pt, peeking first row below)
     
     private func cinemaHeroSection(hero: MediaItem, screenGeo: GeometryProxy) -> some View {
         ZStack(alignment: .bottomLeading) {
-            // Full-Bleed 4K Backdrop Artwork (Spanning 100% Screen Height)
-            CachedAsyncImage(url: hero.backdropURL(size: "original"), contentMode: .fill)
-                .frame(width: screenGeo.size.width, height: screenGeo.size.height, alignment: .top)
-                .clipped()
-                .overlay(
-                    // Soft left vignette for typography readability
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.black.opacity(0.80), location: 0.0),
-                            .init(color: Color.black.opacity(0.35), location: 0.35),
-                            .init(color: Color.clear, location: 0.65)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .overlay(
-                    // Soft top vignette for tab bar readability
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.black.opacity(0.70), location: 0.0),
-                            .init(color: Color.clear, location: 0.20)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .overlay(
-                    // Bottom fluid translucent fade allowing artwork to shine through bottom row
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.clear, location: 0.0),
-                            .init(color: Color.clear, location: 0.52),
-                            .init(color: Color.black.opacity(0.40), location: 0.72),
-                            .init(color: Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.85), location: 1.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .id(hero.id)
-                .transition(.opacity)
+            Color.clear
+                .frame(width: screenGeo.size.width, height: screenGeo.size.height)
             
             // Hero Content
             VStack(alignment: .leading, spacing: 14) {
@@ -222,14 +277,22 @@ public struct TVCinemaView: View {
                         Button {
                             selectedItem = hero
                         } label: {
-                            CinemaHeroPrimaryButtonLabel()
+                            CinemaHeroPrimaryButtonLabel {
+                                withAnimation(.easeInOut(duration: 0.55)) {
+                                    self.hoveredItem = nil
+                                }
+                            }
                         }
                         .buttonStyle(.tvCard)
                         
                         Button {
                             watchlist.toggleWatchlist(item: hero)
                         } label: {
-                            CinemaHeroBookmarkButtonLabel(isBookmarked: watchlist.contains(id: hero.id))
+                            CinemaHeroBookmarkButtonLabel(isBookmarked: watchlist.contains(id: hero.id)) {
+                                withAnimation(.easeInOut(duration: 0.55)) {
+                                    self.hoveredItem = nil
+                                }
+                            }
                         }
                         .buttonStyle(.tvCard)
                     }
@@ -241,13 +304,14 @@ public struct TVCinemaView: View {
             .padding(.bottom, 280)
         }
         .frame(width: screenGeo.size.width, height: screenGeo.size.height)
-        .animation(.easeInOut(duration: 0.35), value: hero.id)
+        .animation(.easeInOut(duration: 0.45), value: hero.id)
     }
 }
 
 // MARK: - Focusable Buttons
 
 private struct CinemaHeroPrimaryButtonLabel: View {
+    var onFocus: (() -> Void)? = nil
     @Environment(\.isFocused) private var isFocused: Bool
     
     var body: some View {
@@ -276,12 +340,18 @@ private struct CinemaHeroPrimaryButtonLabel: View {
                 .stroke(isFocused ? Color(white: 0.9) : Color.white.opacity(0.2), lineWidth: 1.5)
         )
         .scaleEffect(isFocused ? 1.05 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                onFocus?()
+            }
+        }
     }
 }
 
 private struct CinemaHeroBookmarkButtonLabel: View {
     let isBookmarked: Bool
+    var onFocus: (() -> Void)? = nil
     @Environment(\.isFocused) private var isFocused: Bool
     
     var body: some View {
@@ -310,6 +380,11 @@ private struct CinemaHeroBookmarkButtonLabel: View {
                 .stroke(isFocused ? Color(white: 0.85) : Color.white.opacity(0.18), lineWidth: 1.5)
         )
         .scaleEffect(isFocused ? 1.05 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.85), value: isFocused)
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                onFocus?()
+            }
+        }
     }
 }

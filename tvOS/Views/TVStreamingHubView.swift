@@ -160,7 +160,7 @@ private struct ProviderPill: View {
                 radius: 12,
                 y: 4
             )
-            .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isFocused)
+            .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
         }
         .buttonStyle(.plain)
         .focused($isFocused)

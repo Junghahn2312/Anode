@@ -66,7 +66,7 @@ public struct TopTenCardView: View {
             .scaleEffect(isFocused ? 1.10 : 1.0)
             .zIndex(isFocused ? 10 : 1)
             .shadow(color: Color.black.opacity(isFocused ? 0.75 : 0.25), radius: isFocused ? 24 : 6, x: 0, y: isFocused ? 10 : 2)
-            .animation(.spring(response: 0.24, dampingFraction: 0.85), value: isFocused)
+            .animation(.spring(response: 0.40, dampingFraction: 0.86), value: isFocused)
             #else
             .shadow(color: Color.black.opacity(0.5), radius: 8, x: 0, y: 4)
             #endif
