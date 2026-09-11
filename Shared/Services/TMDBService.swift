@@ -635,7 +635,7 @@ public actor TMDBService: ContentProvider {
         guard let decoded = try? JSONDecoder().decode(TMDBImagesResponse.self, from: data) else {
             return nil
         }
-        let logo = decoded.logos?.first(where: { $0.iso_639_1 == "en" }) ?? decoded.logos?.first
+        let logo = decoded.logos?.first(where: { $0.iso_639_1 == "en" })
         if let path = logo?.file_path {
             logoCache[item.id] = path
             return path
@@ -665,7 +665,7 @@ public actor TMDBService: ContentProvider {
         let append = isTV ? "content_ratings,images" : "release_dates,images"
         let endpoint = isTV ? "/tv/\(item.id)?append_to_response=\(append)" : "/movie/\(item.id)?append_to_response=\(append)"
         let separator = endpoint.contains("?") ? "&" : "?"
-        guard let url = URL(string: "\(baseURL)\(endpoint)\(separator)api_key=\(apiKey)") else {
+        guard let url = URL(string: "\(baseURL)\(endpoint)\(separator)api_key=\(apiKey)&include_image_language=en,null") else {
             enrichedCache[item.id] = item
             return item
         }
@@ -738,7 +738,7 @@ public actor TMDBService: ContentProvider {
         if enriched.logoPath == nil || enriched.logoPath?.isEmpty == true {
             if let images = json["images"] as? [String: Any],
                let logos = images["logos"] as? [[String: Any]] {
-                let enLogo = logos.first(where: { ($0["iso_639_1"] as? String) == "en" }) ?? logos.first
+                let enLogo = logos.first(where: { ($0["iso_639_1"] as? String) == "en" })
                 if let path = enLogo?["file_path"] as? String {
                     enriched.logoPath = path
                 }
@@ -762,7 +762,7 @@ public actor TMDBService: ContentProvider {
     
     private func getPagedMedia(endpoint: String, type: MediaType) async throws -> [MediaItem] {
         let separator = endpoint.contains("?") ? "&" : "?"
-        guard let url = URL(string: "\(baseURL)\(endpoint)\(separator)api_key=\(apiKey)") else { return [] }
+        guard let url = URL(string: "\(baseURL)\(endpoint)\(separator)api_key=\(apiKey)&language=en-US") else { return [] }
         
         let request = createRequest(for: url)
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -1274,7 +1274,6 @@ public enum MockData {
                 CastMember(id: 2841, name: "Mads Mikkelsen", character: "Dr. Arthur Bell"),
                 CastMember(id: 7129, name: "Ana de Armas", character: "Elena")
             ],
-            logoPath: "/sg0cMIDL4dwMZEu2wPIFTUppquO.png",
             inCinemas: true
         )
     ]
@@ -1309,7 +1308,7 @@ public enum MockData {
             mediaType: .movie,
             overview: "A high-stakes psychological thriller following a prominent attorney whose daughter is held hostage by a syndicate demanding the retrieval of sensitive financial data.",
             posterPath: "/uxCaBoYXsDC4A0SqTm3SISj0OwK.jpg",
-            backdropPath: "/pwIX6Qn9TG1XrBNGzZ7cjZ52Pa8.jpg",
+            backdropPath: "/jzBWExXacS33rMQ2zLBrqIVweyG.jpg",
             voteAverage: 7.9,
             voteCount: 1540,
             releaseDateString: "2026-09-02",
@@ -1323,7 +1322,7 @@ public enum MockData {
                 CastMember(id: 9021, name: "Gal Gadot", character: "Katherine"),
                 CastMember(id: 4120, name: "Woody Harrelson", character: "Mason")
             ],
-            logoPath: "/At3Av06KDQ4GwIKSAh1dnG8wz7G.png",
+            logoPath: "/28KLOH4xzrCwZL9C4zZnrUVOAaB.png",
             inCinemas: false
         ),
         MediaItem(
@@ -1346,7 +1345,7 @@ public enum MockData {
                 CastMember(id: 47, name: "Ryan Reynolds", character: "Captain Troy"),
                 CastMember(id: 3120, name: "Kenneth Branagh", character: "Commander Ross")
             ],
-            logoPath: "/o7u1JJCrdSoWnNmaoLdEBOBfYG6.png",
+            logoPath: "/uy6Sna1PeNyE7mWbOKLvbH3WTaB.png",
             inCinemas: false
         ),
         MediaItem(
@@ -1354,7 +1353,7 @@ public enum MockData {
             title: "Why Did I Get Married Again?",
             mediaType: .movie,
             overview: "Eight married friends reunite for an annual retreat in the Bahamas, only to confront surprising secrets, shifting loyalties, and unexpected life turns.",
-            posterPath: "/bHMtdZFZztcAE5uHHhsY2pWRPB9.jpg",
+            posterPath: "/rwaxLuOkJ5mMvJU5juNaPcKADOW.jpg",
             backdropPath: "/lJYniNRM2i9wXnfWVHOB4PxygFZ.jpg",
             voteAverage: 7.5,
             voteCount: 980,
@@ -1438,7 +1437,7 @@ public enum MockData {
                 CastMember(id: 1150450, name: "Samara Weaving", character: "Grace"),
                 CastMember(id: 54109, name: "Kathryn Newton", character: "Beatrice")
             ],
-            logoPath: "/4GoX0K6uv0u7YkR1O27CHpyquqS.png",
+            logoPath: "/qfpJsFNKLbygzJMU1w5D9RxONRA.png",
             inCinemas: false
         ),
         MediaItem(
@@ -1461,7 +1460,7 @@ public enum MockData {
                 CastMember(id: 135651, name: "Michael B. Jordan", character: "Leo (voice)"),
                 CastMember(id: 21094, name: "Juno Temple", character: "Maya (voice)")
             ],
-            logoPath: "/gEnzsqzZPHITrRd3KupXbh2KCpY.png",
+            logoPath: "/7fS6L7LRbiLZolZN8OShyJaI2mc.png",
             inCinemas: false
         ),
         MediaItem(
@@ -1484,7 +1483,7 @@ public enum MockData {
                 CastMember(id: 55638, name: "Kevin Hart", character: "Marcus"),
                 CastMember(id: 62849, name: "Marlon Wayans", character: "Dre")
             ],
-            logoPath: "/dstq6iwyesaD9Hx4SC8nQOYhJEl.png",
+            logoPath: "/hGO1AhI9bySVlRIBNFeVUh4uDgl.png",
             inCinemas: false
         )
     ]
@@ -1714,7 +1713,7 @@ public enum MockData {
                 tagline: "Kindness makes a comeback.",
                 certification: "TV-MA",
                 streamingProviders: [.appleTV],
-                logoPath: "/89zpmSMZYx5jShGyr14byW8L1CX.png"
+                logoPath: "/iNudegFbTBAGBB529k7wGVivqE4.png"
             ),
             MediaItem(
                 id: 776503,
@@ -1814,7 +1813,7 @@ public enum MockData {
                 tagline: "Every second counts.",
                 certification: "TV-MA",
                 streamingProviders: [.disneyPlus],
-                logoPath: "/yuHeksANqi7f2E7oQrw1A2r50Dh.png"
+                logoPath: "/8ZTz2Wj0lE5WoSOqRG8GarhhnY4.png"
             )
         ],
         StreamingProvider.primeVideo.id: [
@@ -1833,7 +1832,7 @@ public enum MockData {
                 tagline: "Never meet your heroes.",
                 certification: "TV-MA",
                 streamingProviders: [.primeVideo],
-                logoPath: "/lrs0W28PxcamremKIvQvkheiNp9.png"
+                logoPath: "/xawDgfkBQaocXR9CljBMjkYpXNK.png"
             ),
             MediaItem(
                 id: 106379,
@@ -1996,7 +1995,7 @@ public enum MockData {
                 mediaType: .movie,
                 overview: "Sophie reflects on the shared joy and private melancholy of a holiday she took with her father twenty years earlier as memories fill the gaps between footage.",
                 posterPath: "/evKz85EKouVbIr51zy5fOtpNRPg.jpg",
-                backdropPath: "/d5l2ITQvpgP0dcWCAG6PUvp8YZw.jpg",
+                backdropPath: "/4jdduww9j5RyzO4ITRcuBFhqNN1.jpg",
                 voteAverage: 7.8,
                 voteCount: 1200,
                 releaseDateString: "2022-10-21",
@@ -2022,7 +2021,7 @@ public enum MockData {
                 tagline: "In-Yun: connected across lifetimes.",
                 certification: "PG-13",
                 streamingProviders: [.mubi],
-                logoPath: "/7ZS4EoBQrTUatmLfNW6GsJQIBrO.png"
+                logoPath: "/jzdqCuDygikoTJfYdRRTJp0xYsd.png"
             )
         ],
         StreamingProvider.crunchyroll.id: [
@@ -2093,7 +2092,7 @@ public enum MockData {
                 tagline: "Witness the origin.",
                 certification: "PG",
                 streamingProviders: [.nowTV],
-                logoPath: "/7Rq0Bqd9xFeTz0lx19OLj51ovfW.png"
+                logoPath: "/pihHK60EsvDnaFEUbHjhYokOoH4.png"
             )
         ],
         StreamingProvider.bbcIPlayer.id: [
