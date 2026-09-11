@@ -316,17 +316,17 @@ public struct TVContentRowView: View {
                 .padding(.vertical, 24)
             }
             
-            // Inline Detail Panel - Smooth soft transition with zero abrupt disappearing
+            // Inline Detail Panel - Fixed height ensures stable vertical row rhythm with zero layout shifting
             ZStack(alignment: .leading) {
                 if let active = focusedItem {
                     TVRowInfoPanel(item: active)
                         .opacity(isRowActive ? 1.0 : 0.0)
-                        .frame(height: isRowActive ? nil : 0, alignment: .top)
-                        .clipped()
                 }
             }
+            .frame(height: 72, alignment: .top)
+            .clipped()
             .padding(.horizontal, horizontalPadding)
-            .animation(.easeInOut(duration: 0.50), value: isRowActive)
+            .animation(.easeInOut(duration: 0.35), value: isRowActive)
         }
         .focusSection()
     }
@@ -390,17 +390,17 @@ public struct TVLandscapeRowView: View {
                 .padding(.vertical, 24)
             }
             
-            // Inline Detail Panel - Smooth soft transition with zero abrupt disappearing
+            // Inline Detail Panel - Fixed height ensures stable vertical row rhythm with zero layout shifting
             ZStack(alignment: .leading) {
                 if let active = focusedItem {
                     TVRowInfoPanel(item: active)
                         .opacity(isRowActive ? 1.0 : 0.0)
-                        .frame(height: isRowActive ? nil : 0, alignment: .top)
-                        .clipped()
                 }
             }
+            .frame(height: 72, alignment: .top)
+            .clipped()
             .padding(.horizontal, 60)
-            .animation(.easeInOut(duration: 0.50), value: isRowActive)
+            .animation(.easeInOut(duration: 0.35), value: isRowActive)
         }
         .focusSection()
     }
@@ -468,17 +468,17 @@ public struct TVTopTenRowView: View {
                 .padding(.vertical, 24)
             }
             
-            // Inline Detail Panel - Smooth soft transition with zero abrupt disappearing
+            // Inline Detail Panel - Fixed height ensures stable vertical row rhythm with zero layout shifting
             ZStack(alignment: .leading) {
                 if let active = focusedItem {
                     TVRowInfoPanel(item: active)
                         .opacity(isRowActive ? 1.0 : 0.0)
-                        .frame(height: isRowActive ? nil : 0, alignment: .top)
-                        .clipped()
                 }
             }
+            .frame(height: 72, alignment: .top)
+            .clipped()
             .padding(.horizontal, 60)
-            .animation(.easeInOut(duration: 0.50), value: isRowActive)
+            .animation(.easeInOut(duration: 0.35), value: isRowActive)
         }
         .focusSection()
     }

@@ -82,11 +82,6 @@ public struct TVHomeView: View {
                             withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
                                 scrollProxy.scrollTo("row-0", anchor: UnitPoint(x: 0.5, y: 0.65))
                             }
-                        } else if newIndex > 0 {
-                            // Selected row sits higher on screen (not at top, but higher - Y ~ 260)
-                            withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
-                                scrollProxy.scrollTo("row-\(newIndex)", anchor: UnitPoint(x: 0.5, y: 0.48))
-                            }
                         } else if newIndex == -1 {
                             withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
                                 scrollProxy.scrollTo("heroSection", anchor: .top)

@@ -38,9 +38,9 @@ public struct TVCinemaView: View {
                     }
                     .coordinateSpace(name: "cinemaScroll")
                     .onChange(of: activeRowIndex) { _, newIndex in
-                        if newIndex >= 0 {
-                            withAnimation(.easeInOut(duration: 0.50)) {
-                                scrollProxy.scrollTo("cinema-row-\\(newIndex)", anchor: UnitPoint(x: 0.5, y: 0.40))
+                        if newIndex == -1 {
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                scrollProxy.scrollTo("cinema-header", anchor: .top)
                             }
                         }
                     }

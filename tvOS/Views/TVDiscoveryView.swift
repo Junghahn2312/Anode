@@ -60,9 +60,9 @@ public struct TVDiscoveryView: View {
                     }
                     .coordinateSpace(name: "discoveryScroll")
                     .onChange(of: activeRowIndex) { _, newIndex in
-                        if newIndex >= 0 {
-                            withAnimation(.easeInOut(duration: 0.50)) {
-                                scrollProxy.scrollTo("discovery-row-\(newIndex)", anchor: UnitPoint(x: 0.5, y: 0.48))
+                        if newIndex == -1 {
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                scrollProxy.scrollTo("discovery-all-catalog", anchor: .top)
                             }
                         }
                     }

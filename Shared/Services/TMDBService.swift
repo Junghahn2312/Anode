@@ -644,6 +644,13 @@ public actor TMDBService: ContentProvider {
             return cached
         }
         
+        if item.title.localizedCaseInsensitiveContains("The Odyssey") || item.id == 1368337 || item.id == 1698863 {
+            var ody = item
+            ody.logoPath = "/m6w20NsuOQN8dOM8DztHEvIALFd.png"
+            enrichedCache[item.id] = ody
+            return ody
+        }
+        
         if item.runtimeMinutes != nil && item.certification != nil && item.logoPath != nil {
             enrichedCache[item.id] = item
             return item
@@ -770,14 +777,19 @@ public actor TMDBService: ContentProvider {
             
             let genreNames = (dto.genre_ids ?? []).compactMap { Self.genreMap[$0] }
             
+            let isOdyssey = title.localizedCaseInsensitiveContains("The Odyssey") || id == 1368337 || id == 1698863
+            let finalPoster = isOdyssey ? "/b0z3ViIC5AkbJoqxmTpqyjgmoJs.jpg" : dto.poster_path
+            let finalBackdrop = isOdyssey ? "/mPy1xSASQ9NYWJdAGx2C2sOsnNw.jpg" : dto.backdrop_path
+            let finalLogo = isOdyssey ? "/m6w20NsuOQN8dOM8DztHEvIALFd.png" : nil
+
             return MediaItem(
-                id: id,
+                id: isOdyssey ? 1698863 : id,
                 title: title,
                 originalTitle: dto.original_title ?? dto.original_name,
                 mediaType: detectedType,
                 overview: dto.overview ?? "",
-                posterPath: dto.poster_path,
-                backdropPath: dto.backdrop_path,
+                posterPath: finalPoster,
+                backdropPath: finalBackdrop,
                 voteAverage: dto.vote_average ?? 0.0,
                 voteCount: dto.vote_count ?? 0,
                 releaseDateString: dto.release_date ?? dto.first_air_date,
@@ -1009,26 +1021,26 @@ public enum MockData {
             inCinemas: true
         ),
         MediaItem(
-            id: 1368337,
+            id: 1698863,
             title: "The Odyssey",
             mediaType: .movie,
-            overview: "An epic theatrical adaptation of Homer's legendary myth recounting Odysseus' ten-year voyage home to Ithaca following the fall of Troy.",
-            posterPath: "/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg",
-            backdropPath: "/RMXG8myu1aGlNUsRjtxzmpdMK0.jpg",
+            overview: "Based on the Ancient Greek epic. After ten years of war, King Odysseus sets sail for Ithaca, eager to reunite with his beloved. But his journey home is far more treacherous than the battlefield, as he must face deadly monsters and vengeful gods to survive.",
+            posterPath: "/b0z3ViIC5AkbJoqxmTpqyjgmoJs.jpg",
+            backdropPath: "/mPy1xSASQ9NYWJdAGx2C2sOsnNw.jpg",
             voteAverage: 8.3,
             voteCount: 1280,
-            releaseDateString: "2026-07-15",
-            genreNames: ["Action", "Adventure", "History"],
+            releaseDateString: "2026-07-03",
+            genreNames: ["Adventure", "Fantasy", "Action"],
             runtimeMinutes: 165,
             tagline: "The voyage that defined eternity.",
-            certification: "R",
+            certification: "PG-13",
             streamingProviders: [],
             trailers: [VideoTrailer(id: "od1", name: "Cinematic Trailer", key: "LNlrGhPdnk8")],
             cast: [
                 CastMember(id: 1892, name: "Matt Damon", character: "Odysseus"),
                 CastMember(id: 3456, name: "Charlize Theron", character: "Penelope")
             ],
-            logoPath: "/kX6ZX4GL7km04332caiOVapR2lb.png",
+            logoPath: "/m6w20NsuOQN8dOM8DztHEvIALFd.png",
             inCinemas: true
         ),
         MediaItem(
@@ -1124,7 +1136,7 @@ public enum MockData {
             inCinemas: true
         ),
         MediaItem(
-            id: 1291034,
+            id: 1198654,
             title: "Bad Apples",
             mediaType: .movie,
             overview: "A devoted primary school teacher struggles with an unruly, disruptive ten-year-old student until a bizarre series of misadventures spirals out of control.",
@@ -1147,7 +1159,7 @@ public enum MockData {
             inCinemas: true
         ),
         MediaItem(
-            id: 1301928,
+            id: 1386315,
             title: "Runner",
             mediaType: .movie,
             overview: "A high-stakes courier in a fortified metropolis is tasked with transporting an organ transplant across enemy territory under an absolute deadline.",
@@ -1216,7 +1228,7 @@ public enum MockData {
             inCinemas: true
         ),
         MediaItem(
-            id: 1302849,
+            id: 977942,
             title: "The Uprising",
             mediaType: .movie,
             overview: "When a totalitarian regime disables planetary communications, a rebellion orchestrates a tactical resistance from the underground catacombs.",
@@ -1239,7 +1251,7 @@ public enum MockData {
             inCinemas: true
         ),
         MediaItem(
-            id: 1303940,
+            id: 1228834,
             title: "The Fix",
             mediaType: .movie,
             overview: "A disgraced former surgeon must navigate the treacherous criminal underworld after agreeing to perform an illicit procedure on a cartel boss.",
@@ -1288,7 +1300,7 @@ public enum MockData {
             inCinemas: false
         ),
         MediaItem(
-            id: 1304891,
+            id: 1386315,
             title: "The Runner",
             mediaType: .movie,
             overview: "A high-stakes psychological thriller following a prominent attorney whose daughter is held hostage by a syndicate demanding the retrieval of sensitive financial data.",
@@ -1311,11 +1323,11 @@ public enum MockData {
             inCinemas: false
         ),
         MediaItem(
-            id: 1297841,
+            id: 1137844,
             title: "Mayday",
             mediaType: .movie,
             overview: "A charismatic commercial airline pilot and a stoic air marshal must work together when their transatlantic flight is intercepted over the Arctic Circle.",
-            posterPath: "/pu2VxGlpGwffOx292w18b1tv96j.jpg",
+            posterPath: "/hVXjX1jLZ1ljFSNGXpjJfbTUOa7.jpg",
             backdropPath: "/e2QAGrEmbpmZpMymDRkDisJkvg9.jpg",
             voteAverage: 8.1,
             voteCount: 1820,
@@ -1334,11 +1346,11 @@ public enum MockData {
             inCinemas: false
         ),
         MediaItem(
-            id: 1305912,
+            id: 1522689,
             title: "Why Did I Get Married Again?",
             mediaType: .movie,
             overview: "Eight married friends reunite for an annual retreat in the Bahamas, only to confront surprising secrets, shifting loyalties, and unexpected life turns.",
-            posterPath: "/60BxAjKM20ABTSYnWZcJ8ExiVNL.jpg",
+            posterPath: "/rwaxLuOkJ5mMvJU5juNaPcKADOW.jpg",
             backdropPath: "/A5sGEzVMjvbgh5ZniaHBXAxppKQ.jpg",
             voteAverage: 7.5,
             voteCount: 980,
@@ -1357,11 +1369,11 @@ public enum MockData {
             inCinemas: false
         ),
         MediaItem(
-            id: 822119,
+            id: 687163,
             title: "Project Hail Mary",
             mediaType: .movie,
             overview: "Lone astronaut Ryland Grace wakes up aboard a spacecraft with amnesia, slowly discovering he is humanity's last hope to solve an extinction-level solar crisis.",
-            posterPath: "/gFjEggtrejCN79r6SXRjM269OtG.jpg",
+            posterPath: "/yihdXomYb5kTeSivtFndMy5iDmf.jpg",
             backdropPath: "/8Tfys3mDZVp4tNoH2ktm06a0Tau.jpg",
             voteAverage: 8.7,
             voteCount: 5120,
@@ -1380,11 +1392,11 @@ public enum MockData {
             inCinemas: false
         ),
         MediaItem(
-            id: 1289410,
+            id: 1202033,
             title: "Enola Holmes 3",
             mediaType: .movie,
             overview: "Enola Holmes uncovers a conspiracy reaching into the heart of London's royal societies while collaborating with her brother Sherlock on a baffling case.",
-            posterPath: "/kKgQzkUCnQmeTPkyIwHly2t6ZFI.jpg",
+            posterPath: "/7kRYHH9H9PjBFwz1FprbHB2AAjI.jpg",
             backdropPath: "/kF8ljC7Y4p1UsmKBi2LxelZpqw.jpg",
             voteAverage: 7.9,
             voteCount: 3200,
@@ -1403,11 +1415,11 @@ public enum MockData {
             inCinemas: false
         ),
         MediaItem(
-            id: 1290312,
+            id: 1266127,
             title: "Ready or Not 2: Here I Come",
             mediaType: .movie,
             overview: "Grace thought the Le Domas ritual was behind her until an international branch of high-society elites initiates a new deadly game of survival.",
-            posterPath: "/cOGtvhc6Ij9KvzM6jZsfQyg0B0O.jpg",
+            posterPath: "/13ZcJzSGEqVgDSqsS9U5EkQwPkV.jpg",
             backdropPath: "/pmPXXniQlb4EdYY0gVZO90rf54F.jpg",
             voteAverage: 7.8,
             voteCount: 2450,
@@ -1430,7 +1442,7 @@ public enum MockData {
             title: "Swapped",
             mediaType: .movie,
             overview: "In a futuristic society where minds can be temporarily swapped for occupational training, two polar-opposite rivals get trapped in each other's lives.",
-            posterPath: "/7TUl15TOsIvndKlgMWTtLgtEzZP.jpg",
+            posterPath: "/tN799oUR0f1gUKDYdMNrDaY7I51.jpg",
             backdropPath: "/4YyuSadBoc5k6krj0REcYH15DXG.jpg",
             voteAverage: 7.7,
             voteCount: 1980,
@@ -1453,7 +1465,7 @@ public enum MockData {
             title: "72 Hours in Miami",
             mediaType: .movie,
             overview: "A chaotic weekend road trip in Miami turns into an adrenaline-fueled dash across South Beach when two brothers get mixed up with stolen artwork.",
-            posterPath: "/yopXjun3ICFfJci2ukcEzceZjUs.jpg",
+            posterPath: "/zxcMdx0w5Zmg8yZuuiS7CJ8vOea.jpg",
             backdropPath: "/dJTWIecL2vxsCRl5G0lRhPsfrhc.jpg",
             voteAverage: 7.4,
             voteCount: 1620,
@@ -1475,7 +1487,7 @@ public enum MockData {
     
     public static let trendingItems: [MediaItem] = [
         MediaItem(
-            id: 201,
+            id: 95396,
             title: "Severance",
             mediaType: .tvShow,
             overview: "Mark leads a team of office workers whose memories have been surgically divided between their work and personal lives. When a mysterious colleague appears outside of work, it begins a journey to discover the truth about their jobs.",
@@ -1497,11 +1509,11 @@ public enum MockData {
             ]
         ),
         MediaItem(
-            id: 202,
+            id: 95480,
             title: "Slow Horses",
             mediaType: .tvShow,
             overview: "This quick-witted espionage drama follows a dysfunctional team of MI5 agents—and their obnoxious boss, the notorious Jackson Lamb—as they navigate the espionage world's smoke and mirrors to defend England from sinister forces.",
-            posterPath: "/1g1eT3Kw8C57AnQdZIcLyRU4xkw.jpg",
+            posterPath: "/w2jauz2PeSjFQifDObI3qDen4f7.jpg",
             backdropPath: "/wPJgjOfsFUny1WBo53Q9xtIMSs.jpg",
             voteAverage: 8.3,
             voteCount: 1980,
@@ -1519,11 +1531,11 @@ public enum MockData {
             ]
         ),
         MediaItem(
-            id: 203,
+            id: 194764,
             title: "The Penguin",
             mediaType: .tvShow,
             overview: "Following the events of The Batman, Oswald Cobblepot begins his ruthless climb to seize control of Gotham City's criminal underworld as an all-out turf war brews.",
-            posterPath: "/u7xqyWcJXL0LejV6PQrkYPQbfD2.jpg",
+            posterPath: "/vOWcqC4oDQws1doDWLO7d3dh5qc.jpg",
             backdropPath: "/7tGvH4PYRbzO9W6wcGxqyU2FZJd.jpg",
             voteAverage: 8.8,
             voteCount: 3400,
@@ -1540,7 +1552,7 @@ public enum MockData {
             ]
         ),
         MediaItem(
-            id: 204,
+            id: 126308,
             title: "Shōgun",
             mediaType: .tvShow,
             overview: "When a mysterious European ship is found marooned in a nearby fishing village, Lord Yoshii Toranaga discovers secrets that could tip the scales of power and devastate his formidable enemies in 17th-century feudal Japan.",
@@ -1566,11 +1578,11 @@ public enum MockData {
     public static let streamingCatalog: [Int: [MediaItem]] = [
         StreamingProvider.netflix.id: [
             MediaItem(
-                id: 301,
+                id: 94028,
                 title: "Ripley",
                 mediaType: .tvShow,
                 overview: "A grifter drawn into a world of wealth and privilege after taking a unique job in Italy finds himself entangled in a complex web of deception, fraud, and murder.",
-                posterPath: "/zU0htwkhNvBQdVSIKB9s6hgVeFK.jpg",
+                posterPath: "/rpSo8z9alultGVTqQ3dkLEyU8xx.jpg",
                 backdropPath: "/erpjqVdJLpDQJjsbxaSJmMwvcqd.jpg",
                 voteAverage: 8.1,
                 voteCount: 1420,
@@ -1582,11 +1594,11 @@ public enum MockData {
                 streamingProviders: [.netflix]
             ),
             MediaItem(
-                id: 302,
+                id: 241259,
                 title: "Baby Reindeer",
                 mediaType: .tvShow,
                 overview: "When a struggling comedian shows one kind gesture to a vulnerable woman, an obsessive stalking nightmare erupts that forces both to confront deeply buried trauma.",
-                posterPath: "/pylL2yER1E23rq60imU9GVYusxu.jpg",
+                posterPath: "/tN9OcbkAOPwHSr1sgMornZtQZBx.jpg",
                 backdropPath: "/Y5P4Q3q8nrruZ9aD3wXeJS2Plg.jpg",
                 voteAverage: 7.9,
                 voteCount: 2890,
@@ -1598,7 +1610,7 @@ public enum MockData {
                 streamingProviders: [.netflix]
             ),
             MediaItem(
-                id: 303,
+                id: 661374,
                 title: "Glass Onion: A Knives Out Mystery",
                 mediaType: .movie,
                 overview: "World-famous detective Benoit Blanc heads to Greece to peel back the layers of a mystery surrounding a tech billionaire and his eclectic crew of friends.",
@@ -1614,7 +1626,7 @@ public enum MockData {
                 streamingProviders: [.netflix]
             ),
             MediaItem(
-                id: 304,
+                id: 800158,
                 title: "The Killer",
                 mediaType: .movie,
                 overview: "After a fateful near-miss, an assassin battles his employers, and himself, on an international manhunt he insists isn't personal.",
@@ -1630,7 +1642,7 @@ public enum MockData {
                 streamingProviders: [.netflix]
             ),
             MediaItem(
-                id: 305,
+                id: 906126,
                 title: "Society of the Snow",
                 mediaType: .movie,
                 overview: "In 1972, a Uruguayan rugby team's flight crashes onto a glacier in the heart of the Andes, where survivors must resort to extreme measures to stay alive.",
@@ -1646,11 +1658,11 @@ public enum MockData {
                 streamingProviders: [.netflix]
             ),
             MediaItem(
-                id: 306,
+                id: 66732,
                 title: "Stranger Things",
                 mediaType: .tvShow,
                 overview: "When a young boy vanishes, a small town uncovers a mystery involving secret experiments, terrifying supernatural forces and one strange little girl.",
-                posterPath: "/49WJfeN0moxb9IPfGn8AIqMGskD.jpg",
+                posterPath: "/uOOtwVbSr4QDjAGIifLDwpb2Pdl.jpg",
                 backdropPath: "/56v2KjBlU4XaOv9rVYEQypROD7P.jpg",
                 voteAverage: 8.6,
                 voteCount: 16500,
@@ -1666,7 +1678,7 @@ public enum MockData {
             trendingItems[0], // Severance
             trendingItems[1], // Slow Horses
             MediaItem(
-                id: 311,
+                id: 466420,
                 title: "Killers of the Flower Moon",
                 mediaType: .movie,
                 overview: "When oil is discovered in 1920s Oklahoma under Osage Nation land, the Osage people are murdered one by one until the FBI steps in to unravel the conspiracy.",
@@ -1682,7 +1694,7 @@ public enum MockData {
                 streamingProviders: [.appleTV]
             ),
             MediaItem(
-                id: 312,
+                id: 97546,
                 title: "Ted Lasso",
                 mediaType: .tvShow,
                 overview: "An American college football coach is hired to manage a struggling British soccer team, attempting to win over skeptical players and town with optimism.",
@@ -1698,7 +1710,7 @@ public enum MockData {
                 streamingProviders: [.appleTV]
             ),
             MediaItem(
-                id: 313,
+                id: 776503,
                 title: "CODA",
                 mediaType: .movie,
                 overview: "As a CODA (Child of Deaf Adults), Ruby is the only hearing person in her deaf family. When the family's fishing business is threatened, Ruby finds herself torn between pursuing her love of music and her fear of abandoning her parents.",
@@ -1714,7 +1726,7 @@ public enum MockData {
                 streamingProviders: [.appleTV]
             ),
             MediaItem(
-                id: 314,
+                id: 125988,
                 title: "Silo",
                 mediaType: .tvShow,
                 overview: "In a ruined and toxic future, thousands live in a giant underground silo. When its sheriff breaks a cardinal rule, an engineer uncovers shocking truths about their world.",
@@ -1733,7 +1745,7 @@ public enum MockData {
         StreamingProvider.disneyPlus.id: [
             trendingItems[3], // Shogun
             MediaItem(
-                id: 321,
+                id: 82856,
                 title: "The Mandalorian",
                 mediaType: .tvShow,
                 overview: "After the fall of the Galactic Empire, a lone gunfighter makes his way through the outer reaches of the lawless galaxy.",
@@ -1749,7 +1761,7 @@ public enum MockData {
                 streamingProviders: [.disneyPlus]
             ),
             MediaItem(
-                id: 322,
+                id: 84958,
                 title: "Loki",
                 mediaType: .tvShow,
                 overview: "After stealing the Tesseract during the events of Avengers: Endgame, an alternate version of Loki is brought to the mysterious Time Variance Authority.",
@@ -1765,7 +1777,7 @@ public enum MockData {
                 streamingProviders: [.disneyPlus]
             ),
             MediaItem(
-                id: 323,
+                id: 792307,
                 title: "Poor Things",
                 mediaType: .movie,
                 overview: "Brought back to life by an unorthodox scientist, a young woman runs off with a debauched lawyer on a whirlwind adventure across continents.",
@@ -1781,7 +1793,7 @@ public enum MockData {
                 streamingProviders: [.disneyPlus]
             ),
             MediaItem(
-                id: 324,
+                id: 136315,
                 title: "The Bear",
                 mediaType: .tvShow,
                 overview: "A young fine-dining chef comes home to Chicago to run his family Italian beef sandwich shop after a heartbreaking death in his family.",
@@ -1799,7 +1811,7 @@ public enum MockData {
         ],
         StreamingProvider.primeVideo.id: [
             MediaItem(
-                id: 331,
+                id: 76479,
                 title: "The Boys",
                 mediaType: .tvShow,
                 overview: "A fun and irreverent take on what happens when superheroes abuse their superpowers rather than use them for good.",
@@ -1815,7 +1827,7 @@ public enum MockData {
                 streamingProviders: [.primeVideo]
             ),
             MediaItem(
-                id: 332,
+                id: 106379,
                 title: "Fallout",
                 mediaType: .tvShow,
                 overview: "In a future, post-apocalyptic Los Angeles brought about by nuclear decimation, citizens must live in underground bunkers to protect themselves from radiation, mutants and bandits.",
@@ -1831,7 +1843,7 @@ public enum MockData {
                 streamingProviders: [.primeVideo]
             ),
             MediaItem(
-                id: 333,
+                id: 843527,
                 title: "The Idea of You",
                 mediaType: .movie,
                 overview: "Solène Marchand, a 40-year-old single mother, begins an unexpected romance with 24-year-old Hayes Campbell, the lead singer of August Moon, the hottest boy band on the planet.",
@@ -1847,7 +1859,7 @@ public enum MockData {
                 streamingProviders: [.primeVideo]
             ),
             MediaItem(
-                id: 334,
+                id: 359410,
                 title: "Road House",
                 mediaType: .movie,
                 overview: "Ex-UFC fighter Dalton takes a job as a bouncer at a Florida Keys roadhouse, only to discover that this paradise is not all it seems.",
@@ -1863,7 +1875,7 @@ public enum MockData {
                 streamingProviders: [.primeVideo]
             ),
             MediaItem(
-                id: 335,
+                id: 108978,
                 title: "Reacher",
                 mediaType: .tvShow,
                 overview: "Jack Reacher, a veteran military police investigator, enters civilian life travelling from town to town across the United States.",
@@ -1885,11 +1897,11 @@ public enum MockData {
             freshFromTheatres[2], // Furiosa
             trendingItems[2],      // The Penguin
             MediaItem(
-                id: 341,
+                id: 94997,
                 title: "House of the Dragon",
                 mediaType: .tvShow,
                 overview: "The Targaryen dynasty is at the absolute apex of its power, with more than 15 dragons under their yoke. Most empires crumble from such heights.",
-                posterPath: "/1X4h40fcB4WWUmIBK0auT4zRBAV.jpg",
+                posterPath: "/7V0Ebks0GgpKvQ7QbLAIdX5dos4.jpg",
                 backdropPath: "/577eXC8wFQT0eUrJcgznSiFPRmk.jpg",
                 voteAverage: 8.4,
                 voteCount: 4700,
@@ -1901,7 +1913,7 @@ public enum MockData {
                 streamingProviders: [.max]
             ),
             MediaItem(
-                id: 342,
+                id: 414906,
                 title: "The Batman",
                 mediaType: .movie,
                 overview: "In his second year of fighting crime, Batman uncovers corruption in Gotham City that connects to his own family while facing a serial killer known as the Riddler.",
@@ -1919,7 +1931,7 @@ public enum MockData {
         ],
         StreamingProvider.paramountPlus.id: [
             MediaItem(
-                id: 351,
+                id: 73586,
                 title: "Yellowstone",
                 mediaType: .tvShow,
                 overview: "Follow the Dutton family, led by John Dutton, who controls the largest contiguous ranch in the United States, under constant attack by those it borders.",
@@ -1935,11 +1947,11 @@ public enum MockData {
                 streamingProviders: [.paramountPlus]
             ),
             MediaItem(
-                id: 352,
+                id: 361743,
                 title: "Top Gun: Maverick",
                 mediaType: .movie,
                 overview: "After more than thirty years of service as one of the Navy’s top aviators, Pete Mitchell is where he belongs, pushing the envelope as a courageous test pilot.",
-                posterPath: "/62HCnUTziyWcpDaBO2i1DX17ljH.jpg",
+                posterPath: "/n0YuM4f5lvGAP6MAW2kBIzugXnc.jpg",
                 backdropPath: "/AaV1YIdWKnjAIAOe8UUKBFm327v.jpg",
                 voteAverage: 8.3,
                 voteCount: 8700,
@@ -1951,7 +1963,7 @@ public enum MockData {
                 streamingProviders: [.paramountPlus]
             ),
             MediaItem(
-                id: 353,
+                id: 153312,
                 title: "Tulsa King",
                 mediaType: .tvShow,
                 overview: "Just after he is released from prison after 25 years, New York mafia capo Dwight Manfredi is unceremoniously exiled by his boss to set up shop in Tulsa, Oklahoma.",
@@ -1969,7 +1981,7 @@ public enum MockData {
         ],
         StreamingProvider.mubi.id: [
             MediaItem(
-                id: 361,
+                id: 965150,
                 title: "Aftersun",
                 mediaType: .movie,
                 overview: "Sophie reflects on the shared joy and private melancholy of a holiday she took with her father twenty years earlier as memories fill the gaps between footage.",
@@ -1985,7 +1997,7 @@ public enum MockData {
                 streamingProviders: [.mubi]
             ),
             MediaItem(
-                id: 362,
+                id: 666277,
                 title: "Past Lives",
                 mediaType: .movie,
                 overview: "Nora and Hae Sung, two deeply connected childhood friends, are wrested apart after Nora's family emigrates from South Korea. Decades later, they are reunited.",
@@ -2003,7 +2015,7 @@ public enum MockData {
         ],
         StreamingProvider.crunchyroll.id: [
             MediaItem(
-                id: 371,
+                id: 85937,
                 title: "Demon Slayer: Kimetsu no Yaiba",
                 mediaType: .tvShow,
                 overview: "It is the Taisho Period in Japan. Tanjiro, a kindhearted boy who sells charcoal for a living, finds his family slaughtered by a demon.",
@@ -2019,7 +2031,7 @@ public enum MockData {
                 streamingProviders: [.crunchyroll]
             ),
             MediaItem(
-                id: 372,
+                id: 95479,
                 title: "Jujutsu Kaisen",
                 mediaType: .tvShow,
                 overview: "Yuji Itadori is a boy with tremendous physical strength, though he lives a completely ordinary high school life. One day, to save a classmate, he eats the finger of Ryomen Sukuna.",
@@ -2037,11 +2049,11 @@ public enum MockData {
         ],
         StreamingProvider.nowTV.id: [
             MediaItem(
-                id: 381,
+                id: 206829,
                 title: "The Regime",
                 mediaType: .tvShow,
                 overview: "Follow the story of a modern European regime as it begins to unravel over the course of a year within the palace walls.",
-                posterPath: "/Y5P4Q3q8nrruZ9aD3wXeJS2Plg.jpg",
+                posterPath: "/ztqPixNyezY6pWSNIP2AlhwPMO0.jpg",
                 backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
                 voteAverage: 7.2,
                 voteCount: 420,
@@ -2053,7 +2065,7 @@ public enum MockData {
                 streamingProviders: [.nowTV]
             ),
             MediaItem(
-                id: 382,
+                id: 787699,
                 title: "Wonka",
                 mediaType: .movie,
                 overview: "Willy Wonka – chock-full of ideas and determined to change the world one delectable bite at a time – is determined to prove that the best things in life begin with a dream.",
@@ -2071,7 +2083,7 @@ public enum MockData {
         ],
         StreamingProvider.bbcIPlayer.id: [
             MediaItem(
-                id: 391,
+                id: 60574,
                 title: "Peaky Blinders",
                 mediaType: .tvShow,
                 overview: "A gangster family epic set in 1919 Birmingham, England and centered on a gang who sew razor blades in the peaks of their caps, and their fierce boss Tommy Shelby.",
@@ -2087,7 +2099,7 @@ public enum MockData {
                 streamingProviders: [.bbcIPlayer]
             ),
             MediaItem(
-                id: 392,
+                id: 61244,
                 title: "Happy Valley",
                 mediaType: .tvShow,
                 overview: "Catherine Cawood is a strong-willed police sergeant in West Yorkshire, still coming to terms with the suicide of her teenage daughter eight years earlier.",
@@ -2105,7 +2117,7 @@ public enum MockData {
         ],
         StreamingProvider.itvx.id: [
             MediaItem(
-                id: 393,
+                id: 1427,
                 title: "Broadchurch",
                 mediaType: .tvShow,
                 overview: "The murder of a young boy in a small coastal town brings a media frenzy, which threatens to tear the community apart.",
@@ -2121,11 +2133,11 @@ public enum MockData {
                 streamingProviders: [.itvx]
             ),
             MediaItem(
-                id: 394,
+                id: 645689,
                 title: "The Duke",
                 mediaType: .movie,
                 overview: "In 1961, Kempton Bunton, a 60-year-old taxi driver, stole Goya's portrait of the Duke of Wellington from the National Gallery in London.",
-                posterPath: "/Y5P4Q3q8nrruZ9aD3wXeJS2Plg.jpg",
+                posterPath: "/zXlj7NgSWg0NbK2zfUh0nbGZVuz.jpg",
                 backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
                 voteAverage: 7.2,
                 voteCount: 450,
@@ -2139,11 +2151,11 @@ public enum MockData {
         ],
         StreamingProvider.channel4.id: [
             MediaItem(
-                id: 395,
+                id: 76148,
                 title: "Derry Girls",
                 mediaType: .tvShow,
                 overview: "Amidst the political conflict of Northern Ireland in the 1990s, five high school friends navigate the universal challenges of being a teenager.",
-                posterPath: "/evKz85EKouVbIr51zy5fOtpNRPg.jpg",
+                posterPath: "/btIm8LOtm2qgHIA2IHmQJvD1Mju.jpg",
                 backdropPath: "/nQyQ4c8DUvXra1LDWnNfV9QJluD.jpg",
                 voteAverage: 8.3,
                 voteCount: 1200,
@@ -2155,11 +2167,11 @@ public enum MockData {
                 streamingProviders: [.channel4]
             ),
             MediaItem(
-                id: 396,
+                id: 116174,
                 title: "It's A Sin",
                 mediaType: .tvShow,
                 overview: "A chronicle of four friends during a decade in which everything changed, including the rise of AIDS in 1980s London.",
-                posterPath: "/xZK5iQSrn2mouZEk2PwyLPCwa4u.jpg",
+                posterPath: "/tUaNS4b5TIiP1SwpHCYCbUoGpHG.jpg",
                 backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
                 voteAverage: 8.5,
                 voteCount: 950,
@@ -2173,11 +2185,11 @@ public enum MockData {
         ],
         StreamingProvider.skyGo.id: [
             MediaItem(
-                id: 397,
+                id: 85021,
                 title: "Gangs of London",
                 mediaType: .tvShow,
                 overview: "When the head of a criminal organization is assassinated, the sudden power vacuum creates a battle between rival gangs on the streets of London.",
-                posterPath: "/2NhBFUTg5KVBmGwafxtLwVdsqrr.jpg",
+                posterPath: "/fVgwa6wGw9ddGM5O7mqrrwB6gHK.jpg",
                 backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
                 voteAverage: 7.9,
                 voteCount: 880,
@@ -2189,7 +2201,7 @@ public enum MockData {
                 streamingProviders: [.skyGo]
             ),
             MediaItem(
-                id: 398,
+                id: 866398,
                 title: "The Beekeeper",
                 mediaType: .movie,
                 overview: "One man's brutal campaign for vengeance takes on national stakes after he is revealed to be a former operative of a powerful and clandestine organization.",
@@ -2216,7 +2228,7 @@ public enum MockData {
     
     public static let topRated: [MediaItem] = [
         MediaItem(
-            id: 401,
+            id: 238,
             title: "The Godfather",
             mediaType: .movie,
             overview: "Spanning the years 1945 to 1955, a chronicle of the fictional Italian-American Corleone crime family. When organized crime family patriarch, Vito Corleone, barely survives an attempt on his life, his youngest son, Michael, steps in to take care of the would-be killers.",
@@ -2232,11 +2244,11 @@ public enum MockData {
             streamingProviders: [.primeVideo]
         ),
         MediaItem(
-            id: 402,
+            id: 157336,
             title: "Interstellar",
             mediaType: .movie,
             overview: "The adventures of a group of explorers who make use of a newly discovered wormhole to surpass the limitations on human space travel and conquer the vast distances involved in an interstellar voyage.",
-            posterPath: "/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
+            posterPath: "/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg",
             backdropPath: "/xJHokMbljvjADYdit5fK5VQsXEG.jpg",
             voteAverage: 8.8,
             voteCount: 34100,
@@ -2248,7 +2260,7 @@ public enum MockData {
             streamingProviders: [.primeVideo]
         ),
         MediaItem(
-            id: 403,
+            id: 129,
             title: "Spirited Away",
             mediaType: .movie,
             overview: "A young girl, Chihiro, becomes trapped in a strange new world of spirits. When her parents undergo a mysterious transformation, she must call upon the courage she never knew she had to rescue her family.",
@@ -2386,11 +2398,11 @@ public enum MockData {
             inCinemas: false
         ),
         MediaItem(
-            id: 1022789,
+            id: 1300968,
             title: "The Hunger Games: Sunrise on the Reaping",
             mediaType: .movie,
             overview: "On the morning of the reaping for the 50th Annual Hunger Games, also known as the Second Quarter Quell, young Haymitch Abernathy is thrust into the deadly arena.",
-            posterPath: "/mBaXZ95R2OxueZhvQbcEWy2DqyO.jpg",
+            posterPath: "/ffJaYMtB6v1TrvkyhCOqwqCKm0o.jpg",
             backdropPath: "/aqFZcr2dxSZ2UwWSo1WC6C0rwDf.jpg",
             voteAverage: 8.3,
             voteCount: 750,
@@ -2409,7 +2421,7 @@ public enum MockData {
             inCinemas: false
         ),
         MediaItem(
-            id: 1011985,
+            id: 1024604,
             title: "Frozen III",
             mediaType: .movie,
             overview: "Elsa and Anna embark on their most daunting journey yet beyond the enchanted forest to unravel the ancient origins of Arendelle's elemental magic.",
@@ -2433,11 +2445,11 @@ public enum MockData {
             inCinemas: false
         ),
         MediaItem(
-            id: 1114560,
+            id: 1078446,
             title: "Violent Night 2",
             mediaType: .movie,
             overview: "Santa Claus returns to defend another high-stakes holiday hostage crisis, bringing bone-crunching festive justice to a ruthless syndicate.",
-            posterPath: "/e8CpMgdyihz9Td7amQDqubPuzfN.jpg",
+            posterPath: "/7HPvgItDw9NgW3iy4tFRRuGNbuN.jpg",
             backdropPath: "/uvYnQE4I40J5vtj2acWYWSlv672.jpg",
             voteAverage: 7.8,
             voteCount: 620,

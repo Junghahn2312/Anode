@@ -165,11 +165,11 @@ public struct TVSettingsView: View {
     
     private var rootSettingsView: some View {
         VStack(spacing: 24) {
-            // Centered Settings title positioned slightly higher up
+            // Centered Settings title positioned comfortably below top bar
             Text("Settings")
                 .font(.system(size: 38, weight: .bold))
                 .foregroundColor(.white.opacity(0.90))
-                .padding(.top, 95)
+                .padding(.top, 130)
             
             HStack(alignment: .center) {
                 Spacer()
