@@ -619,6 +619,10 @@ public actor TMDBService: ContentProvider {
         if let cached = logoCache[item.id] {
             return cached
         }
+        if item.title.localizedCaseInsensitiveContains("The Odyssey") || item.id == 1368337 || item.id == 1698863 {
+            logoCache[item.id] = "/m6w20NsuOQN8dOM8DztHEvIALFd.png"
+            return "/m6w20NsuOQN8dOM8DztHEvIALFd.png"
+        }
         let endpoint = item.mediaType == .tvShow ? "/tv/\(item.id)/images" : "/movie/\(item.id)/images"
         guard let url = URL(string: "\(baseURL)\(endpoint)?api_key=\(apiKey)&include_image_language=en,null") else {
             return nil
@@ -974,12 +978,12 @@ public enum MockData {
             inCinemas: true
         ),
         MediaItem(
-            id: 1298401,
+            id: 1302904,
             title: "Practical Magic 2",
             mediaType: .movie,
             overview: "The Owens sisters reunite as an unexpected ancestral hex emerges, forcing them to protect their family and delve into ancient enchantments.",
-            posterPath: "/kKgQzkUCnQmeTPkyIwHly2t6ZFI.jpg",
-            backdropPath: "/kF8ljC7Y4p1UsmKBi2LxelZpqw.jpg",
+            posterPath: "/ogwQOLbCfncjvBhFb5l0OmQH8KC.jpg",
+            backdropPath: "/nUcauJ000dFBYkgGpxyxJ5aWEH2.jpg",
             voteAverage: 8.0,
             voteCount: 920,
             releaseDateString: "2026-09-11",
@@ -993,7 +997,7 @@ public enum MockData {
                 CastMember(id: 18277, name: "Sandra Bullock", character: "Sally Owens"),
                 CastMember(id: 2227, name: "Nicole Kidman", character: "Gillian Owens")
             ],
-            logoPath: "/vbZcDHC5IFylYuRnp3eyOs5rTV1.png",
+            logoPath: "/kK7hIYNupIRjP6cYKN2P2gzYHLU.png",
             inCinemas: true
         ),
         MediaItem(
@@ -1067,12 +1071,12 @@ public enum MockData {
             inCinemas: true
         ),
         MediaItem(
-            id: 1284902,
+            id: 1318413,
             title: "Pressure",
             mediaType: .movie,
             overview: "During the tense 72 hours leading up to D-Day, Britain's chief meteorological officer must make the most consequential weather forecast in history.",
             posterPath: "/gFjEggtrejCN79r6SXRjM269OtG.jpg",
-            backdropPath: "/8Tfys3mDZVp4tNoH2ktm06a0Tau.jpg",
+            backdropPath: "/apfyLCPVFttB8oXcsLJ7q0NSFLx.jpg",
             voteAverage: 8.2,
             voteCount: 780,
             releaseDateString: "2026-09-09",
@@ -1086,11 +1090,11 @@ public enum MockData {
                 CastMember(id: 5432, name: "Andrew Scott", character: "James Stagg"),
                 CastMember(id: 1987, name: "Brendan Fraser", character: "Gen. Dwight D. Eisenhower")
             ],
-            logoPath: "/3m1raTve2RWZ0jfnUwHSnRtjVK3.png",
+            logoPath: "/A28r04yW2BQgEniLt5inopfryWE.png",
             inCinemas: true
         ),
         MediaItem(
-            id: 1290341,
+            id: 1284046,
             title: "Onslaught",
             mediaType: .movie,
             overview: "A mother living in an isolated wilderness homestead must use her clandestine former training to defend her family against a mercenary squad.",
@@ -1098,7 +1102,7 @@ public enum MockData {
             backdropPath: "/pmPXXniQlb4EdYY0gVZO90rf54F.jpg",
             voteAverage: 7.8,
             voteCount: 650,
-            releaseDateString: "2026-09-04",
+            releaseDateString: "2026-09-02",
             genreNames: ["Action", "Thriller"],
             runtimeMinutes: 108,
             tagline: "They brought the fight to the wrong home.",
@@ -1109,30 +1113,30 @@ public enum MockData {
                 CastMember(id: 6789, name: "Adria Arjona", character: "Valeria"),
                 CastMember(id: 9812, name: "Dan Stevens", character: "Lead Mercenary")
             ],
-            logoPath: "/zoJEVzPC6DLHQ5KzoyDQ5357B2z.png",
+            logoPath: "/bDjcbJZL2JpBuyab36UZzpEMTGO.png",
             inCinemas: true
         ),
         MediaItem(
-            id: 1294821,
-            title: "By Any Means",
+            id: 1288445,
+            title: "Mutiny",
             mediaType: .movie,
-            overview: "A gritty crime thriller following an elite investigative task force hunting an underground syndicate that manipulates metropolitan infrastructure.",
+            overview: "After his billionaire industrialist boss is murdered in front of him, an elite operative is framed for the crime, embarking on a relentless cross-continent chase to expose an international conspiracy.",
             posterPath: "/pu2VxGlpGwffOx292w18b1tv96j.jpg",
             backdropPath: "/e2QAGrEmbpmZpMymDRkDisJkvg9.jpg",
             voteAverage: 7.7,
             voteCount: 590,
             releaseDateString: "2026-09-04",
-            genreNames: ["Crime", "Action", "Thriller"],
+            genreNames: ["Action", "Thriller", "Crime"],
             runtimeMinutes: 122,
-            tagline: "Law has limits. Justice does not.",
+            tagline: "Survival has no rules.",
             certification: "R",
             streamingProviders: [],
-            trailers: [VideoTrailer(id: "bam1", name: "Trailer", key: "LNlrGhPdnk8")],
+            trailers: [VideoTrailer(id: "bam1", name: "Official Trailer", key: "LNlrGhPdnk8")],
             cast: [
-                CastMember(id: 4567, name: "Mark Wahlberg", character: "Det. Sullivan"),
-                CastMember(id: 8901, name: "Sterling K. Brown", character: "Agent Vance")
+                CastMember(id: 976, name: "Jason Statham", character: "Cole Reed"),
+                CastMember(id: 3896, name: "Annabelle Wallis", character: "Tara")
             ],
-            logoPath: "/kX6ZX4GL7km04332caiOVapR2lb.png",
+            logoPath: "/1fBG0oBuRyPq5omo7H4DlvC66Aq.png",
             inCinemas: true
         ),
         MediaItem(
@@ -1155,19 +1159,19 @@ public enum MockData {
                 CastMember(id: 3412, name: "Saoirse Ronan", character: "Maria"),
                 CastMember(id: 7654, name: "Jacob Tremblay", character: "Robert")
             ],
-            logoPath: "/3m1raTve2RWZ0jfnUwHSnRtjVK3.png",
+            logoPath: "/y1OzxvuQihyf1DZHU6Pb5cUjENO.png",
             inCinemas: true
         ),
         MediaItem(
-            id: 1386315,
+            id: 1377237,
             title: "Runner",
             mediaType: .movie,
             overview: "A high-stakes courier in a fortified metropolis is tasked with transporting an organ transplant across enemy territory under an absolute deadline.",
-            posterPath: "/16oqRrWVzQm6qdGfBxvziZ2UiMT.jpg",
-            backdropPath: "/tK3QdOOrX4qEkmSlvrmc8cK7iOU.jpg",
+            posterPath: "/yBKMAIj7clP42UkFejhGDBBoTpb.jpg",
+            backdropPath: "/iXR79oKsLHwLno9jdzxxeFP21sy.jpg",
             voteAverage: 7.9,
             voteCount: 680,
-            releaseDateString: "2026-09-11",
+            releaseDateString: "2026-09-07",
             genreNames: ["Action", "Thriller"],
             runtimeMinutes: 114,
             tagline: "Stop running. Start fighting.",
@@ -1178,7 +1182,7 @@ public enum MockData {
                 CastMember(id: 5412, name: "Alan Ritchson", character: "Hank"),
                 CastMember(id: 9021, name: "Eiza González", character: "Dr. Scott")
             ],
-            logoPath: "/zoJEVzPC6DLHQ5KzoyDQ5357B2z.png",
+            logoPath: "/fFjGsyHwSUMkOsYCuXgzUbLIJoZ.png",
             inCinemas: true
         ),
         MediaItem(
@@ -1247,7 +1251,7 @@ public enum MockData {
                 CastMember(id: 3124, name: "John Boyega", character: "Kaelen"),
                 CastMember(id: 6521, name: "Florence Pugh", character: "Sari")
             ],
-            logoPath: "/kX6ZX4GL7km04332caiOVapR2lb.png",
+            logoPath: "/drBOdj4htH0Chlno2Ctt6OxCGgJ.png",
             inCinemas: true
         ),
         MediaItem(
@@ -1270,7 +1274,7 @@ public enum MockData {
                 CastMember(id: 2841, name: "Mads Mikkelsen", character: "Dr. Arthur Bell"),
                 CastMember(id: 7129, name: "Ana de Armas", character: "Elena")
             ],
-            logoPath: "/3m1raTve2RWZ0jfnUwHSnRtjVK3.png",
+            logoPath: "/sg0cMIDL4dwMZEu2wPIFTUppquO.png",
             inCinemas: true
         )
     ]
@@ -1304,8 +1308,8 @@ public enum MockData {
             title: "The Runner",
             mediaType: .movie,
             overview: "A high-stakes psychological thriller following a prominent attorney whose daughter is held hostage by a syndicate demanding the retrieval of sensitive financial data.",
-            posterPath: "/16oqRrWVzQm6qdGfBxvziZ2UiMT.jpg",
-            backdropPath: "/tK3QdOOrX4qEkmSlvrmc8cK7iOU.jpg",
+            posterPath: "/uxCaBoYXsDC4A0SqTm3SISj0OwK.jpg",
+            backdropPath: "/pwIX6Qn9TG1XrBNGzZ7cjZ52Pa8.jpg",
             voteAverage: 7.9,
             voteCount: 1540,
             releaseDateString: "2026-09-02",
@@ -1319,7 +1323,7 @@ public enum MockData {
                 CastMember(id: 9021, name: "Gal Gadot", character: "Katherine"),
                 CastMember(id: 4120, name: "Woody Harrelson", character: "Mason")
             ],
-            logoPath: "/zoJEVzPC6DLHQ5KzoyDQ5357B2z.png",
+            logoPath: "/At3Av06KDQ4GwIKSAh1dnG8wz7G.png",
             inCinemas: false
         ),
         MediaItem(
@@ -1328,7 +1332,7 @@ public enum MockData {
             mediaType: .movie,
             overview: "A charismatic commercial airline pilot and a stoic air marshal must work together when their transatlantic flight is intercepted over the Arctic Circle.",
             posterPath: "/hVXjX1jLZ1ljFSNGXpjJfbTUOa7.jpg",
-            backdropPath: "/e2QAGrEmbpmZpMymDRkDisJkvg9.jpg",
+            backdropPath: "/4gyx49ibwQslyrwuUS1c58PJEEd.jpg",
             voteAverage: 8.1,
             voteCount: 1820,
             releaseDateString: "2026-09-04",
@@ -1342,7 +1346,7 @@ public enum MockData {
                 CastMember(id: 47, name: "Ryan Reynolds", character: "Captain Troy"),
                 CastMember(id: 3120, name: "Kenneth Branagh", character: "Commander Ross")
             ],
-            logoPath: "/kX6ZX4GL7km04332caiOVapR2lb.png",
+            logoPath: "/o7u1JJCrdSoWnNmaoLdEBOBfYG6.png",
             inCinemas: false
         ),
         MediaItem(
@@ -1350,8 +1354,8 @@ public enum MockData {
             title: "Why Did I Get Married Again?",
             mediaType: .movie,
             overview: "Eight married friends reunite for an annual retreat in the Bahamas, only to confront surprising secrets, shifting loyalties, and unexpected life turns.",
-            posterPath: "/rwaxLuOkJ5mMvJU5juNaPcKADOW.jpg",
-            backdropPath: "/A5sGEzVMjvbgh5ZniaHBXAxppKQ.jpg",
+            posterPath: "/bHMtdZFZztcAE5uHHhsY2pWRPB9.jpg",
+            backdropPath: "/lJYniNRM2i9wXnfWVHOB4PxygFZ.jpg",
             voteAverage: 7.5,
             voteCount: 980,
             releaseDateString: "2026-09-09",
@@ -1365,7 +1369,7 @@ public enum MockData {
                 CastMember(id: 5410, name: "Tyler Perry", character: "Terry"),
                 CastMember(id: 6120, name: "Janet Jackson", character: "Patricia")
             ],
-            logoPath: "/3m1raTve2RWZ0jfnUwHSnRtjVK3.png",
+            logoPath: "/opsE1rUAgCy29Bdv6EbXnP1e5PO.png",
             inCinemas: false
         ),
         MediaItem(
@@ -1374,7 +1378,7 @@ public enum MockData {
             mediaType: .movie,
             overview: "Lone astronaut Ryland Grace wakes up aboard a spacecraft with amnesia, slowly discovering he is humanity's last hope to solve an extinction-level solar crisis.",
             posterPath: "/yihdXomYb5kTeSivtFndMy5iDmf.jpg",
-            backdropPath: "/8Tfys3mDZVp4tNoH2ktm06a0Tau.jpg",
+            backdropPath: "/wLWvHcQz7N13DvSOTV7bHgwGXpT.jpg",
             voteAverage: 8.7,
             voteCount: 5120,
             releaseDateString: "2026-07-18",
@@ -1388,7 +1392,7 @@ public enum MockData {
                 CastMember(id: 30614, name: "Ryan Gosling", character: "Ryland Grace"),
                 CastMember(id: 11090, name: "Sandra Hüller", character: "Eva Stratt")
             ],
-            logoPath: "/hCK5tVvTG2c0SrOaPCWMlbMj69A.png",
+            logoPath: "/jvqIELbZctv3Jqtcc7Ic5of8vY7.png",
             inCinemas: false
         ),
         MediaItem(
@@ -1397,7 +1401,7 @@ public enum MockData {
             mediaType: .movie,
             overview: "Enola Holmes uncovers a conspiracy reaching into the heart of London's royal societies while collaborating with her brother Sherlock on a baffling case.",
             posterPath: "/7kRYHH9H9PjBFwz1FprbHB2AAjI.jpg",
-            backdropPath: "/kF8ljC7Y4p1UsmKBi2LxelZpqw.jpg",
+            backdropPath: "/jLuGZc84MvPYCQomQg9DI72mstt.jpg",
             voteAverage: 7.9,
             voteCount: 3200,
             releaseDateString: "2026-07-01",
@@ -1411,7 +1415,7 @@ public enum MockData {
                 CastMember(id: 1356210, name: "Millie Bobby Brown", character: "Enola Holmes"),
                 CastMember(id: 73968, name: "Henry Cavill", character: "Sherlock Holmes")
             ],
-            logoPath: "/3m1raTve2RWZ0jfnUwHSnRtjVK3.png",
+            logoPath: "/pVeJDWwmgXID7Bs8u0d21pr55Oj.png",
             inCinemas: false
         ),
         MediaItem(
@@ -1420,7 +1424,7 @@ public enum MockData {
             mediaType: .movie,
             overview: "Grace thought the Le Domas ritual was behind her until an international branch of high-society elites initiates a new deadly game of survival.",
             posterPath: "/13ZcJzSGEqVgDSqsS9U5EkQwPkV.jpg",
-            backdropPath: "/pmPXXniQlb4EdYY0gVZO90rf54F.jpg",
+            backdropPath: "/fx2cEuadZK28VHKkc0F1nFR96i0.jpg",
             voteAverage: 7.8,
             voteCount: 2450,
             releaseDateString: "2026-07-02",
@@ -1434,16 +1438,16 @@ public enum MockData {
                 CastMember(id: 1150450, name: "Samara Weaving", character: "Grace"),
                 CastMember(id: 54109, name: "Kathryn Newton", character: "Beatrice")
             ],
-            logoPath: "/zoJEVzPC6DLHQ5KzoyDQ5357B2z.png",
+            logoPath: "/4GoX0K6uv0u7YkR1O27CHpyquqS.png",
             inCinemas: false
         ),
         MediaItem(
-            id: 1287401,
+            id: 1007757,
             title: "Swapped",
             mediaType: .movie,
             overview: "In a futuristic society where minds can be temporarily swapped for occupational training, two polar-opposite rivals get trapped in each other's lives.",
-            posterPath: "/tN799oUR0f1gUKDYdMNrDaY7I51.jpg",
-            backdropPath: "/4YyuSadBoc5k6krj0REcYH15DXG.jpg",
+            posterPath: "/tHhxWxge06goXU6ZQH1hj7vK8Hd.jpg",
+            backdropPath: "/zMwhWailP1WY7sb6AoE6b8ugoy.jpg",
             voteAverage: 7.7,
             voteCount: 1980,
             releaseDateString: "2026-06-25",
@@ -1457,16 +1461,16 @@ public enum MockData {
                 CastMember(id: 135651, name: "Michael B. Jordan", character: "Leo (voice)"),
                 CastMember(id: 21094, name: "Juno Temple", character: "Maya (voice)")
             ],
-            logoPath: "/kX6ZX4GL7km04332caiOVapR2lb.png",
+            logoPath: "/gEnzsqzZPHITrRd3KupXbh2KCpY.png",
             inCinemas: false
         ),
         MediaItem(
-            id: 1291840,
-            title: "72 Hours in Miami",
+            id: 949838,
+            title: "72 Hours",
             mediaType: .movie,
-            overview: "A chaotic weekend road trip in Miami turns into an adrenaline-fueled dash across South Beach when two brothers get mixed up with stolen artwork.",
-            posterPath: "/zxcMdx0w5Zmg8yZuuiS7CJ8vOea.jpg",
-            backdropPath: "/dJTWIecL2vxsCRl5G0lRhPsfrhc.jpg",
+            overview: "A chaotic weekend road trip turns into an adrenaline-fueled dash across the city when two brothers get mixed up with stolen contraband.",
+            posterPath: "/9Bu1PW2R1XayqRqnl0aDOgMcrdS.jpg",
+            backdropPath: "/2vAmfcW5GSmIXPnRt1SKBx6dEv6.jpg",
             voteAverage: 7.4,
             voteCount: 1620,
             releaseDateString: "2026-08-14",
@@ -1480,7 +1484,7 @@ public enum MockData {
                 CastMember(id: 55638, name: "Kevin Hart", character: "Marcus"),
                 CastMember(id: 62849, name: "Marlon Wayans", character: "Dre")
             ],
-            logoPath: "/3m1raTve2RWZ0jfnUwHSnRtjVK3.png",
+            logoPath: "/dstq6iwyesaD9Hx4SC8nQOYhJEl.png",
             inCinemas: false
         )
     ]
@@ -1615,7 +1619,7 @@ public enum MockData {
                 mediaType: .movie,
                 overview: "World-famous detective Benoit Blanc heads to Greece to peel back the layers of a mystery surrounding a tech billionaire and his eclectic crew of friends.",
                 posterPath: "/vDGr1YdrlfbU9wxTOdpf3zChmv9.jpg",
-                backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
+                backdropPath: "/y3uOfZAYwLkbvhunswBCskNMrfI.jpg",
                 voteAverage: 7.5,
                 voteCount: 5400,
                 releaseDateString: "2022-12-23",
@@ -1623,7 +1627,8 @@ public enum MockData {
                 runtimeMinutes: 139,
                 tagline: "You can't solve it alone.",
                 certification: "PG-13",
-                streamingProviders: [.netflix]
+                streamingProviders: [.netflix],
+                logoPath: "/8sAA3GbGFQqaJYyOCiJD9n0fVDI.png"
             ),
             MediaItem(
                 id: 800158,
@@ -1683,7 +1688,7 @@ public enum MockData {
                 mediaType: .movie,
                 overview: "When oil is discovered in 1920s Oklahoma under Osage Nation land, the Osage people are murdered one by one until the FBI steps in to unravel the conspiracy.",
                 posterPath: "/dB6Krk806zeqd0YNp2ngQ9zXteH.jpg",
-                backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+                backdropPath: "/nQJ3RWiSMX5FB8wx4cIooR44B1s.jpg",
                 voteAverage: 7.9,
                 voteCount: 3100,
                 releaseDateString: "2023-10-20",
@@ -1691,7 +1696,8 @@ public enum MockData {
                 runtimeMinutes: 206,
                 tagline: "Can you spot the wolves in this picture?",
                 certification: "R",
-                streamingProviders: [.appleTV]
+                streamingProviders: [.appleTV],
+                logoPath: "/1byCcdBqQi9CI50xQTA4cjmVCxf.png"
             ),
             MediaItem(
                 id: 97546,
@@ -1699,7 +1705,7 @@ public enum MockData {
                 mediaType: .tvShow,
                 overview: "An American college football coach is hired to manage a struggling British soccer team, attempting to win over skeptical players and town with optimism.",
                 posterPath: "/uRHsiw1wLxPHFXkkv4Ix1s0O6f4.jpg",
-                backdropPath: "/ixgFmf1X59PUZam2qbAfskx2gQr.jpg",
+                backdropPath: "/nE94ejEbzNCU48bW1oju0dqBONz.jpg",
                 voteAverage: 8.5,
                 voteCount: 4100,
                 releaseDateString: "2020-08-14",
@@ -1707,7 +1713,8 @@ public enum MockData {
                 runtimeMinutes: 35,
                 tagline: "Kindness makes a comeback.",
                 certification: "TV-MA",
-                streamingProviders: [.appleTV]
+                streamingProviders: [.appleTV],
+                logoPath: "/89zpmSMZYx5jShGyr14byW8L1CX.png"
             ),
             MediaItem(
                 id: 776503,
@@ -1715,7 +1722,7 @@ public enum MockData {
                 mediaType: .movie,
                 overview: "As a CODA (Child of Deaf Adults), Ruby is the only hearing person in her deaf family. When the family's fishing business is threatened, Ruby finds herself torn between pursuing her love of music and her fear of abandoning her parents.",
                 posterPath: "/BzVjmm8l23rPsijLiNLUzuQtyd.jpg",
-                backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
+                backdropPath: "/v85FlkbMYKa5du1glm0YfYNsL2n.jpg",
                 voteAverage: 8.1,
                 voteCount: 2200,
                 releaseDateString: "2021-08-13",
@@ -1798,7 +1805,7 @@ public enum MockData {
                 mediaType: .tvShow,
                 overview: "A young fine-dining chef comes home to Chicago to run his family Italian beef sandwich shop after a heartbreaking death in his family.",
                 posterPath: "/eKfVzzEazSIjJMrw9ADa2x8ksLz.jpg",
-                backdropPath: "/nQyQ4c8DUvXra1LDWnNfV9QJluD.jpg",
+                backdropPath: "/eh7hIGLq7IhddgOPYyprCbz8JtH.jpg",
                 voteAverage: 8.6,
                 voteCount: 3900,
                 releaseDateString: "2022-06-23",
@@ -1806,7 +1813,8 @@ public enum MockData {
                 runtimeMinutes: 30,
                 tagline: "Every second counts.",
                 certification: "TV-MA",
-                streamingProviders: [.disneyPlus]
+                streamingProviders: [.disneyPlus],
+                logoPath: "/yuHeksANqi7f2E7oQrw1A2r50Dh.png"
             )
         ],
         StreamingProvider.primeVideo.id: [
@@ -1816,7 +1824,7 @@ public enum MockData {
                 mediaType: .tvShow,
                 overview: "A fun and irreverent take on what happens when superheroes abuse their superpowers rather than use them for good.",
                 posterPath: "/in1R2dDc421JxsoRWaIIAqVI2KE.jpg",
-                backdropPath: "/nQyQ4c8DUvXra1LDWnNfV9QJluD.jpg",
+                backdropPath: "/n6vVs6z8obNbExdD3QHTr4Utu1Z.jpg",
                 voteAverage: 8.5,
                 voteCount: 9400,
                 releaseDateString: "2019-07-26",
@@ -1824,7 +1832,8 @@ public enum MockData {
                 runtimeMinutes: 60,
                 tagline: "Never meet your heroes.",
                 certification: "TV-MA",
-                streamingProviders: [.primeVideo]
+                streamingProviders: [.primeVideo],
+                logoPath: "/lrs0W28PxcamremKIvQvkheiNp9.png"
             ),
             MediaItem(
                 id: 106379,
@@ -1848,7 +1857,7 @@ public enum MockData {
                 mediaType: .movie,
                 overview: "Solène Marchand, a 40-year-old single mother, begins an unexpected romance with 24-year-old Hayes Campbell, the lead singer of August Moon, the hottest boy band on the planet.",
                 posterPath: "/Y5P4Q3q8nrruZ9aD3wXeJS2Plg.jpg",
-                backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+                backdropPath: "/sI6uCeF8mUlZx22mFfHSi9W3XQ9.jpg",
                 voteAverage: 7.4,
                 voteCount: 1600,
                 releaseDateString: "2024-05-02",
@@ -1856,7 +1865,8 @@ public enum MockData {
                 runtimeMinutes: 115,
                 tagline: "Age is just a number.",
                 certification: "R",
-                streamingProviders: [.primeVideo]
+                streamingProviders: [.primeVideo],
+                logoPath: "/fcIKzqbhtlUeWOvYjFdkR8rZOAC.png"
             ),
             MediaItem(
                 id: 359410,
@@ -1986,7 +1996,7 @@ public enum MockData {
                 mediaType: .movie,
                 overview: "Sophie reflects on the shared joy and private melancholy of a holiday she took with her father twenty years earlier as memories fill the gaps between footage.",
                 posterPath: "/evKz85EKouVbIr51zy5fOtpNRPg.jpg",
-                backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+                backdropPath: "/d5l2ITQvpgP0dcWCAG6PUvp8YZw.jpg",
                 voteAverage: 7.8,
                 voteCount: 1200,
                 releaseDateString: "2022-10-21",
@@ -1994,7 +2004,8 @@ public enum MockData {
                 runtimeMinutes: 102,
                 tagline: "Memories that stay.",
                 certification: "R",
-                streamingProviders: [.mubi]
+                streamingProviders: [.mubi],
+                logoPath: "/hZCqSZbRUSUyWIXglKtwuoM0AiV.png"
             ),
             MediaItem(
                 id: 666277,
@@ -2002,7 +2013,7 @@ public enum MockData {
                 mediaType: .movie,
                 overview: "Nora and Hae Sung, two deeply connected childhood friends, are wrested apart after Nora's family emigrates from South Korea. Decades later, they are reunited.",
                 posterPath: "/k3waqVXSnvCZWfJYNtdamTgTtTA.jpg",
-                backdropPath: "/nQyQ4c8DUvXra1LDWnNfV9QJluD.jpg",
+                backdropPath: "/7HR38hMBl23lf38MAN63y4pKsHz.jpg",
                 voteAverage: 7.9,
                 voteCount: 1900,
                 releaseDateString: "2023-06-02",
@@ -2010,7 +2021,8 @@ public enum MockData {
                 runtimeMinutes: 106,
                 tagline: "In-Yun: connected across lifetimes.",
                 certification: "PG-13",
-                streamingProviders: [.mubi]
+                streamingProviders: [.mubi],
+                logoPath: "/7ZS4EoBQrTUatmLfNW6GsJQIBrO.png"
             )
         ],
         StreamingProvider.crunchyroll.id: [
@@ -2036,7 +2048,7 @@ public enum MockData {
                 mediaType: .tvShow,
                 overview: "Yuji Itadori is a boy with tremendous physical strength, though he lives a completely ordinary high school life. One day, to save a classmate, he eats the finger of Ryomen Sukuna.",
                 posterPath: "/6qQzMJG27XOJsyAEEIisoJB45j2.jpg",
-                backdropPath: "/nQyQ4c8DUvXra1LDWnNfV9QJluD.jpg",
+                backdropPath: "/qpin8cASXEVtwhzNsprHYFiOAGk.jpg",
                 voteAverage: 8.6,
                 voteCount: 3800,
                 releaseDateString: "2020-10-03",
@@ -2044,7 +2056,8 @@ public enum MockData {
                 runtimeMinutes: 24,
                 tagline: "Embrace the curse.",
                 certification: "TV-MA",
-                streamingProviders: [.crunchyroll]
+                streamingProviders: [.crunchyroll],
+                logoPath: "/tEmqJ1k4MdjuaKaetn8wGyZGcyC.png"
             )
         ],
         StreamingProvider.nowTV.id: [
@@ -2054,7 +2067,7 @@ public enum MockData {
                 mediaType: .tvShow,
                 overview: "Follow the story of a modern European regime as it begins to unravel over the course of a year within the palace walls.",
                 posterPath: "/ztqPixNyezY6pWSNIP2AlhwPMO0.jpg",
-                backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+                backdropPath: "/lp6Rsgid52BIlzYxWDURFSZZU6m.jpg",
                 voteAverage: 7.2,
                 voteCount: 420,
                 releaseDateString: "2024-03-03",
@@ -2062,7 +2075,8 @@ public enum MockData {
                 runtimeMinutes: 56,
                 tagline: "All power fades.",
                 certification: "TV-MA",
-                streamingProviders: [.nowTV]
+                streamingProviders: [.nowTV],
+                logoPath: "/j8eLuEbl00mOl08Bu95tEpdnRo7.png"
             ),
             MediaItem(
                 id: 787699,
@@ -2070,7 +2084,7 @@ public enum MockData {
                 mediaType: .movie,
                 overview: "Willy Wonka – chock-full of ideas and determined to change the world one delectable bite at a time – is determined to prove that the best things in life begin with a dream.",
                 posterPath: "/qhb1qOilapbapxWQn9jtRCMwXJF.jpg",
-                backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
+                backdropPath: "/uIk2g2bRkNwNywKZIhC5oIU94Kh.jpg",
                 voteAverage: 7.2,
                 voteCount: 3100,
                 releaseDateString: "2023-12-06",
@@ -2078,7 +2092,8 @@ public enum MockData {
                 runtimeMinutes: 116,
                 tagline: "Witness the origin.",
                 certification: "PG",
-                streamingProviders: [.nowTV]
+                streamingProviders: [.nowTV],
+                logoPath: "/7Rq0Bqd9xFeTz0lx19OLj51ovfW.png"
             )
         ],
         StreamingProvider.bbcIPlayer.id: [
@@ -2104,7 +2119,7 @@ public enum MockData {
                 mediaType: .tvShow,
                 overview: "Catherine Cawood is a strong-willed police sergeant in West Yorkshire, still coming to terms with the suicide of her teenage daughter eight years earlier.",
                 posterPath: "/xZK5iQSrn2mouZEk2PwyLPCwa4u.jpg",
-                backdropPath: "/nQyQ4c8DUvXra1LDWnNfV9QJluD.jpg",
+                backdropPath: "/jr02ooBDhTnymi65dj1vXn2o7sx.jpg",
                 voteAverage: 8.4,
                 voteCount: 1100,
                 releaseDateString: "2014-04-29",
@@ -2112,7 +2127,8 @@ public enum MockData {
                 runtimeMinutes: 58,
                 tagline: "Justice takes resilience.",
                 certification: "TV-MA",
-                streamingProviders: [.bbcIPlayer]
+                streamingProviders: [.bbcIPlayer],
+                logoPath: "/9BIYpgFT4vqNATQI5kc2EMIUang.png"
             )
         ],
         StreamingProvider.itvx.id: [
@@ -2122,7 +2138,7 @@ public enum MockData {
                 mediaType: .tvShow,
                 overview: "The murder of a young boy in a small coastal town brings a media frenzy, which threatens to tear the community apart.",
                 posterPath: "/2NhBFUTg5KVBmGwafxtLwVdsqrr.jpg",
-                backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
+                backdropPath: "/9CkwC4rou9468XMLTXaB6bZ0frx.jpg",
                 voteAverage: 8.2,
                 voteCount: 1600,
                 releaseDateString: "2013-03-04",
@@ -2130,7 +2146,8 @@ public enum MockData {
                 runtimeMinutes: 48,
                 tagline: "Secrets run deep.",
                 certification: "TV-14",
-                streamingProviders: [.itvx]
+                streamingProviders: [.itvx],
+                logoPath: "/u20mcBZHZCTFSRA8Mm7PJP5qIF8.png"
             ),
             MediaItem(
                 id: 645689,
@@ -2138,7 +2155,7 @@ public enum MockData {
                 mediaType: .movie,
                 overview: "In 1961, Kempton Bunton, a 60-year-old taxi driver, stole Goya's portrait of the Duke of Wellington from the National Gallery in London.",
                 posterPath: "/zXlj7NgSWg0NbK2zfUh0nbGZVuz.jpg",
-                backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+                backdropPath: "/wddNG1To5jUwmX8gwcGjZSpckwg.jpg",
                 voteAverage: 7.2,
                 voteCount: 450,
                 releaseDateString: "2022-02-25",
@@ -2146,7 +2163,8 @@ public enum MockData {
                 runtimeMinutes: 96,
                 tagline: "An extraordinarily true heist.",
                 certification: "PG-13",
-                streamingProviders: [.itvx]
+                streamingProviders: [.itvx],
+                logoPath: "/9tMPGMBWuZr21MxrKLGa2CQGGQ6.png"
             )
         ],
         StreamingProvider.channel4.id: [
@@ -2172,7 +2190,7 @@ public enum MockData {
                 mediaType: .tvShow,
                 overview: "A chronicle of four friends during a decade in which everything changed, including the rise of AIDS in 1980s London.",
                 posterPath: "/tUaNS4b5TIiP1SwpHCYCbUoGpHG.jpg",
-                backdropPath: "/dKqa850uvbNSCaQCV4Im1XlzEtQ.jpg",
+                backdropPath: "/3rVG321Ne5nSh5IeO5hlLn6dFyA.jpg",
                 voteAverage: 8.5,
                 voteCount: 950,
                 releaseDateString: "2021-01-22",
@@ -2180,7 +2198,8 @@ public enum MockData {
                 runtimeMinutes: 48,
                 tagline: "Remember the days.",
                 certification: "TV-MA",
-                streamingProviders: [.channel4]
+                streamingProviders: [.channel4],
+                logoPath: "/jdcPKcDVPWgXPrSIv5oaDB0n0H8.png"
             )
         ],
         StreamingProvider.skyGo.id: [
@@ -2190,7 +2209,7 @@ public enum MockData {
                 mediaType: .tvShow,
                 overview: "When the head of a criminal organization is assassinated, the sudden power vacuum creates a battle between rival gangs on the streets of London.",
                 posterPath: "/fVgwa6wGw9ddGM5O7mqrrwB6gHK.jpg",
-                backdropPath: "/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg",
+                backdropPath: "/9aJ6KwLASA38WzdMRVjk7ILpuTv.jpg",
                 voteAverage: 7.9,
                 voteCount: 880,
                 releaseDateString: "2020-04-23",
@@ -2198,7 +2217,8 @@ public enum MockData {
                 runtimeMinutes: 58,
                 tagline: "Blood runs the city.",
                 certification: "TV-MA",
-                streamingProviders: [.skyGo]
+                streamingProviders: [.skyGo],
+                logoPath: "/m6bPFRegqJhO0MNvQUHvYWffLGt.png"
             ),
             MediaItem(
                 id: 866398,
@@ -2394,7 +2414,7 @@ public enum MockData {
                 CastMember(id: 3223, name: "Robert Downey Jr.", character: "Victor von Doom"),
                 CastMember(id: 71580, name: "Benedict Cumberbatch", character: "Doctor Strange")
             ],
-            logoPath: "/enJPk9TdYB4zCO1mIwiRYAb5yqY.png",
+            logoPath: "/6rfcehI0kmv2y8aGqKIYWENXO8y.png",
             inCinemas: false
         ),
         MediaItem(
@@ -2417,7 +2437,7 @@ public enum MockData {
                 CastMember(id: 34567, name: "Tom Blyth", character: "Young Haymitch"),
                 CastMember(id: 19492, name: "Jason Schwartzman", character: "Lucky Flickerman")
             ],
-            logoPath: "/s10CeAphteFqLxb2h4g5FvpiQkU.png",
+            logoPath: "/a3fhznw2K5WmDWFX7gf4AEBByRY.png",
             inCinemas: false
         ),
         MediaItem(
@@ -2464,7 +2484,7 @@ public enum MockData {
                 CastMember(id: 3594, name: "David Harbour", character: "Santa Claus"),
                 CastMember(id: 54321, name: "Beverly D'Angelo", character: "Gertrude")
             ],
-            logoPath: "/kLkhOLx1khXHLNMSBmR7750xv2j.png",
+            logoPath: "/pSgertcFBwVeF9ihdfhdbHueekz.png",
             inCinemas: false
         )
     ]

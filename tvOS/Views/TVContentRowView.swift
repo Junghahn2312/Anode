@@ -245,6 +245,9 @@ public struct TVExpandingMediaCardView: View {
                 onFocus?(item)
             }
         }
+        .onChange(of: item.id) { _, _ in
+            loadedLogoPath = nil
+        }
     }
 }
 
@@ -310,6 +313,7 @@ public struct TVContentRowView: View {
                             }
                         }
                         .buttonStyle(.tvCard)
+                        .id(item.id)
                     }
                 }
                 .padding(.horizontal, horizontalPadding)
@@ -384,6 +388,7 @@ public struct TVLandscapeRowView: View {
                             }
                         }
                         .buttonStyle(.tvCard)
+                        .id(item.id)
                     }
                 }
                 .padding(.horizontal, 60)
@@ -462,6 +467,7 @@ public struct TVTopTenRowView: View {
                             }
                         }
                         .buttonStyle(.tvCard)
+                        .id(item.id)
                     }
                 }
                 .padding(.horizontal, 60)
