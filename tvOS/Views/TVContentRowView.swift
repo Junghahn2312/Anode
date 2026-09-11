@@ -67,6 +67,14 @@ public struct TVRowInfoPanel: View {
                             .foregroundColor(.red)
                     }
                 }
+                
+                if !item.formattedTheatricalReleaseDate.isEmpty {
+                    Text("•")
+                        .foregroundColor(.white.opacity(0.4))
+                    Text("In Cinemas: \(item.formattedTheatricalReleaseDate)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.85))
+                }
             }
             
             // Synopsis / Overview text (Image 2)
@@ -112,12 +120,23 @@ public struct TVExpandingMediaCardView: View {
         normalWidth * 1.5
     }
     
+    private var expandedWidth: CGFloat {
+        cardHeight * 16.0 / 9.0
+    }
+    
     public var body: some View {
         ZStack(alignment: .bottomLeading) {
-            // All posters always portrait
-            CachedAsyncImage(url: item.posterURL(size: "w500"))
-                .frame(width: normalWidth, height: cardHeight)
-                .clipped()
+            // Unfocused: Portrait Poster | Focused: 16:9 Landscape Backdrop
+            if isFocused {
+                let backdrop = item.backdropURL(size: "w780") ?? item.posterURL(size: "w500")
+                CachedAsyncImage(url: backdrop)
+                    .frame(width: expandedWidth, height: cardHeight)
+                    .clipped()
+            } else {
+                CachedAsyncImage(url: item.posterURL(size: "w500"))
+                    .frame(width: normalWidth, height: cardHeight)
+                    .clipped()
+            }
             
             // Expanded Card Overlays: Title & Badges on artwork when focused
             if isFocused {
@@ -131,7 +150,7 @@ public struct TVExpandingMediaCardView: View {
                     Spacer()
                     
                     Text(item.title)
-                        .font(.system(size: 18, weight: .black))
+                        .font(.system(size: 19, weight: .black))
                         .foregroundColor(.white)
                         .lineLimit(1)
                         .shadow(color: .black.opacity(0.8), radius: 4, x: 0, y: 2)
@@ -142,6 +161,15 @@ public struct TVExpandingMediaCardView: View {
                                 .font(.system(size: 10, weight: .black))
                                 .tracking(0.8)
                                 .foregroundColor(.red)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(.ultraThinMaterial, in: Capsule())
+                        }
+                        
+                        if !item.formattedTheatricalReleaseDate.isEmpty && (item.inCinemas || showCinemaBadge) {
+                            Text(item.formattedTheatricalReleaseDate)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white.opacity(0.9))
                                 .padding(.horizontal, 7)
                                 .padding(.vertical, 3)
                                 .background(.ultraThinMaterial, in: Capsule())
@@ -161,7 +189,7 @@ public struct TVExpandingMediaCardView: View {
                         }
                     }
                 }
-                .padding(12)
+                .padding(14)
                 .transition(.opacity)
             } else {
                 VStack {
@@ -180,9 +208,8 @@ public struct TVExpandingMediaCardView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(isFocused ? Color.white.opacity(0.95) : Color.clear, lineWidth: 2.5)
         }
-        .frame(width: normalWidth, height: cardHeight)
+        .frame(width: isFocused ? expandedWidth : normalWidth, height: cardHeight)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .scaleEffect(isFocused ? 1.08 : 1.0)
         .zIndex(isFocused ? 10 : 1)
         .shadow(
             color: Color.black.opacity(isFocused ? 0.8 : 0.25),
@@ -190,7 +217,7 @@ public struct TVExpandingMediaCardView: View {
             x: 0,
             y: isFocused ? 10 : 2
         )
-        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+        .animation(.spring(response: 0.42, dampingFraction: 0.88), value: isFocused)
         .onChange(of: isFocused) { _, focused in
             if focused {
                 onFocus?(item)
@@ -235,7 +262,7 @@ public struct TVContentRowView: View {
                 .foregroundColor(.white)
                 .padding(.horizontal, 60)
             
-            // Horizontal Card Carousel with Portrait Cards & Slight Hover Extend
+            // Horizontal Card Carousel with Expanding Cards
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 28) {
                     ForEach(items) { item in
@@ -247,7 +274,7 @@ public struct TVContentRowView: View {
                                 normalWidth: 190,
                                 showCinemaBadge: showCinemaBadge
                             ) { focused in
-                                withAnimation(.spring(response: 0.40, dampingFraction: 0.88)) {
+                                withAnimation(.easeInOut(duration: 0.45)) {
                                     self.focusedItem = focused
                                 }
                                 self.onHover?(focused)
@@ -260,13 +287,17 @@ public struct TVContentRowView: View {
                 .padding(.vertical, 24)
             }
             
-            // Inline Detail Panel - Only displayed when this row is active
-            if isRowActive, let active = focusedItem {
-                TVRowInfoPanel(item: active)
-                    .padding(.horizontal, 60)
-                    .transition(.opacity)
-                    .id(active.id)
+            // Inline Detail Panel - Smooth soft transition with zero abrupt disappearing
+            ZStack(alignment: .leading) {
+                if let active = focusedItem {
+                    TVRowInfoPanel(item: active)
+                        .opacity(isRowActive ? 1.0 : 0.0)
+                        .frame(height: isRowActive ? nil : 0, alignment: .top)
+                        .clipped()
+                }
             }
+            .padding(.horizontal, 60)
+            .animation(.easeInOut(duration: 0.50), value: isRowActive)
         }
         .focusSection()
     }
@@ -330,13 +361,17 @@ public struct TVLandscapeRowView: View {
                 .padding(.vertical, 24)
             }
             
-            // Inline Detail Panel - Only displayed when this row is active
-            if isRowActive, let active = focusedItem {
-                TVRowInfoPanel(item: active)
-                    .padding(.horizontal, 60)
-                    .transition(.opacity)
-                    .id(active.id)
+            // Inline Detail Panel - Smooth soft transition with zero abrupt disappearing
+            ZStack(alignment: .leading) {
+                if let active = focusedItem {
+                    TVRowInfoPanel(item: active)
+                        .opacity(isRowActive ? 1.0 : 0.0)
+                        .frame(height: isRowActive ? nil : 0, alignment: .top)
+                        .clipped()
+                }
             }
+            .padding(.horizontal, 60)
+            .animation(.easeInOut(duration: 0.50), value: isRowActive)
         }
         .focusSection()
     }
@@ -400,13 +435,17 @@ public struct TVTopTenRowView: View {
                 .padding(.vertical, 24)
             }
             
-            // Inline Detail Panel - Only displayed when this row is active
-            if isRowActive, let active = focusedItem {
-                TVRowInfoPanel(item: active)
-                    .padding(.horizontal, 60)
-                    .transition(.opacity)
-                    .id(active.id)
+            // Inline Detail Panel - Smooth soft transition with zero abrupt disappearing
+            ZStack(alignment: .leading) {
+                if let active = focusedItem {
+                    TVRowInfoPanel(item: active)
+                        .opacity(isRowActive ? 1.0 : 0.0)
+                        .frame(height: isRowActive ? nil : 0, alignment: .top)
+                        .clipped()
+                }
             }
+            .padding(.horizontal, 60)
+            .animation(.easeInOut(duration: 0.50), value: isRowActive)
         }
         .focusSection()
     }

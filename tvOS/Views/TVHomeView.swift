@@ -6,7 +6,10 @@ public struct TVHomeView: View {
     @ObservedObject private var watchlist = WatchlistStore.shared
     @ObservedObject private var trakt = TraktStore.shared
     
-    @State private var heroIndex: Int = 0
+    private var heroIndex: Int {
+        get { engine.homeHeroIndex }
+        nonmutating set { engine.homeHeroIndex = newValue }
+    }
     @State private var isUserInteracting: Bool = false
     @State private var selectedItem: MediaItem?
     @State private var heroAvailability: WatchAvailability?
@@ -96,7 +99,7 @@ public struct TVHomeView: View {
         }
         .ignoresSafeArea()
         .onReceive(timer) { _ in
-            if !isUserInteracting && !heroPool.isEmpty {
+            if activeRowIndex == -1 && !isUserInteracting && !heroPool.isEmpty {
                 withAnimation(.easeInOut(duration: 0.8)) {
                     heroIndex = (heroIndex + 1) % heroPool.count
                 }
@@ -277,6 +280,13 @@ public struct TVHomeView: View {
                             }
                         }
                         .buttonStyle(.tvCard)
+                        .onMoveCommand { direction in
+                            if direction == .left {
+                                withAnimation(.easeInOut(duration: 0.40)) {
+                                    heroIndex = (heroIndex - 1 + heroPool.count) % max(1, heroPool.count)
+                                }
+                            }
+                        }
                         
                         Button {
                             watchlist.toggleWatchlist(item: hero)
@@ -292,6 +302,13 @@ public struct TVHomeView: View {
                             }
                         }
                         .buttonStyle(.tvCard)
+                        .onMoveCommand { direction in
+                            if direction == .right {
+                                withAnimation(.easeInOut(duration: 0.40)) {
+                                    heroIndex = (heroIndex + 1) % max(1, heroPool.count)
+                                }
+                            }
+                        }
                     }
                     Spacer()
                 }
@@ -324,17 +341,6 @@ public struct TVHomeView: View {
         }
         .frame(width: screenWidth, height: screenHeight)
         .animation(.easeInOut(duration: 0.45), value: hero.id)
-        .onMoveCommand { direction in
-            if direction == .left {
-                withAnimation(.easeInOut(duration: 0.40)) {
-                    heroIndex = (heroIndex - 1 + heroPool.count) % max(1, heroPool.count)
-                }
-            } else if direction == .right {
-                withAnimation(.easeInOut(duration: 0.40)) {
-                    heroIndex = (heroIndex + 1) % max(1, heroPool.count)
-                }
-            }
-        }
     }
     
     // MARK: - Content Rows Section with Continue Watching & Subtle Ranked Numerals
@@ -351,8 +357,8 @@ public struct TVHomeView: View {
             }
         }
         if activeRowIndex != rowIndex {
-            self.activeRowIndex = rowIndex
-            withAnimation(.easeInOut(duration: 0.35)) {
+            withAnimation(.easeInOut(duration: 0.50)) {
+                self.activeRowIndex = rowIndex
                 AppNavigation.shared.isTopBarVisible = (rowIndex <= 0)
             }
         }

@@ -11,7 +11,6 @@ public struct TVDiscoveryView: View {
     @State private var platformTopMovies: [MediaItem] = []
     @State private var platformTopTV: [MediaItem] = []
     @State private var platformNew: [MediaItem] = []
-    @State private var isLoadingPlatform: Bool = false
     
     @State private var selectedItem: MediaItem? = nil
     @State private var hoveredItem: MediaItem? = nil
@@ -158,7 +157,7 @@ public struct TVDiscoveryView: View {
                 HStack(spacing: 14) {
                     // All Media Catalog Button
                     Button {
-                        withAnimation(.easeInOut(duration: 0.35)) {
+                        withAnimation(.easeInOut(duration: 0.45)) {
                             selectedProvider = nil
                             hoveredItem = nil
                             activeRowIndex = -1
@@ -169,21 +168,14 @@ public struct TVDiscoveryView: View {
                             title: "All Catalog",
                             brandColor: .cyan,
                             isSelected: selectedProvider == nil
-                        ) {
-                            withAnimation(.easeInOut(duration: 0.35)) {
-                                selectedProvider = nil
-                                hoveredItem = nil
-                                activeRowIndex = -1
-                                AppNavigation.shared.isTopBarVisible = true
-                            }
-                        }
+                        )
                     }
                     .buttonStyle(.tvCard)
                     
                     // Streaming Platform Buttons
                     ForEach(StreamingProvider.allCases, id: \.id) { provider in
                         Button {
-                            withAnimation(.easeInOut(duration: 0.35)) {
+                            withAnimation(.easeInOut(duration: 0.45)) {
                                 selectedProvider = provider
                                 hoveredItem = nil
                                 activeRowIndex = -1
@@ -195,15 +187,7 @@ public struct TVDiscoveryView: View {
                                 title: provider.name,
                                 brandColor: provider.brandColor,
                                 isSelected: selectedProvider?.id == provider.id
-                            ) {
-                                withAnimation(.easeInOut(duration: 0.35)) {
-                                    selectedProvider = provider
-                                    hoveredItem = nil
-                                    activeRowIndex = -1
-                                    AppNavigation.shared.isTopBarVisible = true
-                                }
-                                Task { await loadPlatformContent(provider) }
-                            }
+                            )
                         }
                         .buttonStyle(.tvCard)
                     }
@@ -211,7 +195,10 @@ public struct TVDiscoveryView: View {
                 .padding(.horizontal, 60)
                 .padding(.vertical, 6)
             }
+            .focusSection()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .focusSection()
     }
     
     // MARK: - Dedicated Streaming Platform Catalog Section
@@ -254,72 +241,68 @@ public struct TVDiscoveryView: View {
                 .buttonStyle(.tvCard)
             }
             .padding(.horizontal, 60)
+            .frame(maxWidth: .infinity)
+            .focusSection()
             
-            if isLoadingPlatform {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 28) {
-                        ForEach(0..<6, id: \.self) { _ in
-                            TVSkeletonCardView(width: 210)
-                        }
-                    }
-                    .padding(.horizontal, 60)
-                    .padding(.vertical, 16)
+            // Row 0: Top 10 Movies Trending on [Platform]
+            if !platformTopMovies.isEmpty {
+                TVTopTenRowView(
+                    title: "Top 10 Movies Trending on \(provider.name)",
+                    items: Array(platformTopMovies.prefix(10)),
+                    isRowActive: activeRowIndex == 0,
+                    onHover: { handleRowHover($0, rowIndex: 0) }
+                ) { item in
+                    selectedItem = item
                 }
-            } else {
-                // Row 0: Top 10 Movies Trending on [Platform]
-                if !platformTopMovies.isEmpty {
-                    TVTopTenRowView(
-                        title: "Top 10 Movies Trending on \(provider.name)",
-                        items: Array(platformTopMovies.prefix(10)),
-                        isRowActive: activeRowIndex == 0,
-                        onHover: { handleRowHover($0, rowIndex: 0) }
-                    ) { item in
-                        selectedItem = item
-                    }
-                    .id("discovery-row-0")
+                .id("discovery-row-0-\(provider.id)")
+                .transition(.opacity)
+            }
+            
+            // Row 1: Top 10 TV Shows Trending on [Platform]
+            if !platformTopTV.isEmpty {
+                TVTopTenRowView(
+                    title: "Top 10 TV Shows Trending on \(provider.name)",
+                    items: Array(platformTopTV.prefix(10)),
+                    isRowActive: activeRowIndex == 1,
+                    onHover: { handleRowHover($0, rowIndex: 1) }
+                ) { item in
+                    selectedItem = item
                 }
-                
-                // Row 1: Top 10 TV Shows Trending on [Platform]
-                if !platformTopTV.isEmpty {
-                    TVTopTenRowView(
-                        title: "Top 10 TV Shows Trending on \(provider.name)",
-                        items: Array(platformTopTV.prefix(10)),
-                        isRowActive: activeRowIndex == 1,
-                        onHover: { handleRowHover($0, rowIndex: 1) }
-                    ) { item in
-                        selectedItem = item
-                    }
-                    .id("discovery-row-1")
+                .id("discovery-row-1-\(provider.id)")
+                .transition(.opacity)
+            }
+            
+            // Row 2: New to [Platform]
+            if !platformNew.isEmpty {
+                TVContentRowView(
+                    title: "New to \(provider.name)",
+                    items: platformNew,
+                    isRowActive: activeRowIndex == 2,
+                    onHover: { handleRowHover($0, rowIndex: 2) }
+                ) { item in
+                    selectedItem = item
                 }
-                
-                // Row 2: New to [Platform]
-                if !platformNew.isEmpty {
-                    TVContentRowView(
-                        title: "New to \(provider.name)",
-                        items: platformNew,
-                        isRowActive: activeRowIndex == 2,
-                        onHover: { handleRowHover($0, rowIndex: 2) }
-                    ) { item in
-                        selectedItem = item
-                    }
-                    .id("discovery-row-2")
+                .id("discovery-row-2-\(provider.id)")
+                .transition(.opacity)
+            }
+            
+            // Row 3: Critically Acclaimed on [Platform]
+            let acclaimed = (platformTopMovies + platformTopTV).filter { $0.rating >= 7.5 }
+            if !acclaimed.isEmpty {
+                TVContentRowView(
+                    title: "Critically Acclaimed on \(provider.name)",
+                    items: acclaimed,
+                    isRowActive: activeRowIndex == 3,
+                    onHover: { handleRowHover($0, rowIndex: 3) }
+                ) { item in
+                    selectedItem = item
                 }
-                
-                // Row 3: Critically Acclaimed on [Platform]
-                let acclaimed = (platformTopMovies + platformTopTV).filter { $0.rating >= 7.5 }
-                if !acclaimed.isEmpty {
-                    TVContentRowView(
-                        title: "Critically Acclaimed on \(provider.name)",
-                        items: acclaimed,
-                        isRowActive: activeRowIndex == 3,
-                        onHover: { handleRowHover($0, rowIndex: 3) }
-                    ) { item in
-                        selectedItem = item
-                    }
-                    .id("discovery-row-3")
-                }
+                .id("discovery-row-3-\(provider.id)")
+                .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.50), value: provider.id)
+        .animation(.easeInOut(duration: 0.50), value: platformTopMovies.first?.id)
     }
     
     // MARK: - Main All-Catalog Section with Filters & Genres ("All Movies Ever with Filters")
@@ -333,7 +316,7 @@ public struct TVDiscoveryView: View {
                 HStack(spacing: 12) {
                     ForEach(MediaTypeFilter.allCases) { filter in
                         Button {
-                            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                            withAnimation(.easeInOut(duration: 0.35)) {
                                 selectedMediaType = filter
                                 hoveredItem = nil
                                 activeRowIndex = -1
@@ -343,26 +326,21 @@ public struct TVDiscoveryView: View {
                             DiscoveryFilterPillLabel(
                                 title: filter.rawValue,
                                 isSelected: selectedMediaType == filter
-                            ) {
-                                withAnimation(.easeInOut(duration: 0.35)) {
-                                    selectedMediaType = filter
-                                    hoveredItem = nil
-                                    activeRowIndex = -1
-                                    AppNavigation.shared.isTopBarVisible = true
-                                }
-                            }
+                            )
                         }
                         .buttonStyle(.tvCard)
                     }
                 }
                 .padding(.horizontal, 60)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .focusSection()
                 
                 // Curated Genre Filter Pills
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         // "All Genres" pill
                         Button {
-                            withAnimation(.easeInOut(duration: 0.25)) {
+                            withAnimation(.easeInOut(duration: 0.35)) {
                                 selectedGenre = nil
                                 hoveredItem = nil
                                 activeRowIndex = -1
@@ -372,20 +350,13 @@ public struct TVDiscoveryView: View {
                             DiscoveryFilterPillLabel(
                                 title: "All Genres",
                                 isSelected: selectedGenre == nil
-                            ) {
-                                withAnimation(.easeInOut(duration: 0.35)) {
-                                    selectedGenre = nil
-                                    hoveredItem = nil
-                                    activeRowIndex = -1
-                                    AppNavigation.shared.isTopBarVisible = true
-                                }
-                            }
+                            )
                         }
                         .buttonStyle(.tvCard)
                         
                         ForEach(GenreCategory.allCurated) { genre in
                             Button {
-                                withAnimation(.easeInOut(duration: 0.25)) {
+                                withAnimation(.easeInOut(duration: 0.35)) {
                                     selectedGenre = genre
                                     hoveredItem = nil
                                     activeRowIndex = -1
@@ -395,14 +366,7 @@ public struct TVDiscoveryView: View {
                                 DiscoveryFilterPillLabel(
                                     title: genre.name,
                                     isSelected: selectedGenre?.id == genre.id
-                                ) {
-                                    withAnimation(.easeInOut(duration: 0.35)) {
-                                        selectedGenre = genre
-                                        hoveredItem = nil
-                                        activeRowIndex = -1
-                                        AppNavigation.shared.isTopBarVisible = true
-                                    }
-                                }
+                                )
                             }
                             .buttonStyle(.tvCard)
                         }
@@ -410,6 +374,8 @@ public struct TVDiscoveryView: View {
                     .padding(.horizontal, 60)
                     .padding(.vertical, 4)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .focusSection()
             }
             
             // Dedicated Section: Fresh from Theatres (New to Rent or Buy)
@@ -591,27 +557,33 @@ public struct TVDiscoveryView: View {
     // MARK: - Row Hover & Platform Loading Helpers
     
     private func handleRowHover(_ item: MediaItem, rowIndex: Int) {
-        withAnimation(.easeInOut(duration: 0.45)) {
+        withAnimation(.easeInOut(duration: 0.50)) {
             self.hoveredItem = item
         }
         if activeRowIndex != rowIndex {
-            self.activeRowIndex = rowIndex
-        }
-        withAnimation(.easeInOut(duration: 0.35)) {
-            AppNavigation.shared.isTopBarVisible = (rowIndex <= 0)
+            withAnimation(.easeInOut(duration: 0.50)) {
+                self.activeRowIndex = rowIndex
+            }
+            withAnimation(.easeInOut(duration: 0.35)) {
+                AppNavigation.shared.isTopBarVisible = (rowIndex <= 0)
+            }
         }
     }
     
     private func loadPlatformContent(_ provider: StreamingProvider) async {
-        isLoadingPlatform = true
         async let topMoviesTask = engine.loadPlatformTopMovies(provider: provider)
         async let topTVTask = engine.loadPlatformTopTV(provider: provider)
         async let newTask = engine.loadPlatformNew(provider: provider)
         
-        self.platformTopMovies = await topMoviesTask
-        self.platformTopTV = await topTVTask
-        self.platformNew = await newTask
-        isLoadingPlatform = false
+        let movies = await topMoviesTask
+        let tv = await topTVTask
+        let newItems = await newTask
+        
+        withAnimation(.easeInOut(duration: 0.50)) {
+            self.platformTopMovies = movies
+            self.platformTopTV = tv
+            self.platformNew = newItems
+        }
     }
 }
 
@@ -621,7 +593,6 @@ private struct DiscoveryPlatformPillLabel: View {
     let title: String
     let brandColor: Color
     let isSelected: Bool
-    let onFocusAction: () -> Void
     
     @Environment(\.isFocused) private var isFocused: Bool
     
@@ -662,18 +633,12 @@ private struct DiscoveryPlatformPillLabel: View {
         .scaleEffect(isFocused ? 1.06 : 1.0)
         .shadow(color: isFocused ? Color.white.opacity(0.35) : Color.clear, radius: 8)
         .animation(.spring(response: 0.32, dampingFraction: 0.8), value: isFocused)
-        .onChange(of: isFocused) { _, focused in
-            if focused {
-                onFocusAction()
-            }
-        }
     }
 }
 
 private struct DiscoveryFilterPillLabel: View {
     let title: String
     let isSelected: Bool
-    let onFocusAction: () -> Void
     
     @Environment(\.isFocused) private var isFocused: Bool
     
@@ -709,10 +674,5 @@ private struct DiscoveryFilterPillLabel: View {
             .scaleEffect(isFocused ? 1.05 : 1.0)
             .shadow(color: isFocused ? Color.white.opacity(0.3) : Color.clear, radius: 6)
             .animation(.spring(response: 0.32, dampingFraction: 0.8), value: isFocused)
-            .onChange(of: isFocused) { _, focused in
-                if focused {
-                    onFocusAction()
-                }
-            }
     }
 }

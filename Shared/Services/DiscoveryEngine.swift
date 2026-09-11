@@ -25,6 +25,8 @@ public final class DiscoveryEngine: ObservableObject {
     @Published public var upcoming: [MediaItem] = []
     @Published public var topTen: [MediaItem] = []
     @Published public var genres: [GenreCategory] = GenreCategory.allCurated
+    @Published public var homeHeroIndex: Int = 0
+    @Published public var cinemaHeroIndex: Int = 0
     
     @Published public var selectedProvider: StreamingProvider = .netflix {
         didSet {

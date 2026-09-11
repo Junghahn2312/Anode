@@ -7,7 +7,10 @@ public struct TVCinemaView: View {
     @State private var selectedItem: MediaItem?
     @State private var hoveredItem: MediaItem? = nil
     @State private var activeRowIndex: Int = -1
-    @State private var heroIndex: Int = 0
+    private var heroIndex: Int {
+        get { engine.cinemaHeroIndex }
+        nonmutating set { engine.cinemaHeroIndex = newValue }
+    }
     @State private var isUserInteracting: Bool = false
     @State private var heroLogoPath: String? = nil
     
@@ -87,7 +90,7 @@ public struct TVCinemaView: View {
         }
         .ignoresSafeArea()
         .onReceive(timer) { _ in
-            if !isUserInteracting && !heroPool.isEmpty {
+            if activeRowIndex == -1 && !isUserInteracting && !heroPool.isEmpty {
                 withAnimation(.easeInOut(duration: 0.8)) {
                     heroIndex = (heroIndex + 1) % heroPool.count
                 }
@@ -226,6 +229,14 @@ public struct TVCinemaView: View {
                         RatingBadge(rating: hero.formattedRating)
                     }
                     
+                    if !hero.formattedTheatricalReleaseDate.isEmpty {
+                        Text("•")
+                            .foregroundColor(.white.opacity(0.4))
+                        Text("In Cinemas: \(hero.formattedTheatricalReleaseDate)")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white.opacity(0.95))
+                    }
+                    
                     if !hero.formattedRuntime.isEmpty {
                         Text("•")
                             .foregroundColor(.white.opacity(0.4))
@@ -270,6 +281,13 @@ public struct TVCinemaView: View {
                             }
                         }
                         .buttonStyle(.tvCard)
+                        .onMoveCommand { direction in
+                            if direction == .left {
+                                withAnimation(.easeInOut(duration: 0.40)) {
+                                    heroIndex = (heroIndex - 1 + heroPool.count) % max(1, heroPool.count)
+                                }
+                            }
+                        }
                         
                         Button {
                             watchlist.toggleWatchlist(item: hero)
@@ -284,6 +302,13 @@ public struct TVCinemaView: View {
                             }
                         }
                         .buttonStyle(.tvCard)
+                        .onMoveCommand { direction in
+                            if direction == .right {
+                                withAnimation(.easeInOut(duration: 0.40)) {
+                                    heroIndex = (heroIndex + 1) % max(1, heroPool.count)
+                                }
+                            }
+                        }
                     }
                     Spacer()
                 }
@@ -310,27 +335,18 @@ public struct TVCinemaView: View {
         }
         .frame(width: screenWidth, height: screenHeight)
         .animation(.easeInOut(duration: 0.45), value: hero.id)
-        .onMoveCommand { direction in
-            if direction == .left {
-                withAnimation(.easeInOut(duration: 0.40)) {
-                    heroIndex = (heroIndex - 1 + heroPool.count) % max(1, heroPool.count)
-                }
-            } else if direction == .right {
-                withAnimation(.easeInOut(duration: 0.40)) {
-                    heroIndex = (heroIndex + 1) % max(1, heroPool.count)
-                }
-            }
-        }
     }
     
     // MARK: - Strict Theatrical Content Rows
     
     private func handleRowHover(_ item: MediaItem, rowIndex: Int) {
-        withAnimation(.easeInOut(duration: 0.45)) {
+        withAnimation(.easeInOut(duration: 0.50)) {
             self.hoveredItem = item
         }
         if activeRowIndex != rowIndex {
-            self.activeRowIndex = rowIndex
+            withAnimation(.easeInOut(duration: 0.50)) {
+                self.activeRowIndex = rowIndex
+            }
             withAnimation(.easeInOut(duration: 0.35)) {
                 AppNavigation.shared.isTopBarVisible = (rowIndex <= 0)
             }

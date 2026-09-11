@@ -40,7 +40,12 @@ public struct TVTopTabBarView: View {
                     TVTopTabButtonLabel(
                         title: tab.title,
                         systemImage: tab.systemImage,
-                        isSelected: selectedTab == tab.id
+                        isSelected: selectedTab == tab.id,
+                        onFocus: {
+                            withAnimation(.easeInOut(duration: 0.35)) {
+                                selectedTab = tab.id
+                            }
+                        }
                     )
                 }
                 .buttonStyle(.tvCard)
@@ -65,6 +70,7 @@ private struct TVTopTabButtonLabel: View {
     let title: String
     let systemImage: String
     let isSelected: Bool
+    let onFocus: () -> Void
     
     @Environment(\.isFocused) private var isFocused: Bool
     
@@ -97,6 +103,11 @@ private struct TVTopTabButtonLabel: View {
         )
         .scaleEffect(isFocused ? 1.05 : 1.0)
         .animation(.spring(response: 0.30, dampingFraction: 0.8), value: isFocused)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                onFocus()
+            }
+        }
     }
 }
 

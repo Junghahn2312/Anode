@@ -55,7 +55,6 @@ public struct TVContinueWatchingRowView: View {
 
 public struct TVContinueWatchingSyncButton: View {
     @ObservedObject private var trakt = TraktStore.shared
-    @Environment(\.isFocused) private var isFocused: Bool
     
     public init() {}
     
@@ -65,33 +64,44 @@ public struct TVContinueWatchingSyncButton: View {
                 await trakt.refresh()
             }
         } label: {
-            HStack(spacing: 8) {
-                Text("Continue Watching")
-                    .font(.system(size: 16, weight: .bold))
-                
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 12, weight: .bold))
-                    .rotationEffect(trakt.isSyncing ? .degrees(360) : .zero)
-                    .animation(trakt.isSyncing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: trakt.isSyncing)
-                
-                if trakt.isSyncing {
-                    Text("Syncing...")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(isFocused ? Color.black.opacity(0.8) : Color.white.opacity(0.85))
-                }
-            }
-            .foregroundColor(isFocused ? .black : .white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(
-                Capsule()
-                    .fill(isFocused ? Color.white : Color.white.opacity(0.12))
-            )
-            .overlay(
-                Capsule().stroke(Color.white.opacity(isFocused ? 1.0 : 0.22), lineWidth: 1)
-            )
+            TVContinueWatchingSyncButtonLabel(isSyncing: trakt.isSyncing)
         }
         .buttonStyle(.tvCard)
+    }
+}
+
+private struct TVContinueWatchingSyncButtonLabel: View {
+    let isSyncing: Bool
+    @Environment(\.isFocused) private var isFocused: Bool
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("Continue Watching")
+                .font(.system(size: 16, weight: .bold))
+            
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .font(.system(size: 13, weight: .bold))
+                .rotationEffect(isSyncing ? .degrees(360) : .zero)
+                .animation(isSyncing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isSyncing)
+            
+            if isSyncing {
+                Text("Syncing...")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+        }
+        .foregroundColor(isFocused ? .black : .white)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(isFocused ? Color.white : Color.white.opacity(0.14))
+        )
+        .overlay(
+            Capsule().stroke(isFocused ? Color.white : Color.white.opacity(0.25), lineWidth: isFocused ? 2 : 1)
+        )
+        .scaleEffect(isFocused ? 1.08 : 1.0)
+        .shadow(color: isFocused ? Color.white.opacity(0.45) : Color.clear, radius: 10)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isFocused)
     }
 }
 

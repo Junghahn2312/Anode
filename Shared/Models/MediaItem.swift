@@ -85,6 +85,20 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
         releaseDateString
     }
     
+    public var formattedTheatricalReleaseDate: String {
+        guard let releaseDateString, !releaseDateString.isEmpty else { return "" }
+        let inputFormatter = DateFormatter()
+        inputFormatter.dateFormat = "yyyy-MM-dd"
+        inputFormatter.locale = Locale(identifier: "en_US_POSIX")
+        if let date = inputFormatter.date(from: releaseDateString) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateStyle = .medium
+            displayFormatter.timeStyle = .none
+            return displayFormatter.string(from: date)
+        }
+        return releaseDateString
+    }
+    
     public var formattedRating: String {
         guard voteAverage > 0 else { return "NR" }
         return String(format: "%.1f", voteAverage)
