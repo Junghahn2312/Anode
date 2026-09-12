@@ -837,43 +837,58 @@ public actor TMDBService: ContentProvider {
 
     
     public func search(query: String) async -> [MediaItem] {
-        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return [] }
-        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-        if let items = try? await getPagedMedia(endpoint: "/search/multi?query=\(encoded)", type: .movie), !items.isEmpty {
-            return items
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed
+        let q = trimmed.lowercased()
+        
+        async let multiTask = try? getPagedMedia(endpoint: "/search/multi?query=\(encoded)", type: .movie)
+        async let movieTask = try? getPagedMedia(endpoint: "/search/movie?query=\(encoded)", type: .movie)
+        async let tvTask = try? getPagedMedia(endpoint: "/search/tv?query=\(encoded)", type: .tvShow)
+        
+        let multiResults = (await multiTask) ?? []
+        let movieResults = (await movieTask) ?? []
+        let tvResults = (await tvTask) ?? []
+        
+        var combined = multiResults + movieResults + tvResults
+        if combined.isEmpty {
+            let all = MockData.cinemaMovies + MockData.trendingItems + MockData.newReleases + MockData.topRated + MockData.upcoming
+            combined = all.filter { item in
+                item.title.lowercased().contains(q) ||
+                item.genreNames.contains(where: { $0.lowercased().contains(q) }) ||
+                item.cast.contains(where: { $0.name.lowercased().contains(q) || $0.character.lowercased().contains(q) })
+            }
         }
         
-        let q = query.lowercased()
-        let all = MockData.cinemaMovies + MockData.trendingItems + MockData.newReleases + MockData.topRated + MockData.upcoming
         var seen = Set<Int>()
-        var results = [MediaItem]()
-        for item in all {
+        var unique: [MediaItem] = []
+        for item in combined {
             if !seen.contains(item.id) {
-                let matchesTitle = item.title.lowercased().contains(q)
-                let matchesGenre = item.genreNames.contains(where: { $0.lowercased().contains(q) })
-                let matchesCast = item.cast.contains(where: { $0.name.lowercased().contains(q) || $0.character.lowercased().contains(q) })
-                let matchesOverview = item.overview.lowercased().contains(q)
-                if matchesTitle || matchesGenre || matchesCast || matchesOverview {
-                    seen.insert(item.id)
-                    results.append(item)
-                }
+                seen.insert(item.id)
+                unique.append(item)
             }
         }
-        if results.isEmpty {
-            for item in all {
-                if !seen.contains(item.id) {
-                    seen.insert(item.id)
-                    results.append(item)
-                    if results.count >= 8 { break }
-                }
+        
+        // Prioritize items whose title begins with query, then sort by popularity & vote count
+        unique.sort { a, b in
+            let aStarts = a.title.lowercased().hasPrefix(q)
+            let bStarts = b.title.lowercased().hasPrefix(q)
+            if aStarts != bStarts {
+                return aStarts
             }
+            let aScore = Double(a.voteCount) + (a.voteAverage * 100.0)
+            let bScore = Double(b.voteCount) + (b.voteAverage * 100.0)
+            return aScore > bScore
         }
-        return results
+        
+        return unique
     }
     
     public func searchPeople(query: String) async -> [CastMember] {
-        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return [] }
-        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed
+        let q = trimmed.lowercased()
         guard let url = URL(string: "\(baseURL)/search/person?query=\(encoded)&api_key=\(apiKey)&language=en-US") else { return [] }
         
         do {
@@ -881,15 +896,28 @@ public actor TMDBService: ContentProvider {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else { return [] }
             let decoded = try JSONDecoder().decode(TMDBPersonSearchResponse.self, from: data)
-            return decoded.results.compactMap { dto in
+            var candidates = decoded.results.compactMap { dto -> (member: CastMember, pop: Double)? in
                 guard let id = dto.id, let name = dto.name, !name.isEmpty else { return nil }
-                return CastMember(
+                let member = CastMember(
                     id: id,
                     name: name,
                     character: dto.known_for_department ?? "Acting",
                     profilePath: dto.profile_path
                 )
+                return (member, dto.popularity ?? 0.0)
             }
+            
+            candidates.sort { a, b in
+                let aHasPic = a.member.profilePath != nil
+                let bHasPic = b.member.profilePath != nil
+                if aHasPic != bHasPic { return aHasPic }
+                let aStarts = a.member.name.lowercased().hasPrefix(q)
+                let bStarts = b.member.name.lowercased().hasPrefix(q)
+                if aStarts != bStarts { return aStarts }
+                return a.pop > b.pop
+            }
+            
+            return candidates.map { $0.member }
         } catch {
             return []
         }
@@ -1202,6 +1230,7 @@ private struct TMDBPersonSearchDTO: Codable {
     let name: String?
     let profile_path: String?
     let known_for_department: String?
+    let popularity: Double?
 }
 
 private struct TMDBCreditsResponse: Codable {

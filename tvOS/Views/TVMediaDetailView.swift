@@ -406,7 +406,7 @@ public struct TVMediaDetailView: View {
                 .padding(.top, 4)
             }
             .padding(.horizontal, 60)
-            .padding(.bottom, 80)
+            .padding(.bottom, 190)
         }
         .frame(width: screenWidth, height: heroHeight)
     }

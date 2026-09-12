@@ -6,31 +6,35 @@ public struct TVTrailerPlayerView: UIViewRepresentable {
     public let videoURL: URL
     public let isMuted: Bool
     public let loopPlayback: Bool
+    public let onReadyToPlay: (() -> Void)?
     public let onPlaybackEnded: (() -> Void)?
     
     public init(
         videoURL: URL,
         isMuted: Bool = false,
         loopPlayback: Bool = false,
+        onReadyToPlay: (() -> Void)? = nil,
         onPlaybackEnded: (() -> Void)? = nil
     ) {
         self.videoURL = videoURL
         self.isMuted = isMuted
         self.loopPlayback = loopPlayback
+        self.onReadyToPlay = onReadyToPlay
         self.onPlaybackEnded = onPlaybackEnded
     }
     
     public func makeUIView(context: Context) -> TVTrailerPlayerUIView {
         let view = TVTrailerPlayerUIView()
-        view.load(url: videoURL, isMuted: isMuted, loopPlayback: loopPlayback, onPlaybackEnded: onPlaybackEnded)
+        view.load(url: videoURL, isMuted: isMuted, loopPlayback: loopPlayback, onReadyToPlay: onReadyToPlay, onPlaybackEnded: onPlaybackEnded)
         return view
     }
     
     public func updateUIView(_ uiView: TVTrailerPlayerUIView, context: Context) {
+        uiView.onReadyToPlay = onReadyToPlay
         uiView.onPlaybackEnded = onPlaybackEnded
         uiView.loopPlayback = loopPlayback
         if uiView.currentURL != videoURL {
-            uiView.load(url: videoURL, isMuted: isMuted, loopPlayback: loopPlayback, onPlaybackEnded: onPlaybackEnded)
+            uiView.load(url: videoURL, isMuted: isMuted, loopPlayback: loopPlayback, onReadyToPlay: onReadyToPlay, onPlaybackEnded: onPlaybackEnded)
         }
     }
     
@@ -49,6 +53,7 @@ public final class TVTrailerPlayerUIView: UIView {
     }
     
     public private(set) var currentURL: URL?
+    public var onReadyToPlay: (() -> Void)?
     public var onPlaybackEnded: (() -> Void)?
     public var loopPlayback: Bool = false
     private var player: AVPlayer?
@@ -72,10 +77,11 @@ public final class TVTrailerPlayerUIView: UIView {
         alpha = 0.0
     }
     
-    public func load(url: URL, isMuted: Bool, loopPlayback: Bool = false, onPlaybackEnded: (() -> Void)? = nil) {
+    public func load(url: URL, isMuted: Bool, loopPlayback: Bool = false, onReadyToPlay: (() -> Void)? = nil, onPlaybackEnded: (() -> Void)? = nil) {
         tearDown()
         currentURL = url
         self.loopPlayback = loopPlayback
+        self.onReadyToPlay = onReadyToPlay
         self.onPlaybackEnded = onPlaybackEnded
         
         do {
@@ -118,6 +124,7 @@ public final class TVTrailerPlayerUIView: UIView {
                         self?.alpha = 1.0
                     }
                     self?.player?.play()
+                    self?.onReadyToPlay?()
                 }
             }
         }

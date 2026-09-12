@@ -148,74 +148,78 @@ public struct TVExpandingMediaCardView: View {
     }
     
     public var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            // Unfocused or before trailer starts playing: Portrait Poster
-            // Focused AND trailer playing: 16:9 Landscape Backdrop with Live Trailer
-            if isExpanded {
-                let backdrop = item.backdropURL(size: "w780") ?? item.posterURL(size: "w500")
-                CachedAsyncImage(url: backdrop)
-                    .frame(width: expandedWidth, height: cardHeight)
-                    .clipped()
+        VStack(alignment: .leading, spacing: 6) {
+            // Media Poster / Live Video Card
+            ZStack(alignment: .bottomLeading) {
+                // Base Artwork (Poster or Backdrop)
+                if isExpanded {
+                    let backdrop = item.backdropURL(size: "w780") ?? item.posterURL(size: "w500")
+                    CachedAsyncImage(url: backdrop)
+                        .frame(width: expandedWidth, height: cardHeight)
+                        .clipped()
+                } else {
+                    CachedAsyncImage(url: item.posterURL(size: "w500"))
+                        .frame(width: normalWidth, height: cardHeight)
+                        .clipped()
+                }
                 
-                if let trailerURL = trailerURL {
+                // Persistent Video Player (Plays at high quality, triggers expansion only when readyToPlay)
+                if let trailerURL = trailerURL, isFocused {
                     TVTrailerPlayerView(
                         videoURL: trailerURL,
                         isMuted: false,
+                        loopPlayback: false,
+                        onReadyToPlay: {
+                            withAnimation(.spring(response: 0.45, dampingFraction: 0.86)) {
+                                self.isPlayingTrailer = true
+                            }
+                        },
                         onPlaybackEnded: {
-                            withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
+                            withAnimation(.spring(response: 0.45, dampingFraction: 0.86)) {
                                 self.isPlayingTrailer = false
                                 self.trailerURL = nil
                             }
                         }
                     )
-                    .frame(width: expandedWidth, height: cardHeight)
+                    .frame(width: isExpanded ? expandedWidth : normalWidth, height: cardHeight)
                     .clipped()
-                    .transition(.opacity)
+                    .opacity(isPlayingTrailer ? 1.0 : 0.0)
                 }
-            } else {
-                CachedAsyncImage(url: item.posterURL(size: "w500"))
-                    .frame(width: normalWidth, height: cardHeight)
-                    .clipped()
-            }
-            
-            // Overlays
-            if isExpanded {
-                // Soft bottom gradient for logo legibility
-                LinearGradient(
-                    stops: [
-                        .init(color: Color.clear, location: 0.25),
-                        .init(color: Color.black.opacity(0.85), location: 1.0)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
                 
-                // ONLY the media's logo artwork (no text, no rating, no genre, no cinema badge)
-                VStack {
-                    Spacer()
-                    HStack {
-                        if let logoPath = loadedLogoPath ?? item.logoPath,
-                           let logoURL = URL(string: logoPath.hasPrefix("http") ? logoPath : "https://image.tmdb.org/t/p/w500\(logoPath)") {
-                            CachedAsyncImage(url: logoURL, contentMode: .fit)
-                                .frame(maxWidth: expandedWidth * 0.58, maxHeight: cardHeight * 0.42, alignment: .bottomLeading)
-                                .shadow(color: Color.black.opacity(0.90), radius: 6, x: 0, y: 3)
-                        } else {
-                            Text(item.title.uppercased())
-                                .font(.system(size: 20, weight: .black, design: .serif))
-                                .tracking(1.8)
-                                .foregroundColor(.white)
-                                .lineLimit(2)
-                                .shadow(color: Color.black.opacity(0.95), radius: 6, x: 0, y: 3)
-                        }
+                // Overlays
+                if isExpanded {
+                    LinearGradient(
+                        stops: [
+                            .init(color: Color.clear, location: 0.25),
+                            .init(color: Color.black.opacity(0.85), location: 1.0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    
+                    VStack {
                         Spacer()
+                        HStack {
+                            if let logoPath = loadedLogoPath ?? item.logoPath,
+                               let logoURL = URL(string: logoPath.hasPrefix("http") ? logoPath : "https://image.tmdb.org/t/p/w500\(logoPath)") {
+                                CachedAsyncImage(url: logoURL, contentMode: .fit)
+                                    .frame(maxWidth: expandedWidth * 0.58, maxHeight: cardHeight * 0.42, alignment: .bottomLeading)
+                                    .shadow(color: Color.black.opacity(0.90), radius: 6, x: 0, y: 3)
+                            } else {
+                                Text(item.title.uppercased())
+                                    .font(.system(size: 20, weight: .black, design: .serif))
+                                    .tracking(1.8)
+                                    .foregroundColor(.white)
+                                    .lineLimit(2)
+                                    .shadow(color: Color.black.opacity(0.95), radius: 6, x: 0, y: 3)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 14)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 14)
-                }
-                .transition(.opacity)
-            } else {
-                // Unfocused state or focused before trailer plays: rank numeral if top 10, or rating badge
-                if let rank = rank {
+                    .transition(.opacity)
+                } else if let rank = rank {
                     VStack {
                         HStack {
                             Text("\(rank)")
@@ -228,32 +232,44 @@ public struct TVExpandingMediaCardView: View {
                         }
                         Spacer()
                     }
-                } else if !item.formattedRating.isEmpty {
-                    VStack {
-                        HStack {
-                            Spacer()
-                            RatingBadge(rating: item.formattedRating)
-                                .padding(8)
-                        }
-                        Spacer()
-                    }
+                }
+                
+                // Crisp White Outline on Focus
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(isFocused ? Color.white.opacity(0.95) : Color.clear, lineWidth: 2.5)
+            }
+            .frame(width: isExpanded ? expandedWidth : normalWidth, height: cardHeight)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(
+                color: Color.black.opacity(isFocused ? 0.8 : 0.25),
+                radius: isFocused ? 24 : 6,
+                x: 0,
+                y: isFocused ? 10 : 2
+            )
+            
+            // Title & Year Underneath (Matching Image media_1789227248530.png)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(isFocused ? .white : .white.opacity(0.92))
+                    .lineLimit(1)
+                
+                if !item.yearString.isEmpty {
+                    Text(item.yearString)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(isFocused ? .white.opacity(0.85) : .white.opacity(0.55))
+                        .lineLimit(1)
                 }
             }
-            
-            // Crisp White Outline on Focus
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isFocused ? Color.white.opacity(0.95) : Color.clear, lineWidth: 2.5)
+            .frame(width: isExpanded ? expandedWidth : normalWidth, alignment: .leading)
+            .padding(.horizontal, 2)
+            .padding(.top, 2)
         }
-        .frame(width: isExpanded ? expandedWidth : normalWidth, height: cardHeight)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .frame(width: isExpanded ? expandedWidth : normalWidth)
+        .scaleEffect(isFocused && !isExpanded ? 1.04 : 1.0)
         .zIndex(isFocused ? 20 : 1)
-        .shadow(
-            color: Color.black.opacity(isFocused ? 0.8 : 0.25),
-            radius: isFocused ? 24 : 6,
-            x: 0,
-            y: isFocused ? 10 : 2
-        )
-        .animation(.spring(response: 0.58, dampingFraction: 0.86), value: isExpanded)
+        .animation(.spring(response: 0.45, dampingFraction: 0.86), value: isExpanded)
+        .animation(.spring(response: 0.35, dampingFraction: 0.86), value: isFocused)
         .applyMoveUp(onMoveUp: onMoveUp)
         .task(id: isFocused) {
             guard isFocused else {
@@ -271,21 +287,17 @@ public struct TVExpandingMediaCardView: View {
                 onFocus?(enriched)
             }()
             
-            // 1-second hover countdown before expanding card and playing trailer with sound
+            // Fast smooth hover: 200ms debounce before resolving and pre-buffering trailer
             do {
-                async let resolveTask = TrailerService.shared.resolveTrailerStream(for: item)
-                try await Task.sleep(nanoseconds: 1_000_000_000)
+                try await Task.sleep(nanoseconds: 200_000_000)
                 guard !Task.isCancelled else { return }
                 
-                if let resolvedURL = await resolveTask {
+                if let resolvedURL = await TrailerService.shared.resolveTrailerStream(for: item) {
                     guard !Task.isCancelled else { return }
-                    withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
-                        self.trailerURL = resolvedURL
-                        self.isPlayingTrailer = true
-                    }
+                    self.trailerURL = resolvedURL
                 }
             } catch {
-                // Focus changed before 1 second, cancelled cleanly
+                // Focus changed before debounce, cancelled cleanly
             }
             
             _ = await enrichTask
@@ -294,7 +306,7 @@ public struct TVExpandingMediaCardView: View {
             if focused {
                 onFocus?(item)
             } else {
-                withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.86)) {
                     isPlayingTrailer = false
                     trailerURL = nil
                 }
@@ -308,7 +320,7 @@ public struct TVExpandingMediaCardView: View {
     }
 }
 
-// MARK: - Standard Content Row with Expanding Cards & Inline Info Strip
+// MARK: - Standard Content Row with Expanding Cards
 
 public struct TVContentRowView: View {
     let title: String
@@ -344,12 +356,18 @@ public struct TVContentRowView: View {
     
     public var body: some View {
         if !items.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                // Row Title
-                Text(title)
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, horizontalPadding)
+            VStack(alignment: .leading, spacing: 14) {
+                // Row Title with Chevron (Matching reference photo)
+                HStack(spacing: 8) {
+                    Text(title)
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white.opacity(0.60))
+                }
+                .padding(.horizontal, horizontalPadding)
                 
                 // Horizontal Card Carousel with Expanding Cards
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -364,7 +382,7 @@ public struct TVContentRowView: View {
                                     showCinemaBadge: showCinemaBadge,
                                     onMoveUp: onMoveUp
                                 ) { focused in
-                                    withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
+                                    withAnimation(.spring(response: 0.45, dampingFraction: 0.86)) {
                                         self.focusedItem = focused
                                     }
                                     self.onHover?(focused)
@@ -374,20 +392,8 @@ public struct TVContentRowView: View {
                         }
                     }
                     .padding(.horizontal, horizontalPadding)
-                    .padding(.vertical, 24)
+                    .padding(.vertical, 20)
                 }
-                
-                // Inline Detail Panel - Fixed height ensures stable vertical row rhythm with zero layout shifting
-                ZStack(alignment: .leading) {
-                    if let active = focusedItem {
-                        TVRowInfoPanel(item: active)
-                            .opacity(isRowActive ? 1.0 : 0.0)
-                    }
-                }
-                .frame(height: 72, alignment: .top)
-                .clipped()
-                .padding(.horizontal, horizontalPadding)
-                .animation(.easeInOut(duration: 0.48), value: isRowActive)
             }
             .focusSection()
         }
@@ -500,12 +506,18 @@ public struct TVTopTenRowView: View {
     
     public var body: some View {
         if !items.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                // Row Title
-                Text(title)
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 60)
+            VStack(alignment: .leading, spacing: 14) {
+                // Row Title with Chevron
+                HStack(spacing: 8) {
+                    Text(title)
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white.opacity(0.60))
+                }
+                .padding(.horizontal, 60)
                 
                 // Horizontal Card Carousel
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -520,7 +532,7 @@ public struct TVTopTenRowView: View {
                                     rank: index + 1,
                                     onMoveUp: onMoveUp
                                 ) { focused in
-                                    withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
+                                    withAnimation(.spring(response: 0.45, dampingFraction: 0.86)) {
                                         self.focusedItem = focused
                                     }
                                     self.onHover?(focused)
@@ -530,20 +542,8 @@ public struct TVTopTenRowView: View {
                         }
                     }
                     .padding(.horizontal, 60)
-                    .padding(.vertical, 24)
+                    .padding(.vertical, 20)
                 }
-                
-                // Inline Detail Panel - Fixed height ensures stable vertical row rhythm with zero layout shifting
-                ZStack(alignment: .leading) {
-                    if let active = focusedItem {
-                        TVRowInfoPanel(item: active)
-                            .opacity(isRowActive ? 1.0 : 0.0)
-                    }
-                }
-                .frame(height: 72, alignment: .top)
-                .clipped()
-                .padding(.horizontal, 60)
-                .animation(.easeInOut(duration: 0.48), value: isRowActive)
             }
             .focusSection()
         }

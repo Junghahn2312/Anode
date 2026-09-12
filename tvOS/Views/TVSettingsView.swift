@@ -1,17 +1,12 @@
 import SwiftUI
 
 public enum SettingsSection: String, CaseIterable, Identifiable {
-    case icloud = "iCloud"
     case accounts = "Accounts"
-    case metadata = "Metadata"
-    case widgets = "Widgets"
-    case addons = "Addons"
     case library = "Library"
-    case progress = "Progress"
     case videoPlayer = "Video Player"
     case subtitles = "Subtitles"
-    case homeStyle = "Home Style"
-    case iconPacks = "Icon Packs"
+    case appearance = "Appearance"
+    case icloud = "iCloud"
     case about = "About"
     
     public var id: String { rawValue }
@@ -19,45 +14,30 @@ public enum SettingsSection: String, CaseIterable, Identifiable {
     
     public var iconName: String {
         switch self {
-        case .icloud: return "icloud.fill"
         case .accounts: return "person.crop.circle.fill"
-        case .metadata: return "square.stack.3d.up.fill"
-        case .widgets: return "square.grid.2x2.fill"
-        case .addons: return "puzzlepiece.fill"
         case .library: return "folder.fill"
-        case .progress: return "chart.bar.fill"
         case .videoPlayer: return "play.rectangle.fill"
         case .subtitles: return "captions.bubble.fill"
-        case .homeStyle: return "paintpalette.fill"
-        case .iconPacks: return "app.badge.fill"
+        case .appearance: return "paintpalette.fill"
+        case .icloud: return "icloud.fill"
         case .about: return "info.circle.fill"
         }
     }
     
     public var summary: String {
         switch self {
-        case .icloud:
-            return "Synchronize your watchlist, playback progress, and settings via iCloud."
         case .accounts:
             return "Connect your Trakt account to sync watch history, ratings, and lists."
-        case .metadata:
-            return "Data providers, content language, and localized catalog caches."
-        case .widgets:
-            return "Configure Apple TV Top Shelf previews and home screen widgets."
-        case .addons:
-            return "Installed stream extensions, trailer engines, and metadata sources."
         case .library:
             return "Manage your personal watchlist, saved media, and storage."
-        case .progress:
-            return "Scrobbling thresholds, resume points, and episode progress tracking."
         case .videoPlayer:
-            return "Streaming resolution, HDR playback preferences, and audio boost."
+            return "Streaming resolution, trailer playback preferences, and audio settings."
         case .subtitles:
             return "Default subtitle languages, font sizing, and appearance."
-        case .homeStyle:
+        case .appearance:
             return "Select your startup destination tab and hero presentation layout."
-        case .iconPacks:
-            return "Choose your preferred home screen and interface theme icon."
+        case .icloud:
+            return "Synchronize your watchlist, playback progress, and settings via iCloud."
         case .about:
             return "Anode tvOS version, legal attributions, and licenses."
         }
@@ -68,7 +48,7 @@ public struct TVSettingsView: View {
     @ObservedObject private var watchlist = WatchlistStore.shared
     @ObservedObject private var trakt = TraktStore.shared
     
-    @State private var hoveredSection: SettingsSection = .addons
+    @State private var hoveredSection: SettingsSection = .accounts
     @State private var activeSubpage: SettingsSection? = nil
     @State private var showingClearAlert: Bool = false
     @State private var preferredQuality: String = "1080p Full HD"
@@ -133,15 +113,15 @@ public struct TVSettingsView: View {
         }
     }
     
-    // MARK: - Root Settings Screen (Matching User Reference Image Exactly)
+    // MARK: - Root Settings Screen (Matching User Reference Image)
     
     private var rootSettingsView: some View {
-        HStack(alignment: .center, spacing: 0) {
-            // Left Half: Large Squircle Card with Hovered Section Icon and Label
+        HStack(alignment: .top, spacing: 80) {
+            // Left Half: Large Squircle Card with Anode Logo
             VStack(spacing: 24) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 68, style: .continuous)
-                        .fill(Color(white: 0.18))
+                        .fill(Color(white: 0.16))
                         .frame(width: 360, height: 360)
                         .overlay(
                             RoundedRectangle(cornerRadius: 68, style: .continuous)
@@ -149,13 +129,7 @@ public struct TVSettingsView: View {
                         )
                         .shadow(color: Color.black.opacity(0.35), radius: 28, y: 8)
                     
-                    if hoveredSection == .addons {
-                        AddonsTwinChevronLogoView(size: 160)
-                    } else {
-                        Image(systemName: hoveredSection.iconName)
-                            .font(.system(size: 130, weight: .light))
-                            .foregroundColor(.white)
-                    }
+                    AnodeLogoView(size: 200)
                 }
                 .id(hoveredSection.rawValue)
                 .transition(.opacity)
@@ -165,11 +139,13 @@ public struct TVSettingsView: View {
                     .font(.system(size: 34, weight: .bold))
                     .foregroundColor(.white)
             }
-            .frame(maxWidth: .infinity)
+            .frame(width: 380)
+            .padding(.leading, 120)
+            .padding(.top, 140)
             
-            // Right Half: Vertical List of Settings Options
+            // Right Half: Vertical List of Settings Options - Shifted down and rightward
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 9) {
+                VStack(spacing: 12) {
                     ForEach(SettingsSection.allCases) { section in
                         Button {
                             withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) {
@@ -184,21 +160,21 @@ public struct TVSettingsView: View {
                         }
                         .buttonStyle(.tvCard)
                         .focused($focusedSection, equals: section)
-                        .applyMoveUp(onMoveUp: section == .icloud ? {
+                        .applyMoveUp(onMoveUp: section == .accounts ? {
                             focusedSection = nil
                             AppNavigation.shared.focusTopBarTrigger += 1
                         } : nil)
                     }
                 }
-                .padding(.top, 100)
+                .padding(.top, 140)
                 .padding(.bottom, 80)
                 .frame(width: 540)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.trailing, 60)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.trailing, 100)
             .focusSection()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onChange(of: AppNavigation.shared.focusSettingsTrigger) { _, _ in
             focusedSection = hoveredSection
         }
@@ -207,7 +183,7 @@ public struct TVSettingsView: View {
     // MARK: - Subpage Drill-Down View
     
     private func subpageView(for section: SettingsSection) -> some View {
-        HStack(alignment: .top, spacing: 60) {
+        HStack(alignment: .top, spacing: 70) {
             // Left Column: Navigation Title, Back Button, Category Preview Card & Description
             VStack(alignment: .leading, spacing: 22) {
                 Button {
@@ -225,7 +201,7 @@ public struct TVSettingsView: View {
                 
                 ZStack {
                     RoundedRectangle(cornerRadius: 52, style: .continuous)
-                        .fill(Color(white: 0.18))
+                        .fill(Color(white: 0.16))
                         .frame(width: 320, height: 320)
                         .overlay(
                             RoundedRectangle(cornerRadius: 52, style: .continuous)
@@ -233,13 +209,7 @@ public struct TVSettingsView: View {
                         )
                         .shadow(color: Color.black.opacity(0.35), radius: 24, y: 8)
                     
-                    if section == .addons {
-                        AddonsTwinChevronLogoView(size: 130)
-                    } else {
-                        Image(systemName: section.iconName)
-                            .font(.system(size: 110, weight: .light))
-                            .foregroundColor(.white)
-                    }
+                    AnodeLogoView(size: 170)
                 }
                 .frame(width: 320)
                 
@@ -250,45 +220,36 @@ public struct TVSettingsView: View {
                     .frame(width: 320, alignment: .leading)
             }
             .frame(width: 360)
-            .padding(.leading, 80)
-            .padding(.top, 55)
+            .padding(.leading, 120)
+            .padding(.top, 80)
             .focusSection()
             
             // Right Column: Settings Details
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 26) {
                     switch section {
-                    case .icloud:
-                        icloudDetailPane
                     case .accounts:
                         accountsDetailPane
-                    case .metadata:
-                        metadataDetailPane
-                    case .widgets:
-                        widgetsDetailPane
-                    case .addons:
-                        addonsDetailPane
                     case .library:
                         libraryDetailPane
-                    case .progress:
-                        progressDetailPane
                     case .videoPlayer:
                         videoPlayerDetailPane
                     case .subtitles:
                         subtitlesDetailPane
-                    case .homeStyle:
-                        homeStyleDetailPane
-                    case .iconPacks:
-                        iconPacksDetailPane
+                    case .appearance:
+                        appearanceDetailPane
+                    case .icloud:
+                        icloudDetailPane
                     case .about:
                         aboutDetailPane
                     }
                 }
-                .padding(.top, 55)
-                .padding(.trailing, 80)
+                .padding(.top, 80)
+                .padding(.trailing, 100)
                 .padding(.bottom, 80)
                 .frame(width: 620)
             }
+            .frame(maxWidth: .infinity, alignment: .trailing)
             .focusSection()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -384,90 +345,7 @@ public struct TVSettingsView: View {
         }
     }
     
-    private var metadataDetailPane: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("CATALOG & PROVIDERS")
-                
-                TVSettingsRowItem(
-                    title: "Metadata Provider",
-                    value: "The Movie Database (TMDB)"
-                ) {}
-                
-                TVSettingsRowItem(
-                    title: "Language",
-                    value: "English (US)"
-                ) {}
-                
-                TVSettingsRowItem(
-                    title: cacheRefreshStatus ?? "Flush Metadata Cache & Reload",
-                    icon: "arrow.clockwise"
-                ) {
-                    cacheRefreshStatus = "Flushing..."
-                    Task {
-                        await TMDBService.shared.clearMemoryCache()
-                        try? await Task.sleep(nanoseconds: 800_000_000)
-                        await DiscoveryEngine.shared.loadAll()
-                        cacheRefreshStatus = "Cache Flushed Successfully"
-                        try? await Task.sleep(nanoseconds: 1_500_000_000)
-                        cacheRefreshStatus = nil
-                    }
-                }
-                
-                sectionFooter("Refreshes all catalog records and streaming availability data from providers.")
-            }
-        }
-    }
-    
-    private var widgetsDetailPane: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("APPLE TV HOME WIDGETS")
-                
-                TVSettingsRowItem(
-                    title: "Top Shelf Display",
-                    value: "Continue Watching"
-                ) {}
-                
-                TVSettingsRowItem(
-                    title: "Show Trending in Shelf",
-                    value: "Enabled"
-                ) {}
-                
-                sectionFooter("Configures the interactive showcase shown on the Apple TV home screen.")
-            }
-        }
-    }
-    
-    private var addonsDetailPane: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("INSTALLED ADDONS & EXTENSIONS")
-                
-                TVSettingsRowItem(
-                    title: "Trailer Stream Engine",
-                    value: "Active"
-                ) {}
-                
-                TVSettingsRowItem(
-                    title: "Rotten Tomatoes 1080p Engine",
-                    value: "Enabled"
-                ) {}
-                
-                TVSettingsRowItem(
-                    title: "iTunes Previews Addon",
-                    value: "Active"
-                ) {}
-                
-                TVSettingsRowItem(
-                    title: "Cinemeta Catalog Integration",
-                    value: "Connected"
-                ) {}
-                
-                sectionFooter("High-speed direct video resolution addons for live backdrop playback.")
-            }
-        }
-    }
+
     
     private var libraryDetailPane: some View {
         VStack(alignment: .leading, spacing: 22) {
@@ -499,26 +377,6 @@ public struct TVSettingsView: View {
         }
     }
     
-    private var progressDetailPane: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("PLAYBACK PROGRESS")
-                
-                TVSettingsRowItem(
-                    title: "Mark as Watched Threshold",
-                    value: "80%"
-                ) {}
-                
-                TVSettingsRowItem(
-                    title: "Auto-Resume Playback",
-                    value: "Always"
-                ) {}
-                
-                sectionFooter("Threshold for automatic scrobbling to Trakt.")
-            }
-        }
-    }
-    
     private var videoPlayerDetailPane: some View {
         VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 10) {
@@ -536,7 +394,7 @@ public struct TVSettingsView: View {
                 
                 TVSettingsRowItem(
                     title: "Trailer Autoplay Delay",
-                    value: "1 Second"
+                    value: "Fast (0.35s)"
                 ) {}
                 
                 sectionFooter("Trailers stream at the highest available resolution up to 1080p Full HD.")
@@ -564,7 +422,7 @@ public struct TVSettingsView: View {
         }
     }
     
-    private var homeStyleDetailPane: some View {
+    private var appearanceDetailPane: some View {
         VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 10) {
                 sectionHeader("STARTUP DESTINATION")
@@ -582,13 +440,9 @@ public struct TVSettingsView: View {
                 
                 sectionFooter("Choose which section opens automatically when Anode launches.")
             }
-        }
-    }
-    
-    private var iconPacksDetailPane: some View {
-        VStack(alignment: .leading, spacing: 22) {
+            
             VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("APP ICON PACKS")
+                sectionHeader("APP THEME & ICON")
                 
                 let icons = ["Default Dark", "Cinema Slate", "Onyx Black"]
                 ForEach(icons, id: \.self) { icon in
@@ -600,7 +454,7 @@ public struct TVSettingsView: View {
                     }
                 }
                 
-                sectionFooter("Customize the app icon presentation on tvOS.")
+                sectionFooter("Customize the app interface and appearance theme on tvOS.")
             }
         }
     }
@@ -654,9 +508,9 @@ public struct TVSettingsView: View {
     }
 }
 
-// MARK: - Addons Twin Chevron Logo View (Matching Screenshot Exact Shape)
+// MARK: - Anode Logo View
 
-public struct AddonsTwinChevronLogoView: View {
+public struct AnodeLogoView: View {
     public var size: CGFloat = 160
     
     public init(size: CGFloat = 160) {
@@ -664,29 +518,10 @@ public struct AddonsTwinChevronLogoView: View {
     }
     
     public var body: some View {
-        HStack(spacing: size * 0.16) {
-            singleChevron
-            singleChevron
-        }
-        .frame(width: size, height: size)
-    }
-    
-    private var singleChevron: some View {
-        ZStack {
-            // Upper angled pill
-            Capsule()
-                .fill(Color.white)
-                .frame(width: size * 0.22, height: size * 0.52)
-                .rotationEffect(.degrees(-45))
-                .offset(x: size * 0.08, y: -size * 0.13)
-            
-            // Lower angled pill
-            Capsule()
-                .fill(Color.white)
-                .frame(width: size * 0.22, height: size * 0.52)
-                .rotationEffect(.degrees(45))
-                .offset(x: size * 0.08, y: size * 0.13)
-        }
+        Image("AnodeLogo")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
     }
 }
 
