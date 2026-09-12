@@ -31,6 +31,8 @@ public struct TVMediaDetailView: View {
     @State private var episodes: [TVEpisode] = []
     @State private var isLoadingEpisodes: Bool = false
     @State private var currentItem: MediaItem
+    @State private var heroTrailerURL: URL? = nil
+    @State private var isHeroTrailerPlaying: Bool = false
     @FocusState private var isHeroPlayFocused: Bool
     @FocusState private var isBackFocused: Bool
     
@@ -91,11 +93,15 @@ public struct TVMediaDetailView: View {
             .ignoresSafeArea()
         }
         .task(id: item.id) {
+            isHeroTrailerPlaying = false
+            heroTrailerURL = nil
+            
             async let enrichTask = engine.enrichItem(item)
             async let availTask = engine.fetchAvailability(for: item)
             async let castTask = engine.fetchCredits(for: item)
             async let videoTask = engine.fetchVideos(for: item)
             async let recTask = engine.fetchRecommendations(for: item)
+            async let trailerStreamTask = TrailerService.shared.resolveTrailerStream(for: item)
             
             let enriched = await enrichTask
             self.currentItem = enriched
@@ -107,6 +113,13 @@ public struct TVMediaDetailView: View {
             let r = await recTask
             if !r.isEmpty { self.liveRecommendations = r }
             
+            if let streamURL = await trailerStreamTask {
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    self.heroTrailerURL = streamURL
+                    self.isHeroTrailerPlaying = true
+                }
+            }
+            
             if item.mediaType == .tvShow {
                 let s = await engine.fetchSeasons(for: item)
                 self.seasons = s
@@ -114,6 +127,10 @@ public struct TVMediaDetailView: View {
                 self.selectedSeasonNumber = firstSeason
                 await loadEpisodes(for: firstSeason)
             }
+        }
+        .onDisappear {
+            isHeroTrailerPlaying = false
+            heroTrailerURL = nil
         }
         .fullScreenCover(item: $activeDestination) { destination in
             switch destination {
@@ -143,6 +160,14 @@ public struct TVMediaDetailView: View {
                 CachedAsyncImage(url: backdrop, contentMode: .fill)
                     .frame(width: screenWidth, height: 860, alignment: .top)
                     .clipped()
+                
+                // Live Trailer Video Stream with sound
+                if isHeroTrailerPlaying, let heroTrailerURL = heroTrailerURL {
+                    TVTrailerPlayerView(videoURL: heroTrailerURL, isMuted: false)
+                        .frame(width: screenWidth, height: 860)
+                        .clipped()
+                        .transition(.opacity)
+                }
                 
                 // Soft left vignette for logo & typography legibility
                 LinearGradient(

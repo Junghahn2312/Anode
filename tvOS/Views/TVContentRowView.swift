@@ -116,6 +116,8 @@ public struct TVExpandingMediaCardView: View {
     @Environment(\.isFocused) private var isFocused: Bool
     @ObservedObject private var watchlist = WatchlistStore.shared
     @State private var loadedLogoPath: String? = nil
+    @State private var trailerURL: URL? = nil
+    @State private var isPlayingTrailer: Bool = false
     
     public init(
         item: MediaItem,
@@ -143,12 +145,19 @@ public struct TVExpandingMediaCardView: View {
     
     public var body: some View {
         ZStack(alignment: .bottomLeading) {
-            // Unfocused: Portrait Poster | Focused: 16:9 Landscape Backdrop
+            // Unfocused: Portrait Poster | Focused: 16:9 Landscape Backdrop or Live Trailer
             if isFocused {
                 let backdrop = item.backdropURL(size: "w780") ?? item.posterURL(size: "w500")
                 CachedAsyncImage(url: backdrop)
                     .frame(width: expandedWidth, height: cardHeight)
                     .clipped()
+                
+                if isPlayingTrailer, let trailerURL = trailerURL {
+                    TVTrailerPlayerView(videoURL: trailerURL, isMuted: false)
+                        .frame(width: expandedWidth, height: cardHeight)
+                        .clipped()
+                        .transition(.opacity)
+                }
             } else {
                 CachedAsyncImage(url: item.posterURL(size: "w500"))
                     .frame(width: normalWidth, height: cardHeight)
@@ -233,20 +242,51 @@ public struct TVExpandingMediaCardView: View {
         .animation(.spring(response: 0.58, dampingFraction: 0.86), value: isFocused)
         .applyMoveUp(onMoveUp: onMoveUp)
         .task(id: isFocused) {
-            guard isFocused else { return }
-            let enriched = await DiscoveryEngine.shared.enrichItem(item)
-            if let logo = enriched.logoPath, !logo.isEmpty {
-                loadedLogoPath = logo
+            guard isFocused else {
+                isPlayingTrailer = false
+                trailerURL = nil
+                return
             }
-            onFocus?(enriched)
+            
+            // Enrich item metadata and clear logo asynchronously
+            async let enrichTask: Void = {
+                let enriched = await DiscoveryEngine.shared.enrichItem(item)
+                if let logo = enriched.logoPath, !logo.isEmpty {
+                    loadedLogoPath = logo
+                }
+                onFocus?(enriched)
+            }()
+            
+            // 3-second hover countdown before playing trailer with sound
+            do {
+                try await Task.sleep(nanoseconds: 3_000_000_000)
+                guard !Task.isCancelled else { return }
+                
+                if let resolvedURL = await TrailerService.shared.resolveTrailerStream(for: item) {
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.easeInOut(duration: 0.4)) {
+                        self.trailerURL = resolvedURL
+                        self.isPlayingTrailer = true
+                    }
+                }
+            } catch {
+                // Focus changed before 3 seconds, cancelled cleanly
+            }
+            
+            _ = await enrichTask
         }
         .onChange(of: isFocused) { _, focused in
             if focused {
                 onFocus?(item)
+            } else {
+                isPlayingTrailer = false
+                trailerURL = nil
             }
         }
         .onChange(of: item.id) { _, _ in
             loadedLogoPath = nil
+            isPlayingTrailer = false
+            trailerURL = nil
         }
     }
 }
