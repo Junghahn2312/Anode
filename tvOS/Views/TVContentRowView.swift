@@ -271,12 +271,13 @@ public struct TVExpandingMediaCardView: View {
                 onFocus?(enriched)
             }()
             
-            // 3-second hover countdown before expanding card and playing trailer with sound
+            // 1-second hover countdown before expanding card and playing trailer with sound
             do {
-                try await Task.sleep(nanoseconds: 3_000_000_000)
+                async let resolveTask = TrailerService.shared.resolveTrailerStream(for: item)
+                try await Task.sleep(nanoseconds: 1_000_000_000)
                 guard !Task.isCancelled else { return }
                 
-                if let resolvedURL = await TrailerService.shared.resolveTrailerStream(for: item) {
+                if let resolvedURL = await resolveTask {
                     guard !Task.isCancelled else { return }
                     withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
                         self.trailerURL = resolvedURL
@@ -284,7 +285,7 @@ public struct TVExpandingMediaCardView: View {
                     }
                 }
             } catch {
-                // Focus changed before 3 seconds, cancelled cleanly
+                // Focus changed before 1 second, cancelled cleanly
             }
             
             _ = await enrichTask
@@ -551,7 +552,7 @@ public struct TVTopTenRowView: View {
 
 // MARK: - Conditional Move Up Helper
 
-private extension View {
+extension View {
     @ViewBuilder
     func applyMoveUp(onMoveUp: (() -> Void)?) -> some View {
         if let onMoveUp = onMoveUp {

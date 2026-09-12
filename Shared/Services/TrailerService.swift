@@ -76,16 +76,48 @@ public final class TrailerService: @unchecked Sendable {
             .joined(separator: " ")
     }
     
+    private func slugifyTitle(_ text: String) -> String {
+        let lower = text.lowercased()
+        var result = ""
+        for scalar in lower.unicodeScalars {
+            if CharacterSet.alphanumerics.contains(scalar) {
+                result.append(Character(scalar))
+            } else if scalar == " " || scalar == "-" || scalar == ":" {
+                if !result.hasSuffix("_") && !result.isEmpty {
+                    result.append("_")
+                }
+            }
+        }
+        return result.trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+    }
+    
     private func resolveRottenTomatoesStream(item: MediaItem) async -> URL? {
         let isMovie = item.mediaType != .tvShow
+        let prefix = isMovie ? "m" : "tv"
+        let baseSlug = slugifyTitle(item.title)
+        guard !baseSlug.isEmpty else { return nil }
+        
+        var candidateSlugs: [String] = []
+        if !item.yearString.isEmpty {
+            candidateSlugs.append("\(prefix)/\(baseSlug)_\(item.yearString)")
+        }
+        candidateSlugs.append("\(prefix)/\(baseSlug)")
+        
+        // 1. Direct candidate slug checks (bypassing Wikidata completely for speed)
+        for slug in candidateSlugs {
+            if let streamURL = await extractRTStream(slug: slug) {
+                return streamURL
+            }
+        }
+        
+        // 2. Fallback to TMDB external IDs -> Wikidata P1258
         let endpoint = isMovie ? "movie" : "tv"
         let urlString = "https://api.themoviedb.org/3/\(endpoint)/\(item.id)/external_ids?api_key=\(tmdbApiKey)"
-        
         guard let url = URL(string: urlString) else { return nil }
         
         do {
             var request = URLRequest(url: url)
-            request.timeoutInterval = 3.5
+            request.timeoutInterval = 2.5
             request.setValue("AnodeAppleTV/1.0", forHTTPHeaderField: "User-Agent")
             
             let (data, _) = try await URLSession.shared.data(for: request)
@@ -98,7 +130,7 @@ public final class TrailerService: @unchecked Sendable {
             guard let wikiURL = URL(string: wikiURLString) else { return nil }
             
             var wikiReq = URLRequest(url: wikiURL)
-            wikiReq.timeoutInterval = 3.5
+            wikiReq.timeoutInterval = 2.5
             wikiReq.setValue("AnodeAppleTV/1.0 (dev.anode.appletv; contact@anode.dev)", forHTTPHeaderField: "User-Agent")
             
             let (wikiData, _) = try await URLSession.shared.data(for: wikiReq)
@@ -112,11 +144,19 @@ public final class TrailerService: @unchecked Sendable {
                 return nil
             }
             
-            let rtVideosURLString = "https://www.rottentomatoes.com/\(rtSlug)/videos"
-            guard let rtVideosURL = URL(string: rtVideosURLString) else { return nil }
-            
+            return await extractRTStream(slug: rtSlug)
+        } catch {
+            return nil
+        }
+    }
+    
+    private func extractRTStream(slug: String) async -> URL? {
+        let rtVideosURLString = "https://www.rottentomatoes.com/\(slug)/videos"
+        guard let rtVideosURL = URL(string: rtVideosURLString) else { return nil }
+        
+        do {
             var rtReq = URLRequest(url: rtVideosURL)
-            rtReq.timeoutInterval = 4.0
+            rtReq.timeoutInterval = 2.5
             rtReq.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
             
             let (htmlData, _) = try await URLSession.shared.data(for: rtReq)
@@ -146,7 +186,7 @@ public final class TrailerService: @unchecked Sendable {
                 guard let smilURL = URL(string: smilURLString) else { continue }
                 
                 var smilReq = URLRequest(url: smilURL)
-                smilReq.timeoutInterval = 3.5
+                smilReq.timeoutInterval = 2.5
                 smilReq.setValue("application/smil+xml", forHTTPHeaderField: "Accept")
                 
                 guard let (smilData, _) = try? await URLSession.shared.data(for: smilReq),
@@ -264,16 +304,23 @@ public final class TrailerService: @unchecked Sendable {
     }
     
     private func resolveITunesPreviewStream(item: MediaItem) async -> URL? {
-        guard let escaped = item.title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+        let isMovie = item.mediaType != .tvShow
+        let cleanedTitle = item.title
+            .replacingOccurrences(of: ":", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard let escaped = cleanedTitle.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
             return nil
         }
         
-        let searchURLString = "https://itunes.apple.com/search?term=\(escaped)&limit=50"
+        let mediaParam = isMovie ? "" : "&media=tvShow"
+        let searchURLString = "https://itunes.apple.com/search?term=\(escaped)\(mediaParam)&country=us&limit=30"
         guard let url = URL(string: searchURLString) else { return nil }
         
         do {
             var request = URLRequest(url: url)
-            request.timeoutInterval = 4.0
+            request.timeoutInterval = 2.5
             request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
             
             let (data, _) = try await URLSession.shared.data(for: request)
@@ -282,10 +329,8 @@ public final class TrailerService: @unchecked Sendable {
                 return nil
             }
             
-            let isMovie = item.mediaType != .tvShow
             let normQuery = normalizeTitle(item.title)
             guard !normQuery.isEmpty else { return nil }
-            
             let itemYear = item.yearString.isEmpty ? nil : item.yearString
             
             for result in results {
@@ -302,10 +347,10 @@ public final class TrailerService: @unchecked Sendable {
                         
                         var yearMatches = true
                         if let iy = itemYear, let ty = trackYear, let iVal = Int(iy), let tVal = Int(ty) {
-                            yearMatches = abs(iVal - tVal) <= 2
+                            yearMatches = abs(iVal - tVal) <= 3
                         }
                         
-                        if (normTrack == normQuery || normTrack.hasPrefix(normQuery) || normQuery.hasPrefix(normTrack)) && yearMatches {
+                        if (normTrack == normQuery || normTrack.hasPrefix(normQuery) || normQuery.hasPrefix(normTrack) || normTrack.contains(normQuery) || normQuery.contains(normTrack)) && yearMatches {
                             if let previewStr = result["previewUrl"] as? String, let previewURL = URL(string: previewStr) {
                                 return previewURL
                             }
@@ -315,10 +360,12 @@ public final class TrailerService: @unchecked Sendable {
                     if kind == "tv-episode" {
                         let artistName = result["artistName"] as? String ?? ""
                         let collectionName = result["collectionName"] as? String ?? ""
+                        let trackName = result["trackName"] as? String ?? ""
                         let normArtist = normalizeTitle(artistName)
                         let normCollection = normalizeTitle(collectionName)
+                        let normTrack = normalizeTitle(trackName)
                         
-                        if normArtist == normQuery || normCollection.hasPrefix(normQuery) || normArtist.contains(normQuery) {
+                        if normArtist == normQuery || normCollection.hasPrefix(normQuery) || normArtist.contains(normQuery) || normCollection.contains(normQuery) || normTrack.contains(normQuery) {
                             if let previewStr = result["previewUrl"] as? String, let previewURL = URL(string: previewStr) {
                                 return previewURL
                             }
@@ -330,7 +377,6 @@ public final class TrailerService: @unchecked Sendable {
             return nil
         }
         
-        // Strict policy: If no high-confidence trailer matches, return nil so nothing plays
         return nil
     }
 }

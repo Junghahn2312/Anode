@@ -36,6 +36,9 @@ public final class DiscoveryEngine: ObservableObject {
     }
     
     @Published public var searchResults: [MediaItem] = []
+    @Published public var searchMovieResults: [MediaItem] = []
+    @Published public var searchTVResults: [MediaItem] = []
+    @Published public var searchPeopleResults: [CastMember] = []
     @Published public var isLoading: Bool = false
     @Published public var errorMessage: String?
     
@@ -177,8 +180,21 @@ public final class DiscoveryEngine: ObservableObject {
     public func search(query: String) async {
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             self.searchResults = []
+            self.searchMovieResults = []
+            self.searchTVResults = []
+            self.searchPeopleResults = []
             return
         }
-        self.searchResults = await tmdb.search(query: query)
+        
+        async let allTask = tmdb.search(query: query)
+        async let peopleTask = tmdb.searchPeople(query: query)
+        
+        let all = await allTask
+        let people = await peopleTask
+        
+        self.searchResults = all
+        self.searchMovieResults = all.filter { $0.mediaType == .movie }
+        self.searchTVResults = all.filter { $0.mediaType == .tvShow }
+        self.searchPeopleResults = people
     }
 }

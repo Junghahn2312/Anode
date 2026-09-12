@@ -1,66 +1,65 @@
 import SwiftUI
 
 public enum SettingsSection: String, CaseIterable, Identifiable {
-    case general = "General"
+    case icloud = "iCloud"
     case accounts = "Accounts"
-    case audioVideo = "Audio and Video"
-    case library = "Library & Storage"
-    case providers = "Data Providers"
-    case privacy = "Privacy & Security"
-    case about = "System & About"
-    case sleep = "Sleep Now"
+    case metadata = "Metadata"
+    case widgets = "Widgets"
+    case addons = "Addons"
+    case library = "Library"
+    case progress = "Progress"
+    case videoPlayer = "Video Player"
+    case subtitles = "Subtitles"
+    case homeStyle = "Home Style"
+    case iconPacks = "Icon Packs"
+    case about = "About"
     
     public var id: String { rawValue }
     public var title: String { rawValue }
     
-    public var hasChevron: Bool {
-        self != .sleep
-    }
-    
-    public var icon: String {
+    public var iconName: String {
         switch self {
-        case .general: return "gearshape.fill"
-        case .accounts: return "play.tv.fill"
-        case .audioVideo: return "tv.fill"
-        case .library: return "bookmark.fill"
-        case .providers: return "network"
-        case .privacy: return "hand.raised.fill"
+        case .icloud: return "icloud.fill"
+        case .accounts: return "person.crop.circle.fill"
+        case .metadata: return "square.stack.3d.up.fill"
+        case .widgets: return "square.grid.2x2.fill"
+        case .addons: return "puzzlepiece.fill"
+        case .library: return "folder.fill"
+        case .progress: return "chart.bar.fill"
+        case .videoPlayer: return "play.rectangle.fill"
+        case .subtitles: return "captions.bubble.fill"
+        case .homeStyle: return "paintpalette.fill"
+        case .iconPacks: return "app.badge.fill"
         case .about: return "info.circle.fill"
-        case .sleep: return "powersleep"
-        }
-    }
-    
-    public var iconColor: Color {
-        switch self {
-        case .general: return Color(red: 0.55, green: 0.55, blue: 0.60)
-        case .accounts: return Color(red: 0.90, green: 0.10, blue: 0.20)
-        case .audioVideo: return Color(red: 0.65, green: 0.30, blue: 0.90)
-        case .library: return Color(red: 1.00, green: 0.60, blue: 0.00)
-        case .providers: return Color(red: 0.05, green: 0.50, blue: 0.95)
-        case .privacy: return Color(red: 0.35, green: 0.35, blue: 0.85)
-        case .about: return Color(red: 0.40, green: 0.40, blue: 0.45)
-        case .sleep: return Color(red: 0.80, green: 0.25, blue: 0.25)
         }
     }
     
     public var summary: String {
         switch self {
-        case .general:
-            return "Application behavior, startup tab, and interface options."
+        case .icloud:
+            return "Synchronize your watchlist, playback progress, and settings via iCloud."
         case .accounts:
-            return "Trakt watch history sync, scrobbling, and user profiles."
-        case .audioVideo:
-            return "Playback resolution, HDR video streaming, and spotlight behaviors."
+            return "Connect your Trakt account to sync watch history, ratings, and lists."
+        case .metadata:
+            return "Data providers, content language, and localized catalog caches."
+        case .widgets:
+            return "Configure Apple TV Top Shelf previews and home screen widgets."
+        case .addons:
+            return "Installed stream extensions, trailer engines, and metadata sources."
         case .library:
-            return "Saved titles, offline metadata cache, and local storage."
-        case .providers:
-            return "The Movie Database (TMDB) API and JustWatch streaming engines."
-        case .privacy:
-            return "Zero-telemetry policy, local sandbox encryption, and security."
+            return "Manage your personal watchlist, saved media, and storage."
+        case .progress:
+            return "Scrobbling thresholds, resume points, and episode progress tracking."
+        case .videoPlayer:
+            return "Streaming resolution, HDR playback preferences, and audio boost."
+        case .subtitles:
+            return "Default subtitle languages, font sizing, and appearance."
+        case .homeStyle:
+            return "Select your startup destination tab and hero presentation layout."
+        case .iconPacks:
+            return "Choose your preferred home screen and interface theme icon."
         case .about:
             return "Anode tvOS version, legal attributions, and licenses."
-        case .sleep:
-            return "Put Anode into power-saving standby mode."
         }
     }
 }
@@ -69,54 +68,37 @@ public struct TVSettingsView: View {
     @ObservedObject private var watchlist = WatchlistStore.shared
     @ObservedObject private var trakt = TraktStore.shared
     
+    @State private var hoveredSection: SettingsSection = .addons
     @State private var activeSubpage: SettingsSection? = nil
     @State private var showingClearAlert: Bool = false
-    @State private var showingSleepAlert: Bool = false
-    @State private var isSleeping: Bool = false
-    @State private var preferredQuality: String = "4K Ultra HD"
-    @State private var heroMode: String = "Stationary Showcase"
+    @State private var preferredQuality: String = "1080p Full HD"
     @State private var initialTab: Int = UserDefaults.standard.integer(forKey: "InitialTab")
     @State private var cacheRefreshStatus: String? = nil
+    @State private var iCloudSyncEnabled: Bool = true
+    @State private var subtitleLang: String = "English"
+    @State private var selectedIconTheme: String = "Default Dark"
+    @FocusState private var focusedSection: SettingsSection?
     
     public init() {}
     
     public var body: some View {
         ZStack {
-            // Darker than Apple TV grey: Sleek charcoal slate background
-            Color(red: 0.10, green: 0.10, blue: 0.12)
+            // Dark sleek charcoal background matching screenshot
+            Color(red: 0.11, green: 0.11, blue: 0.13)
                 .ignoresSafeArea()
             
-            // Subtle ambient depth gradient
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.02),
+                    Color.white.opacity(0.015),
                     Color.clear,
-                    Color.black.opacity(0.25)
+                    Color.black.opacity(0.20)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
             
-            if isSleeping {
-                // Standby black screen (wakes on any tap)
-                Color.black
-                    .ignoresSafeArea()
-                    .overlay(
-                        VStack(spacing: 16) {
-                            AnodeLogoView(size: 160)
-                                .opacity(0.20)
-                            Text("Press any button to resume")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(.white.opacity(0.35))
-                        }
-                    )
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.40)) {
-                            isSleeping = false
-                        }
-                    }
-            } else if let section = activeSubpage {
+            if let section = activeSubpage {
                 subpageView(for: section)
                     .transition(.opacity)
             } else {
@@ -141,96 +123,93 @@ public struct TVSettingsView: View {
         .onDisappear {
             AppNavigation.shared.isTopBarVisible = true
         }
-        .alert("Clear My List?", isPresented: $showingClearAlert) {
+        .alert("Clear Personal Watchlist?", isPresented: $showingClearAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Clear All", role: .destructive) {
                 watchlist.clear()
             }
         } message: {
-            Text("This will remove all saved movies and TV shows from your personal watchlist.")
-        }
-        .alert("Enter Standby?", isPresented: $showingSleepAlert) {
-            Button("Cancel", role: .cancel) {}
-            Button("Sleep", role: .destructive) {
-                withAnimation(.easeInOut(duration: 0.40)) {
-                    isSleeping = true
-                }
-            }
-        } message: {
-            Text("Anode will pause background data updates and enter low-power standby mode.")
+            Text("This will remove all saved movies and TV shows from your personal list.")
         }
     }
     
-    // MARK: - Root Settings Screen (Matching Apple TV Settings Exactly)
+    // MARK: - Root Settings Screen (Matching User Reference Image Exactly)
     
     private var rootSettingsView: some View {
-        VStack(spacing: 24) {
-            // Centered Settings title positioned comfortably below top bar
-            Text("Settings")
-                .font(.system(size: 38, weight: .bold))
-                .foregroundColor(.white.opacity(0.90))
-                .padding(.top, 130)
-            
-            HStack(alignment: .center) {
-                Spacer()
-                
-                // Left: Large Squircle Card with Anode Logo (Centre Left of Screen, slightly higher and bigger)
+        HStack(alignment: .center, spacing: 0) {
+            // Left Half: Large Squircle Card with Hovered Section Icon and Label
+            VStack(spacing: 24) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 64, style: .continuous)
-                        .fill(Color(red: 0.17, green: 0.17, blue: 0.20))
-                        .frame(width: 440, height: 440)
+                    RoundedRectangle(cornerRadius: 68, style: .continuous)
+                        .fill(Color(white: 0.18))
+                        .frame(width: 360, height: 360)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 64, style: .continuous)
+                            RoundedRectangle(cornerRadius: 68, style: .continuous)
                                 .stroke(Color.white.opacity(0.12), lineWidth: 1.5)
                         )
-                        .shadow(color: Color.black.opacity(0.45), radius: 32, y: 10)
+                        .shadow(color: Color.black.opacity(0.35), radius: 28, y: 8)
                     
-                    AnodeLogoView(size: 270)
-                }
-                .frame(width: 480)
-                
-                Spacer()
-                
-                // Right: Clean Vertical Settings Rows (Centre Right of Screen, bigger and slightly higher up)
-                VStack(spacing: 12) {
-                    ForEach(SettingsSection.allCases) { section in
-                        TVSettingsMenuRowButton(
-                            title: section.title,
-                            showChevron: section.hasChevron
-                        ) {
-                            handleSectionClick(section)
-                        }
+                    if hoveredSection == .addons {
+                        AddonsTwinChevronLogoView(size: 160)
+                    } else {
+                        Image(systemName: hoveredSection.iconName)
+                            .font(.system(size: 130, weight: .light))
+                            .foregroundColor(.white)
                     }
                 }
-                .padding(.vertical, 10)
-                .padding(.horizontal, 20)
-                .frame(width: 640)
-                .focusSection()
+                .id(hoveredSection.rawValue)
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.25), value: hoveredSection)
                 
-                Spacer()
+                Text(hoveredSection.rawValue)
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundColor(.white)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.top, -20)
+            .frame(maxWidth: .infinity)
+            
+            // Right Half: Vertical List of Settings Options
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 9) {
+                    ForEach(SettingsSection.allCases) { section in
+                        Button {
+                            withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) {
+                                activeSubpage = section
+                            }
+                        } label: {
+                            TVSettingsCategoryRowLabel(title: section.title) {
+                                withAnimation(.easeInOut(duration: 0.20)) {
+                                    self.hoveredSection = section
+                                }
+                            }
+                        }
+                        .buttonStyle(.tvCard)
+                        .focused($focusedSection, equals: section)
+                        .applyMoveUp(onMoveUp: section == .icloud ? {
+                            focusedSection = nil
+                            AppNavigation.shared.focusTopBarTrigger += 1
+                        } : nil)
+                    }
+                }
+                .padding(.top, 100)
+                .padding(.bottom, 80)
+                .frame(width: 540)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.trailing, 60)
+            .focusSection()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onChange(of: AppNavigation.shared.focusSettingsTrigger) { _, _ in
+            focusedSection = hoveredSection
         }
     }
     
-    private func handleSectionClick(_ section: SettingsSection) {
-        if section == .sleep {
-            showingSleepAlert = true
-        } else {
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) {
-                activeSubpage = section
-            }
-        }
-    }
-    
-    // MARK: - Subpage Drill-Down View (Matching Apple TV Settings App Format)
+    // MARK: - Subpage Drill-Down View
     
     private func subpageView(for section: SettingsSection) -> some View {
         HStack(alignment: .top, spacing: 60) {
-            // Left Column: Navigation Title, Back Button, Category Preview/Logo & Description
+            // Left Column: Navigation Title, Back Button, Category Preview Card & Description
             VStack(alignment: .leading, spacing: 22) {
-                // Back Button (< Settings)
                 Button {
                     withAnimation(.spring(response: 0.38, dampingFraction: 0.85)) {
                         activeSubpage = nil
@@ -244,115 +223,110 @@ public struct TVSettingsView: View {
                     .font(.system(size: 40, weight: .bold))
                     .foregroundColor(.white)
                 
-                // Category Squircle Preview Card
                 ZStack {
-                    RoundedRectangle(cornerRadius: 48, style: .continuous)
-                        .fill(Color(red: 0.17, green: 0.17, blue: 0.20))
-                        .frame(width: 340, height: 340)
+                    RoundedRectangle(cornerRadius: 52, style: .continuous)
+                        .fill(Color(white: 0.18))
+                        .frame(width: 320, height: 320)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 48, style: .continuous)
+                            RoundedRectangle(cornerRadius: 52, style: .continuous)
                                 .stroke(Color.white.opacity(0.12), lineWidth: 1.5)
                         )
-                        .shadow(color: Color.black.opacity(0.40), radius: 24, y: 8)
+                        .shadow(color: Color.black.opacity(0.35), radius: 24, y: 8)
                     
-                    VStack(spacing: 16) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .fill(section.iconColor)
-                                .frame(width: 90, height: 90)
-                            Image(systemName: section.icon)
-                                .font(.system(size: 44, weight: .bold))
-                                .foregroundColor(.white)
-                        }
+                    if section == .addons {
+                        AddonsTwinChevronLogoView(size: 130)
+                    } else {
+                        Image(systemName: section.iconName)
+                            .font(.system(size: 110, weight: .light))
+                            .foregroundColor(.white)
                     }
                 }
-                .frame(width: 360)
+                .frame(width: 320)
                 
                 Text(section.summary)
                     .font(.system(size: 15, weight: .regular))
                     .foregroundColor(.white.opacity(0.60))
                     .lineSpacing(4)
-                    .frame(width: 340, alignment: .leading)
+                    .frame(width: 320, alignment: .leading)
             }
-            .frame(width: 380)
+            .frame(width: 360)
             .padding(.leading, 80)
             .padding(.top, 55)
             .focusSection()
             
-            // Right Column: Apple TV Grouped List of Setting Items
+            // Right Column: Settings Details
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 26) {
                     switch section {
-                    case .general:
-                        generalDetailPane
+                    case .icloud:
+                        icloudDetailPane
                     case .accounts:
-                        traktDetailPane
-                    case .audioVideo:
-                        playbackDetailPane
+                        accountsDetailPane
+                    case .metadata:
+                        metadataDetailPane
+                    case .widgets:
+                        widgetsDetailPane
+                    case .addons:
+                        addonsDetailPane
                     case .library:
-                        watchlistDetailPane
-                    case .providers:
-                        providersDetailPane
-                    case .privacy:
-                        privacyDetailPane
+                        libraryDetailPane
+                    case .progress:
+                        progressDetailPane
+                    case .videoPlayer:
+                        videoPlayerDetailPane
+                    case .subtitles:
+                        subtitlesDetailPane
+                    case .homeStyle:
+                        homeStyleDetailPane
+                    case .iconPacks:
+                        iconPacksDetailPane
                     case .about:
                         aboutDetailPane
-                    case .sleep:
-                        EmptyView()
                     }
                 }
                 .padding(.top, 55)
                 .padding(.trailing, 80)
                 .padding(.bottom, 80)
-                .frame(width: 640)
+                .frame(width: 620)
             }
             .focusSection()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     
-    // MARK: - 0. General Detail Pane
+    // MARK: - Detail Panes
     
-    private var generalDetailPane: some View {
+    private var icloudDetailPane: some View {
         VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("STARTUP TAB")
-                
-                let tabs: [(Int, String)] = [(0, "Home"), (1, "Discovery"), (2, "Cinema"), (3, "Search")]
-                ForEach(tabs, id: \.0) { tab in
-                    TVSettingsRowItem(
-                        title: tab.1,
-                        isSelected: initialTab == tab.0
-                    ) {
-                        initialTab = tab.0
-                        UserDefaults.standard.set(tab.0, forKey: "InitialTab")
-                    }
-                }
-                
-                sectionFooter("Choose which section opens automatically when Anode launches.")
-            }
-            
-            VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("MAINTENANCE")
+                sectionHeader("ICLOUD SYNCHRONIZATION")
                 
                 TVSettingsRowItem(
-                    title: "Clear Image Cache",
-                    icon: "trash"
+                    title: "iCloud Sync",
+                    value: iCloudSyncEnabled ? "Enabled" : "Disabled"
                 ) {
-                    URLCache.shared.removeAllCachedResponses()
+                    iCloudSyncEnabled.toggle()
                 }
                 
-                sectionFooter("Removes temporary downloaded poster and backdrop images to reclaim space.")
+                TVSettingsRowItem(
+                    title: "Status",
+                    value: "Connected"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Last Sync",
+                    value: "Just Now"
+                ) {}
+                
+                sectionFooter("Automatically syncs your watchlist and bookmarks across all Apple devices.")
             }
         }
     }
     
-    // MARK: - 1. Trakt Detail Pane
-    
-    private var traktDetailPane: some View {
+    private var accountsDetailPane: some View {
         VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("TRAKT INTEGRATION")
+                sectionHeader("TRAKT ACCOUNT INTEGRATION")
                 
                 if let code = trakt.deviceCode {
                     TVSettingsRowItem(
@@ -403,118 +377,26 @@ public struct TVSettingsView: View {
                     ) {
                         trakt.disconnect()
                     }
+                    
+                    sectionFooter("Connected as @\(trakt.username). Watch history updates automatically.")
                 }
-            }
-            
-            VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("CONTINUE WATCHING ROW")
-                
-                TVSettingsRowItem(
-                    title: "Curated Standalone Queue",
-                    value: trakt.useSampleData ? "Enabled" : "Disabled",
-                    isSelected: trakt.useSampleData
-                ) {
-                    trakt.toggleSampleData(!trakt.useSampleData)
-                }
-                
-                sectionFooter("Enables a curated continue watching queue on the Home tab when unlinked or offline.")
             }
         }
     }
     
-    // MARK: - 2. Video & Playback Detail Pane
-    
-    private var playbackDetailPane: some View {
+    private var metadataDetailPane: some View {
         VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("TRAILER STREAM QUALITY")
-                
-                let qualities = ["4K Ultra HD", "1080p Full HD", "Auto Dynamic"]
-                ForEach(qualities, id: \.self) { quality in
-                    TVSettingsRowItem(
-                        title: quality,
-                        isSelected: preferredQuality == quality
-                    ) {
-                        preferredQuality = quality
-                    }
-                }
-                
-                sectionFooter("Sets the target video resolution for YouTube trailer playback.")
-            }
-            
-            VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("HERO SPOTLIGHT BEHAVIOR")
-                
-                let modes = ["Stationary Showcase", "Ambient Crossfade"]
-                ForEach(modes, id: \.self) { mode in
-                    TVSettingsRowItem(
-                        title: mode,
-                        isSelected: heroMode == mode
-                    ) {
-                        heroMode = mode
-                    }
-                }
-                
-                sectionFooter("Controls whether top banner hero spotlights auto-advance periodically.")
-            }
-        }
-    }
-    
-    // MARK: - 3. Watchlist & Library Detail Pane
-    
-    private var watchlistDetailPane: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("WATCHLIST LIBRARY")
+                sectionHeader("CATALOG & PROVIDERS")
                 
                 TVSettingsRowItem(
-                    title: "Saved Titles",
-                    value: "\(watchlist.items.count) titles"
+                    title: "Metadata Provider",
+                    value: "The Movie Database (TMDB)"
                 ) {}
                 
                 TVSettingsRowItem(
-                    title: "Saved Movies",
-                    value: "\(watchlist.items.filter { $0.mediaType == .movie }.count)"
-                ) {}
-                
-                TVSettingsRowItem(
-                    title: "Saved Series",
-                    value: "\(watchlist.items.filter { $0.mediaType == .tvShow }.count)"
-                ) {}
-                
-                TVSettingsRowItem(
-                    title: "Clear All Saved Titles",
-                    icon: "trash.fill",
-                    isDestructive: true
-                ) {
-                    showingClearAlert = true
-                }
-                
-                sectionFooter("All saved titles are persisted securely within the local sandbox container.")
-            }
-        }
-    }
-    
-    // MARK: - 4. Providers Detail Pane
-    
-    private var providersDetailPane: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("METADATA & WATCH ENGINES")
-                
-                TVSettingsRowItem(
-                    title: "The Movie Database (TMDB)",
-                    value: "Connected"
-                ) {}
-                
-                TVSettingsRowItem(
-                    title: "JustWatch Streaming Engine",
-                    value: "Active"
-                ) {}
-                
-                TVSettingsRowItem(
-                    title: "Network Connection",
-                    value: "Online"
+                    title: "Language",
+                    value: "English (US)"
                 ) {}
                 
                 TVSettingsRowItem(
@@ -537,39 +419,191 @@ public struct TVSettingsView: View {
         }
     }
     
-    // MARK: - 5. Privacy Detail Pane
-    
-    private var privacyDetailPane: some View {
+    private var widgetsDetailPane: some View {
         VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("PRIVACY & SECURITY")
+                sectionHeader("APPLE TV HOME WIDGETS")
                 
                 TVSettingsRowItem(
-                    title: "Telemetry & Tracking",
-                    value: "Disabled"
+                    title: "Top Shelf Display",
+                    value: "Continue Watching"
                 ) {}
                 
                 TVSettingsRowItem(
-                    title: "Watchlist Data",
-                    value: "Local Device Only"
+                    title: "Show Trending in Shelf",
+                    value: "Enabled"
                 ) {}
                 
-                TVSettingsRowItem(
-                    title: "Ad Identifier (IDFA)",
-                    value: "Never Requested"
-                ) {}
-                
-                TVSettingsRowItem(
-                    title: "Network Security",
-                    value: "HTTPS Only"
-                ) {}
-                
-                sectionFooter("Anode is engineered with zero analytics collection and zero user tracking.")
+                sectionFooter("Configures the interactive showcase shown on the Apple TV home screen.")
             }
         }
     }
     
-    // MARK: - 6. About Detail Pane
+    private var addonsDetailPane: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("INSTALLED ADDONS & EXTENSIONS")
+                
+                TVSettingsRowItem(
+                    title: "Trailer Stream Engine",
+                    value: "Active"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Rotten Tomatoes 1080p Engine",
+                    value: "Enabled"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "iTunes Previews Addon",
+                    value: "Active"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Cinemeta Catalog Integration",
+                    value: "Connected"
+                ) {}
+                
+                sectionFooter("High-speed direct video resolution addons for live backdrop playback.")
+            }
+        }
+    }
+    
+    private var libraryDetailPane: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("WATCHLIST & STORAGE")
+                
+                TVSettingsRowItem(
+                    title: "Saved Titles Count",
+                    value: "\(watchlist.items.count) items"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Clear Watchlist",
+                    icon: "trash",
+                    isDestructive: true
+                ) {
+                    showingClearAlert = true
+                }
+                
+                TVSettingsRowItem(
+                    title: "Clear Image Cache",
+                    icon: "externaldrive"
+                ) {
+                    URLCache.shared.removeAllCachedResponses()
+                }
+                
+                sectionFooter("Manage your saved titles and cached media assets.")
+            }
+        }
+    }
+    
+    private var progressDetailPane: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("PLAYBACK PROGRESS")
+                
+                TVSettingsRowItem(
+                    title: "Mark as Watched Threshold",
+                    value: "80%"
+                ) {}
+                
+                TVSettingsRowItem(
+                    title: "Auto-Resume Playback",
+                    value: "Always"
+                ) {}
+                
+                sectionFooter("Threshold for automatic scrobbling to Trakt.")
+            }
+        }
+    }
+    
+    private var videoPlayerDetailPane: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("VIDEO RESOLUTION & AUDIO")
+                
+                let qualities = ["1080p Full HD", "4K Ultra HD", "720p HD"]
+                ForEach(qualities, id: \.self) { q in
+                    TVSettingsRowItem(
+                        title: q,
+                        isSelected: preferredQuality == q
+                    ) {
+                        preferredQuality = q
+                    }
+                }
+                
+                TVSettingsRowItem(
+                    title: "Trailer Autoplay Delay",
+                    value: "1 Second"
+                ) {}
+                
+                sectionFooter("Trailers stream at the highest available resolution up to 1080p Full HD.")
+            }
+        }
+    }
+    
+    private var subtitlesDetailPane: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("SUBTITLE PREFERENCES")
+                
+                let langs = ["English", "Spanish", "French", "German"]
+                ForEach(langs, id: \.self) { l in
+                    TVSettingsRowItem(
+                        title: l,
+                        isSelected: subtitleLang == l
+                    ) {
+                        subtitleLang = l
+                    }
+                }
+                
+                sectionFooter("Preferred audio and subtitle track selection.")
+            }
+        }
+    }
+    
+    private var homeStyleDetailPane: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("STARTUP DESTINATION")
+                
+                let tabs: [(Int, String)] = [(0, "Home"), (1, "Discovery"), (2, "Cinema"), (3, "Search")]
+                ForEach(tabs, id: \.0) { tab in
+                    TVSettingsRowItem(
+                        title: tab.1,
+                        isSelected: initialTab == tab.0
+                    ) {
+                        initialTab = tab.0
+                        UserDefaults.standard.set(tab.0, forKey: "InitialTab")
+                    }
+                }
+                
+                sectionFooter("Choose which section opens automatically when Anode launches.")
+            }
+        }
+    }
+    
+    private var iconPacksDetailPane: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("APP ICON PACKS")
+                
+                let icons = ["Default Dark", "Cinema Slate", "Onyx Black"]
+                ForEach(icons, id: \.self) { icon in
+                    TVSettingsRowItem(
+                        title: icon,
+                        isSelected: selectedIconTheme == icon
+                    ) {
+                        selectedIconTheme = icon
+                    }
+                }
+                
+                sectionFooter("Customize the app icon presentation on tvOS.")
+            }
+        }
+    }
     
     private var aboutDetailPane: some View {
         VStack(alignment: .leading, spacing: 22) {
@@ -577,23 +611,18 @@ public struct TVSettingsView: View {
                 sectionHeader("ABOUT ANODE")
                 
                 TVSettingsRowItem(
-                    title: "Application Version",
-                    value: "1.0.0 (Build 2026.09)"
+                    title: "Version",
+                    value: "2.0.0 (Build 2026.09)"
                 ) {}
                 
                 TVSettingsRowItem(
                     title: "Target Platform",
-                    value: "tvOS 17.0+"
+                    value: "Apple TV (tvOS 17.0+)"
                 ) {}
                 
                 TVSettingsRowItem(
-                    title: "Framework",
+                    title: "Engine",
                     value: "SwiftUI Native"
-                ) {}
-                
-                TVSettingsRowItem(
-                    title: "Architecture",
-                    value: "arm64 Apple Silicon"
                 ) {}
                 
                 TVSettingsRowItem(
@@ -605,8 +634,6 @@ public struct TVSettingsView: View {
             }
         }
     }
-    
-    // MARK: - Reusable UI Helpers
     
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
@@ -627,78 +654,80 @@ public struct TVSettingsView: View {
     }
 }
 
-// MARK: - Anode Logo Display View
+// MARK: - Addons Twin Chevron Logo View (Matching Screenshot Exact Shape)
 
-public struct AnodeLogoView: View {
-    public var size: CGFloat = 220
+public struct AddonsTwinChevronLogoView: View {
+    public var size: CGFloat = 160
     
-    public init(size: CGFloat = 220) {
+    public init(size: CGFloat = 160) {
         self.size = size
     }
     
     public var body: some View {
-        if let uiImage = UIImage(named: "AnodeLogo") ?? UIImage(contentsOfFile: "/Volumes/NetworkSSD/Anode/logo-alpha.png") {
-            Image(uiImage: uiImage)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: size, height: size)
-        } else {
-            Image(systemName: "film.stack.fill")
-                .font(.system(size: size * 0.45, weight: .bold))
-                .foregroundColor(.white)
+        HStack(spacing: size * 0.16) {
+            singleChevron
+            singleChevron
         }
+        .frame(width: size, height: size)
     }
-}
-
-// MARK: - Root Settings Menu Row Button (Matching Apple TV Design)
-
-private struct TVSettingsMenuRowButton: View {
-    let title: String
-    let showChevron: Bool
-    let action: () -> Void
     
-    var body: some View {
-        Button(action: action) {
-            TVSettingsMenuRowLabel(title: title, showChevron: showChevron)
+    private var singleChevron: some View {
+        ZStack {
+            // Upper angled pill
+            Capsule()
+                .fill(Color.white)
+                .frame(width: size * 0.22, height: size * 0.52)
+                .rotationEffect(.degrees(-45))
+                .offset(x: size * 0.08, y: -size * 0.13)
+            
+            // Lower angled pill
+            Capsule()
+                .fill(Color.white)
+                .frame(width: size * 0.22, height: size * 0.52)
+                .rotationEffect(.degrees(45))
+                .offset(x: size * 0.08, y: size * 0.13)
         }
-        .buttonStyle(.tvCard)
     }
 }
 
-private struct TVSettingsMenuRowLabel: View {
+// MARK: - Category Row Label with White Hover Pill
+
+private struct TVSettingsCategoryRowLabel: View {
     let title: String
-    let showChevron: Bool
+    let onFocus: () -> Void
     
     @Environment(\.isFocused) private var isFocused: Bool
     
     var body: some View {
         HStack(spacing: 16) {
             Text(title)
-                .font(.system(size: 21, weight: isFocused ? .bold : .medium))
-                .foregroundColor(isFocused ? .black : .white)
+                .font(.system(size: 19, weight: isFocused ? .bold : .medium))
+                .foregroundColor(isFocused ? .black : .white.opacity(0.88))
             
             Spacer()
             
-            if showChevron {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(isFocused ? Color.black.opacity(0.60) : Color.white.opacity(0.35))
-            }
+            Image(systemName: "chevron.right")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(isFocused ? .black : .white.opacity(0.35))
         }
-        .padding(.horizontal, 28)
-        .frame(height: 64)
+        .padding(.horizontal, 24)
+        .frame(height: 52)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(isFocused ? Color.white : Color.white.opacity(0.08))
+                .fill(isFocused ? Color.white : Color.white.opacity(0.06))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(isFocused ? Color.white : Color.white.opacity(0.06), lineWidth: isFocused ? 2 : 1)
+                .stroke(isFocused ? Color.white : Color.clear, lineWidth: 1)
         )
-        .scaleEffect(isFocused ? 1.04 : 1.0)
-        .zIndex(isFocused ? 10 : 1)
-        .shadow(color: isFocused ? Color.white.opacity(0.40) : Color.clear, radius: 16, y: 4)
-        .animation(.spring(response: 0.32, dampingFraction: 0.78), value: isFocused)
+        .scaleEffect(isFocused ? 1.02 : 1.0)
+        .shadow(color: isFocused ? Color.white.opacity(0.30) : Color.clear, radius: 10, y: 3)
+        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: isFocused)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                onFocus()
+            }
+        }
     }
 }
 
@@ -730,7 +759,7 @@ private struct TVSettingsBackButtonLabel: View {
     }
 }
 
-// MARK: - Unified Apple TV Settings Row Item
+// MARK: - Setting Row Item
 
 public struct TVSettingsRowItem: View {
     let title: String
@@ -771,14 +800,14 @@ public struct TVSettingsRowItem: View {
                 }
                 
                 Text(title)
-                    .font(.system(size: 20, weight: isFocused || isSelected ? .bold : .medium))
+                    .font(.system(size: 19, weight: isFocused || isSelected ? .bold : .medium))
                     .foregroundColor(isDestructive ? (isFocused ? .red : .red.opacity(0.90)) : (isFocused ? .black : .white))
                 
                 Spacer()
                 
                 if let value = value {
                     Text(value)
-                        .font(.system(size: 18, weight: .regular))
+                        .font(.system(size: 17, weight: .regular))
                         .foregroundColor(isFocused ? Color.black.opacity(0.70) : Color.white.opacity(0.50))
                 }
                 
@@ -794,8 +823,8 @@ public struct TVSettingsRowItem: View {
                         .foregroundColor(isFocused ? Color.black.opacity(0.60) : Color.white.opacity(0.35))
                 }
             }
-            .padding(.horizontal, 24)
-            .frame(height: 60)
+            .padding(.horizontal, 22)
+            .frame(height: 56)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(isFocused ? Color.white : Color.white.opacity(0.08))

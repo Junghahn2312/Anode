@@ -6,6 +6,8 @@ public final class AppNavigation: ObservableObject {
     @Published public var selectedTab: Int
     @Published public var isTopBarVisible: Bool = true
     @Published public var focusTopBarTrigger: Int = 0
+    @Published public var focusSettingsTrigger: Int = 0
+    @Published public var focusSearchTrigger: Int = 0
     
     public init() {
         let initial = UserDefaults.standard.integer(forKey: "InitialTab")
@@ -55,6 +57,17 @@ public struct TVTopTabBarView: View {
                 }
                 .buttonStyle(.tvCard)
                 .focused($focusedTab, equals: tab.id)
+                .onMoveCommand { direction in
+                    if direction == .down {
+                        if tab.id == 4 {
+                            focusedTab = nil
+                            nav.focusSettingsTrigger += 1
+                        } else if tab.id == 3 {
+                            focusedTab = nil
+                            nav.focusSearchTrigger += 1
+                        }
+                    }
+                }
             }
         }
         .defaultFocus($focusedTab, selectedTab)

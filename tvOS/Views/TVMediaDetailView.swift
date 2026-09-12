@@ -36,6 +36,7 @@ public struct TVMediaDetailView: View {
     @State private var isHeroInView: Bool = true
     @FocusState private var isHeroPlayFocused: Bool
     @FocusState private var isBackFocused: Bool
+    @FocusState private var isBookmarkFocused: Bool
     @FocusState private var isFirstEpisodeFocused: Bool
     
     public init(item: MediaItem) {
@@ -58,44 +59,68 @@ public struct TVMediaDetailView: View {
                 Color.black.ignoresSafeArea()
                 
                 // Root Vertical ScrollView
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 38) {
-                        // Big Hero Section (Takes full initial presence like Home Hero)
-                        detailHeroShowcaseSection(screenWidth: screenWidth, screenHeight: screenHeight)
-                            .background(
-                                GeometryReader { heroGeo in
-                                    Color.clear.preference(
-                                        key: TVDetailHeroVisibilityKey.self,
-                                        value: heroGeo.frame(in: .named("mediaDetailScroll")).maxY
-                                    )
-                                }
-                            )
-                        
-                        // Content Below the Hero Fold
+                ScrollViewReader { scrollProxy in
+                    ScrollView(.vertical, showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 38) {
-                            if item.mediaType == .tvShow {
-                                // Season Selector & Episode Grid (TV Shows)
-                                tvShowSeasonsAndEpisodesSection
+                            // Big Hero Section (Takes full initial presence like Home Hero)
+                            detailHeroShowcaseSection(screenWidth: screenWidth, screenHeight: screenHeight)
+                                .id("detailHeroTop")
+                                .background(
+                                    GeometryReader { heroGeo in
+                                        Color.clear.preference(
+                                            key: TVDetailHeroVisibilityKey.self,
+                                            value: heroGeo.frame(in: .named("mediaDetailScroll")).maxY
+                                        )
+                                    }
+                                )
+                            
+                            // Content Below the Hero Fold
+                            VStack(alignment: .leading, spacing: 38) {
+                                if item.mediaType == .tvShow {
+                                    // Season Selector & Episode Grid (TV Shows)
+                                    tvShowSeasonsAndEpisodesSection
+                                }
+                                
+                                // Where to Watch Section (Platforms only, zero prices, zero attributions)
+                                whereToWatchSection
+                                    .padding(.horizontal, 60)
+                                
+                                // Cast Rail
+                                castRailSection
+                                
+                                // More Like This
+                                moreLikeThisSection
                             }
-                            
-                            // Where to Watch Section (Platforms only, zero prices, zero attributions)
-                            whereToWatchSection
-                                .padding(.horizontal, 60)
-                            
-                            // Cast Rail
-                            castRailSection
-                            
-                            // More Like This
-                            moreLikeThisSection
+                            .padding(.bottom, 90)
                         }
-                        .padding(.bottom, 90)
                     }
+                    .coordinateSpace(name: "mediaDetailScroll")
+                    .onPreferenceChange(TVDetailHeroVisibilityKey.self) { maxY in
+                        handleHeroScrollVisibility(maxY: maxY)
+                    }
+                    .onChange(of: isBackFocused) { _, focused in
+                        if focused {
+                            withAnimation(.spring(response: 0.40, dampingFraction: 0.90)) {
+                                scrollProxy.scrollTo("detailHeroTop", anchor: .top)
+                            }
+                        }
+                    }
+                    .onChange(of: isHeroPlayFocused) { _, focused in
+                        if focused {
+                            withAnimation(.spring(response: 0.40, dampingFraction: 0.90)) {
+                                scrollProxy.scrollTo("detailHeroTop", anchor: .top)
+                            }
+                        }
+                    }
+                    .onChange(of: isBookmarkFocused) { _, focused in
+                        if focused {
+                            withAnimation(.spring(response: 0.40, dampingFraction: 0.90)) {
+                                scrollProxy.scrollTo("detailHeroTop", anchor: .top)
+                            }
+                        }
+                    }
+                    .ignoresSafeArea()
                 }
-                .coordinateSpace(name: "mediaDetailScroll")
-                .onPreferenceChange(TVDetailHeroVisibilityKey.self) { maxY in
-                    handleHeroScrollVisibility(maxY: maxY)
-                }
-                .ignoresSafeArea()
             }
             .frame(width: screenWidth, height: screenHeight)
             .ignoresSafeArea()
@@ -182,7 +207,7 @@ public struct TVMediaDetailView: View {
     // MARK: - Massive Hero Showcase Section (Matching Home Hero Presence)
     
     private func detailHeroShowcaseSection(screenWidth: CGFloat, screenHeight: CGFloat) -> some View {
-        let heroHeight: CGFloat = max(screenHeight * 0.95, 1020)
+        let heroHeight: CGFloat = screenHeight
         return ZStack(alignment: .bottomLeading) {
             // Full-bleed Backdrop & Vignettes
             ZStack {
@@ -260,6 +285,11 @@ public struct TVMediaDetailView: View {
                     }
                     .buttonStyle(.tvCard)
                     .focused($isBackFocused)
+                    .onMoveCommand { direction in
+                        if direction == .down {
+                            isHeroPlayFocused = true
+                        }
+                    }
                     Spacer()
                 }
                 .padding(.horizontal, 60)
@@ -366,6 +396,7 @@ public struct TVMediaDetailView: View {
                         TVBookmarkButtonLabel(isBookmarked: watchlist.contains(id: currentItem.id))
                     }
                     .buttonStyle(.tvCard)
+                    .focused($isBookmarkFocused)
                     .onMoveCommand { direction in
                         if direction == .up {
                             isBackFocused = true
@@ -375,7 +406,7 @@ public struct TVMediaDetailView: View {
                 .padding(.top, 4)
             }
             .padding(.horizontal, 60)
-            .padding(.bottom, 60)
+            .padding(.bottom, 80)
         }
         .frame(width: screenWidth, height: heroHeight)
     }

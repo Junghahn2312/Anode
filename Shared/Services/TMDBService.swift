@@ -871,6 +871,30 @@ public actor TMDBService: ContentProvider {
         return results
     }
     
+    public func searchPeople(query: String) async -> [CastMember] {
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return [] }
+        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        guard let url = URL(string: "\(baseURL)/search/person?query=\(encoded)&api_key=\(apiKey)&language=en-US") else { return [] }
+        
+        do {
+            let request = createRequest(for: url)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else { return [] }
+            let decoded = try JSONDecoder().decode(TMDBPersonSearchResponse.self, from: data)
+            return decoded.results.compactMap { dto in
+                guard let id = dto.id, let name = dto.name, !name.isEmpty else { return nil }
+                return CastMember(
+                    id: id,
+                    name: name,
+                    character: dto.known_for_department ?? "Acting",
+                    profilePath: dto.profile_path
+                )
+            }
+        } catch {
+            return []
+        }
+    }
+    
     public func fetchNewReleases() async -> [MediaItem] {
         await fetchMovies(category: "popular")
     }
@@ -1167,6 +1191,17 @@ private struct TMDBPersonDetailResponse: Codable {
     let known_for_department: String?
     let birthday: String?
     let place_of_birth: String?
+}
+
+private struct TMDBPersonSearchResponse: Codable {
+    let results: [TMDBPersonSearchDTO]
+}
+
+private struct TMDBPersonSearchDTO: Codable {
+    let id: Int?
+    let name: String?
+    let profile_path: String?
+    let known_for_department: String?
 }
 
 private struct TMDBCreditsResponse: Codable {
