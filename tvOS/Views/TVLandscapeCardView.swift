@@ -52,7 +52,7 @@ public struct TVLandscapeCardView: View {
                             .tracking(0.8)
                             .foregroundColor(Color(red: 0.9, green: 0.7, blue: 0.3))
                     } else if item.inCinemas {
-                        Text("IN CINEMAS")
+                        Text(item.hasStreamingOptions ? "IN CINEMAS & STREAMING" : "IN CINEMAS")
                             .font(.system(size: 11, weight: .black))
                             .tracking(0.8)
                             .foregroundColor(.red)

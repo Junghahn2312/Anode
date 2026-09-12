@@ -31,6 +31,7 @@ public struct TVTopTabBarView: View {
     @Binding var selectedTab: Int
     @ObservedObject private var nav = AppNavigation.shared
     @FocusState private var focusedTab: Int?
+    @State private var hasAppeared: Bool = false
     
     public var body: some View {
         HStack(spacing: 8) {
@@ -45,6 +46,7 @@ public struct TVTopTabBarView: View {
                         systemImage: tab.systemImage,
                         isSelected: selectedTab == tab.id,
                         onFocus: {
+                            guard hasAppeared else { return }
                             withAnimation(.easeInOut(duration: 0.35)) {
                                 selectedTab = tab.id
                             }
@@ -53,6 +55,14 @@ public struct TVTopTabBarView: View {
                 }
                 .buttonStyle(.tvCard)
                 .focused($focusedTab, equals: tab.id)
+            }
+        }
+        .defaultFocus($focusedTab, selectedTab)
+        .onAppear {
+            focusedTab = selectedTab
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                hasAppeared = true
             }
         }
         .padding(.horizontal, 16)

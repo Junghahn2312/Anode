@@ -9,6 +9,7 @@ public final class DiscoveryEngine: ObservableObject {
     @Published public var cinemaMovies: [MediaItem] = []
     @Published public var cinemaNow: [MediaItem] = []
     @Published public var cinemaUpcoming: [MediaItem] = []
+    @Published public var cinemaAndStreaming: [MediaItem] = []
     @Published public var exclusiveCinemaNow: [MediaItem] = []
     @Published public var exclusiveCinemaUpcoming: [MediaItem] = []
     @Published public var freshFromTheatres: [MediaItem] = []
@@ -53,6 +54,7 @@ public final class DiscoveryEngine: ObservableObject {
         async let heroesTask = tmdb.fetchHeroSpotlights()
         async let cinemaTask = tmdb.fetchInCinemas()
         async let cinemaUpTask = tmdb.fetchUpcomingCinemas()
+        async let cinemaAndStreamingTask = tmdb.fetchInCinemasAndStreaming()
         async let freshTask = tmdb.fetchFreshFromTheatres()
         async let trendingTask = tmdb.fetchTrending(type: nil)
         async let streamingTask = tmdb.fetchStreaming(provider: selectedProvider)
@@ -77,6 +79,7 @@ public final class DiscoveryEngine: ObservableObject {
         self.cinemaNow = strictlyExclusiveCinema
         self.cinemaMovies = strictlyExclusiveCinema
         self.cinemaUpcoming = strictlyExclusiveUpcoming
+        self.cinemaAndStreaming = await cinemaAndStreamingTask
         self.exclusiveCinemaNow = strictlyExclusiveCinema
         self.exclusiveCinemaUpcoming = strictlyExclusiveUpcoming
         self.freshFromTheatres = await freshTask

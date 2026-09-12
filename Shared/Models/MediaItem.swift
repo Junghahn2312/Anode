@@ -1,16 +1,16 @@
 import Foundation
 
 public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
-    public let id: Int
-    public let title: String
-    public let originalTitle: String?
-    public let mediaType: MediaType
-    public let overview: String
-    public let posterPath: String?
-    public let backdropPath: String?
-    public let voteAverage: Double
-    public let voteCount: Int
-    public let releaseDateString: String?
+    public var id: Int
+    public var title: String
+    public var originalTitle: String?
+    public var mediaType: MediaType
+    public var overview: String
+    public var posterPath: String?
+    public var backdropPath: String?
+    public var voteAverage: Double
+    public var voteCount: Int
+    public var releaseDateString: String?
     public let genreNames: [String]
     public var runtimeMinutes: Int?
     public var tagline: String?
@@ -73,9 +73,14 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
         voteAverage
     }
     
-    public var hasDigitalRelease: Bool {
+    public var hasStreamingOptions: Bool {
         if !streamingProviders.isEmpty { return true }
         if let subs = availability?.subscriptions, !subs.isEmpty { return true }
+        return false
+    }
+    
+    public var hasDigitalRelease: Bool {
+        if hasStreamingOptions { return true }
         if let rent = availability?.rentOptions, !rent.isEmpty { return true }
         if let buy = availability?.buyOptions, !buy.isEmpty { return true }
         return false
@@ -83,6 +88,10 @@ public struct MediaItem: Identifiable, Codable, Hashable, Sendable {
     
     public var isTheatricalExclusive: Bool {
         !hasDigitalRelease
+    }
+    
+    public var isInCinemasAndStreaming: Bool {
+        inCinemas && hasStreamingOptions
     }
     
     public var releaseDateObject: Date? {

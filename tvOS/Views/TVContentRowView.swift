@@ -62,7 +62,7 @@ public struct TVRowInfoPanel: View {
                         Circle()
                             .fill(Color.red)
                             .frame(width: 6, height: 6)
-                        Text("IN CINEMAS")
+                        Text(item.hasStreamingOptions ? "IN CINEMAS & STREAMING" : "IN CINEMAS")
                             .font(.system(size: 11, weight: .black))
                             .foregroundColor(.red)
                     }

@@ -166,6 +166,38 @@ public actor TMDBService: ContentProvider {
         return sorted
     }
     
+    public func fetchInCinemasAndStreaming() async -> [MediaItem] {
+        if let cached = memoryCache["in_cinemas_and_streaming"], !cached.isEmpty {
+            return cached
+        }
+        var verified: [MediaItem] = []
+        if let items = try? await getPagedMedia(endpoint: "/movie/now_playing", type: .movie), !items.isEmpty {
+            verified = await withTaskGroup(of: MediaItem?.self) { group in
+                for item in items.prefix(25) {
+                    group.addTask {
+                        var m = item
+                        let avail = await self.fetchWatchAvailability(id: m.id, mediaType: .movie, region: "GB")
+                        m.availability = avail
+                        m.inCinemas = true
+                        
+                        // Check if available on streaming while playing in cinemas
+                        guard m.hasStreamingOptions else { return nil }
+                        
+                        return m
+                    }
+                }
+                var list: [MediaItem] = []
+                for await res in group {
+                    if let res = res { list.append(res) }
+                }
+                return list
+            }
+        }
+        let sorted = verified.sorted { ($0.releaseDateString ?? "") > ($1.releaseDateString ?? "") }
+        memoryCache["in_cinemas_and_streaming"] = sorted
+        return sorted
+    }
+    
     public func fetchUpcomingCinemas() async -> [MediaItem] {
         if let cached = memoryCache["upcoming_cinemas"], !cached.isEmpty {
             return cached
@@ -232,8 +264,20 @@ public actor TMDBService: ContentProvider {
         var combined: [MediaItem] = []
         let maxCount = max(movies.count, tvShows.count)
         for i in 0..<maxCount {
-            if i < movies.count { combined.append(movies[i]) }
-            if i < tvShows.count { combined.append(tvShows[i]) }
+            if i < movies.count {
+                var m = movies[i]
+                if !m.streamingProviders.contains(provider) {
+                    m.streamingProviders.append(provider)
+                }
+                combined.append(m)
+            }
+            if i < tvShows.count {
+                var s = tvShows[i]
+                if !s.streamingProviders.contains(provider) {
+                    s.streamingProviders.append(provider)
+                }
+                combined.append(s)
+            }
         }
         
         if !combined.isEmpty {
@@ -259,6 +303,9 @@ public actor TMDBService: ContentProvider {
             for (idx, item) in items.prefix(10).enumerated() {
                 var r = item
                 r.rank = idx + 1
+                if !r.streamingProviders.contains(provider) {
+                    r.streamingProviders.append(provider)
+                }
                 rankedList.append(r)
             }
             memoryCache[cacheKey] = rankedList
@@ -271,6 +318,9 @@ public actor TMDBService: ContentProvider {
         for (idx, item) in source.prefix(10).enumerated() {
             var r = item
             r.rank = idx + 1
+            if !r.streamingProviders.contains(provider) {
+                r.streamingProviders.append(provider)
+            }
             rankedList.append(r)
         }
         memoryCache[cacheKey] = rankedList
@@ -290,6 +340,9 @@ public actor TMDBService: ContentProvider {
             for (idx, item) in items.prefix(10).enumerated() {
                 var r = item
                 r.rank = idx + 1
+                if !r.streamingProviders.contains(provider) {
+                    r.streamingProviders.append(provider)
+                }
                 rankedList.append(r)
             }
             memoryCache[cacheKey] = rankedList
@@ -302,6 +355,9 @@ public actor TMDBService: ContentProvider {
         for (idx, item) in source.prefix(10).enumerated() {
             var r = item
             r.rank = idx + 1
+            if !r.streamingProviders.contains(provider) {
+                r.streamingProviders.append(provider)
+            }
             rankedList.append(r)
         }
         memoryCache[cacheKey] = rankedList
@@ -317,8 +373,15 @@ public actor TMDBService: ContentProvider {
             endpoint: "/discover/movie?with_watch_providers=\(provider.id)&watch_region=GB&sort_by=primary_release_date.desc",
             type: .movie
         ), !items.isEmpty {
-            memoryCache[cacheKey] = items
-            return items
+            let tagged = items.map { item -> MediaItem in
+                var m = item
+                if !m.streamingProviders.contains(provider) {
+                    m.streamingProviders.append(provider)
+                }
+                return m
+            }
+            memoryCache[cacheKey] = tagged
+            return tagged
         }
         let catalog = MockData.streamingCatalog[provider.id] ?? []
         let fallback = Array(catalog.reversed().prefix(10))
@@ -424,11 +487,23 @@ public actor TMDBService: ContentProvider {
                         }
                     }
                     
+                    let hasSubs = !subs.isEmpty
+                    let hasRentOrBuy = !rent.isEmpty || !buy.isEmpty
+                    
+                    let status: String?
+                    if !hasSubs && !hasRentOrBuy && mediaType == .movie {
+                        status = "Now in Theatres (Theatrical Exclusive)"
+                    } else if hasSubs && mediaType == .movie {
+                        status = "In Theatres & On Streaming"
+                    } else {
+                        status = nil
+                    }
+                    
                     let result = WatchAvailability(
                         subscriptions: subs,
                         rentOptions: rent,
                         buyOptions: buy,
-                        cinemaStatus: mediaType == .movie ? "Now in Theatres" : nil,
+                        cinemaStatus: status,
                         attribution: "Streaming availability provided by JustWatch & TMDB"
                     )
                     availabilityCache[id] = result
@@ -439,7 +514,7 @@ public actor TMDBService: ContentProvider {
                         subscriptions: [],
                         rentOptions: [],
                         buyOptions: [],
-                        cinemaStatus: mediaType == .movie ? "Now in Theatres" : nil,
+                        cinemaStatus: mediaType == .movie ? "Now in Theatres (Theatrical Exclusive)" : nil,
                         attribution: "Theatrical release data provided by JustWatch & TMDB"
                     )
                     availabilityCache[id] = result
@@ -620,8 +695,8 @@ public actor TMDBService: ContentProvider {
             return cached
         }
         if item.title.localizedCaseInsensitiveContains("The Odyssey") || item.id == 1368337 || item.id == 1698863 {
-            logoCache[item.id] = "/m6w20NsuOQN8dOM8DztHEvIALFd.png"
-            return "/m6w20NsuOQN8dOM8DztHEvIALFd.png"
+            logoCache[item.id] = "/v8FYcLl8UEfq9BKTn4KHgXTCKaX.png"
+            return "/v8FYcLl8UEfq9BKTn4KHgXTCKaX.png"
         }
         let endpoint = item.mediaType == .tvShow ? "/tv/\(item.id)/images" : "/movie/\(item.id)/images"
         guard let url = URL(string: "\(baseURL)\(endpoint)?api_key=\(apiKey)&include_image_language=en,null") else {
@@ -650,7 +725,10 @@ public actor TMDBService: ContentProvider {
         
         if item.title.localizedCaseInsensitiveContains("The Odyssey") || item.id == 1368337 || item.id == 1698863 {
             var ody = item
-            ody.logoPath = "/m6w20NsuOQN8dOM8DztHEvIALFd.png"
+            ody.id = 1368337
+            ody.posterPath = "/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg"
+            ody.backdropPath = "/RMXG8myu1aGlNUsRjtxzmpdMK0.jpg"
+            ody.logoPath = "/v8FYcLl8UEfq9BKTn4KHgXTCKaX.png"
             enrichedCache[item.id] = ody
             return ody
         }
@@ -782,24 +860,26 @@ public actor TMDBService: ContentProvider {
             let genreNames = (dto.genre_ids ?? []).compactMap { Self.genreMap[$0] }
             
             let isOdyssey = title.localizedCaseInsensitiveContains("The Odyssey") || id == 1368337 || id == 1698863
-            let finalPoster = isOdyssey ? "/b0z3ViIC5AkbJoqxmTpqyjgmoJs.jpg" : dto.poster_path
-            let finalBackdrop = isOdyssey ? "/mPy1xSASQ9NYWJdAGx2C2sOsnNw.jpg" : dto.backdrop_path
-            let finalLogo = isOdyssey ? "/m6w20NsuOQN8dOM8DztHEvIALFd.png" : nil
+            let finalPoster = isOdyssey ? "/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg" : dto.poster_path
+            let finalBackdrop = isOdyssey ? "/RMXG8myu1aGlNUsRjtxzmpdMK0.jpg" : dto.backdrop_path
+            let finalLogo = isOdyssey ? "/v8FYcLl8UEfq9BKTn4KHgXTCKaX.png" : nil
 
             return MediaItem(
-                id: isOdyssey ? 1698863 : id,
+                id: isOdyssey ? 1368337 : id,
                 title: title,
                 originalTitle: dto.original_title ?? dto.original_name,
                 mediaType: detectedType,
-                overview: dto.overview ?? "",
+                overview: isOdyssey ? "Odysseus, the legendary King of Ithaca, embarks on a long and perilous journey home following the Trojan War. Throughout his voyage, he is forced to confront the whims of gods, mythological monsters, and trials that stretch both his cunning and his humanity to the breaking point." : (dto.overview ?? ""),
                 posterPath: finalPoster,
                 backdropPath: finalBackdrop,
                 voteAverage: dto.vote_average ?? 0.0,
                 voteCount: dto.vote_count ?? 0,
-                releaseDateString: dto.release_date ?? dto.first_air_date,
+                releaseDateString: isOdyssey ? "2026-07-15" : (dto.release_date ?? dto.first_air_date),
                 genreNames: genreNames,
                 runtimeMinutes: dto.runtime ?? dto.episode_run_time?.first,
-                tagline: dto.tagline
+                tagline: isOdyssey ? "Defy the gods." : dto.tagline,
+                logoPath: finalLogo,
+                inCinemas: isOdyssey ? true : false
             )
         }
     }
@@ -811,6 +891,11 @@ public actor TMDBService: ContentProvider {
         var cinemaStatus: String? = nil
         
         switch id {
+        case 1368337, 1698863:
+            subs = []
+            rent = []
+            buy = []
+            cinemaStatus = "Now in Theatres (Theatrical Exclusive)"
         case 201, 202:
             subs = [.appleTV]
         case 203:
@@ -823,7 +908,7 @@ public actor TMDBService: ContentProvider {
             subs = [.max, .primeVideo]
             rent = [PurchaseOption(providerName: "Apple TV", price: "$3.99"), PurchaseOption(providerName: "Prime Video", price: "$3.99")]
             buy = [PurchaseOption(providerName: "Apple TV", price: "$14.99")]
-            cinemaStatus = "Now in Theatres"
+            cinemaStatus = "In Theatres & On Streaming"
         case 102:
             subs = [.paramountPlus, .primeVideo]
             rent = [PurchaseOption(providerName: "Apple TV", price: "$3.99")]
@@ -1025,26 +1110,28 @@ public enum MockData {
             inCinemas: true
         ),
         MediaItem(
-            id: 1698863,
+            id: 1368337,
             title: "The Odyssey",
             mediaType: .movie,
-            overview: "Based on the Ancient Greek epic. After ten years of war, King Odysseus sets sail for Ithaca, eager to reunite with his beloved. But his journey home is far more treacherous than the battlefield, as he must face deadly monsters and vengeful gods to survive.",
-            posterPath: "/b0z3ViIC5AkbJoqxmTpqyjgmoJs.jpg",
-            backdropPath: "/mPy1xSASQ9NYWJdAGx2C2sOsnNw.jpg",
+            overview: "Odysseus, the legendary King of Ithaca, embarks on a long and perilous journey home following the Trojan War. Throughout his voyage, he is forced to confront the whims of gods, mythological monsters, and trials that stretch both his cunning and his humanity to the breaking point.",
+            posterPath: "/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg",
+            backdropPath: "/RMXG8myu1aGlNUsRjtxzmpdMK0.jpg",
             voteAverage: 8.3,
             voteCount: 1280,
-            releaseDateString: "2026-07-03",
+            releaseDateString: "2026-07-15",
             genreNames: ["Adventure", "Fantasy", "Action"],
             runtimeMinutes: 165,
-            tagline: "The voyage that defined eternity.",
+            tagline: "Defy the gods.",
             certification: "PG-13",
             streamingProviders: [],
             trailers: [VideoTrailer(id: "od1", name: "Cinematic Trailer", key: "LNlrGhPdnk8")],
             cast: [
                 CastMember(id: 1892, name: "Matt Damon", character: "Odysseus"),
-                CastMember(id: 3456, name: "Charlize Theron", character: "Penelope")
+                CastMember(id: 3456, name: "Anne Hathaway", character: "Penelope"),
+                CastMember(id: 4567, name: "Tom Holland", character: "Telemachus"),
+                CastMember(id: 5678, name: "Robert Pattinson", character: "Antinous")
             ],
-            logoPath: "/m6w20NsuOQN8dOM8DztHEvIALFd.png",
+            logoPath: "/v8FYcLl8UEfq9BKTn4KHgXTCKaX.png",
             inCinemas: true
         ),
         MediaItem(

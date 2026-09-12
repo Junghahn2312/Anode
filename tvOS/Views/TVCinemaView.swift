@@ -173,6 +173,21 @@ public struct TVCinemaView: View {
                 .id("cinema-row-0")
             }
             
+            // Row 1: In Theatres & On Streaming (Verified via JustWatch)
+            let cinemaStreamingItems = engine.cinemaAndStreaming.deduplicated()
+            if !cinemaStreamingItems.isEmpty {
+                TVContentRowView(
+                    title: "In Theatres & On Streaming",
+                    items: cinemaStreamingItems,
+                    showCinemaBadge: true,
+                    isRowActive: activeRowIndex == 1,
+                    onHover: { handleRowHover($0, rowIndex: 1) }
+                ) { item in
+                    selectedItem = item
+                }
+                .id("cinema-row-streaming")
+            }
+            
             // Row 1: Trending in Theatres
             let trendingTheatrical = Array(exclusiveNow.sorted { $0.rating > $1.rating }.prefix(10))
             if !trendingTheatrical.isEmpty {

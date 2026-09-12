@@ -400,6 +400,37 @@ public struct TVMediaDetailView: View {
                 .tracking(1.5)
                 .foregroundColor(.white.opacity(0.50))
             
+            // Cinema / In Theatres status directly referencing JustWatch
+            if currentItem.inCinemas || availability?.cinemaStatus != nil {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Cinema")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.70))
+                    
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 8, height: 8)
+                        Text("In Theatres")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                        if currentItem.isTheatricalExclusive {
+                            Text("(Theatrical Exclusive)")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.60))
+                        } else if currentItem.hasStreamingOptions {
+                            Text("(Also Available to Stream)")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.60))
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(RoundedRectangle(cornerRadius: 14).fill(Color.red.opacity(0.25)))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.red.opacity(0.50), lineWidth: 1))
+                }
+            }
+            
             // Subscriptions / Streaming platforms
             if let subs = availability?.subscriptions, !subs.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
@@ -465,7 +496,7 @@ public struct TVMediaDetailView: View {
                 }
             }
             
-            if (availability?.subscriptions.isEmpty ?? true) && uniqueProviders.isEmpty {
+            if (availability?.subscriptions.isEmpty ?? true) && uniqueProviders.isEmpty && !currentItem.inCinemas && availability?.cinemaStatus == nil {
                 Text("Check streaming apps or local listings for release availability.")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.white.opacity(0.55))
