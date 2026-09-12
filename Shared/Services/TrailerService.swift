@@ -114,7 +114,7 @@ public final class TrailerService: @unchecked Sendable {
             
             // Verify Apple TV page contains title to prevent mismatched catalog claims
             let normItemTitle = normalizeTitle(item.title)
-            let normHtml = normalizeTitle(html.prefix(2000).description)
+            let normHtml = normalizeTitle(html)
             if !normItemTitle.isEmpty && !normHtml.contains(normItemTitle) {
                 return nil
             }
@@ -146,12 +146,12 @@ public final class TrailerService: @unchecked Sendable {
             return nil
         }
         
-        let searchURLString = "https://itunes.apple.com/search?term=\(escaped)&limit=15"
+        let searchURLString = "https://itunes.apple.com/search?term=\(escaped)&limit=50"
         guard let url = URL(string: searchURLString) else { return nil }
         
         do {
             var request = URLRequest(url: url)
-            request.timeoutInterval = 3.5
+            request.timeoutInterval = 4.0
             request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
             
             let (data, _) = try await URLSession.shared.data(for: request)
@@ -161,7 +161,6 @@ public final class TrailerService: @unchecked Sendable {
             }
             
             let isMovie = item.mediaType != .tvShow
-            let targetKind = isMovie ? "feature-movie" : "tv-episode"
             let normQuery = normalizeTitle(item.title)
             guard !normQuery.isEmpty else { return nil }
             
@@ -169,31 +168,40 @@ public final class TrailerService: @unchecked Sendable {
             
             for result in results {
                 let kind = result["kind"] as? String ?? ""
-                if kind != targetKind {
-                    continue
-                }
                 
-                let trackName = result["trackName"] as? String ?? ""
-                let normTrack = normalizeTitle(trackName)
-                guard !normTrack.isEmpty else { continue }
-                
-                let releaseDate = result["releaseDate"] as? String ?? ""
-                let trackYear = releaseDate.count >= 4 ? String(releaseDate.prefix(4)) : nil
-                
-                // Strict title equality required
-                guard normTrack == normQuery else {
-                    continue
-                }
-                
-                // Release year check
-                if let iy = itemYear, let ty = trackYear, let iVal = Int(iy), let tVal = Int(ty) {
-                    if abs(iVal - tVal) > 2 {
-                        continue
+                if isMovie {
+                    if kind == "feature-movie" {
+                        let trackName = result["trackName"] as? String ?? ""
+                        let normTrack = normalizeTitle(trackName)
+                        guard !normTrack.isEmpty else { continue }
+                        
+                        let releaseDate = result["releaseDate"] as? String ?? ""
+                        let trackYear = releaseDate.count >= 4 ? String(releaseDate.prefix(4)) : nil
+                        
+                        var yearMatches = true
+                        if let iy = itemYear, let ty = trackYear, let iVal = Int(iy), let tVal = Int(ty) {
+                            yearMatches = abs(iVal - tVal) <= 2
+                        }
+                        
+                        if (normTrack == normQuery || normTrack.hasPrefix(normQuery) || normQuery.hasPrefix(normTrack)) && yearMatches {
+                            if let previewStr = result["previewUrl"] as? String, let previewURL = URL(string: previewStr) {
+                                return previewURL
+                            }
+                        }
                     }
-                }
-                
-                if let previewStr = result["previewUrl"] as? String, let previewURL = URL(string: previewStr) {
-                    return previewURL
+                } else {
+                    if kind == "tv-episode" {
+                        let artistName = result["artistName"] as? String ?? ""
+                        let collectionName = result["collectionName"] as? String ?? ""
+                        let normArtist = normalizeTitle(artistName)
+                        let normCollection = normalizeTitle(collectionName)
+                        
+                        if normArtist == normQuery || normCollection.hasPrefix(normQuery) || normArtist.contains(normQuery) {
+                            if let previewStr = result["previewUrl"] as? String, let previewURL = URL(string: previewStr) {
+                                return previewURL
+                            }
+                        }
+                    }
                 }
             }
         } catch {

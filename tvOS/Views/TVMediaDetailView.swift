@@ -158,6 +158,8 @@ public struct TVMediaDetailView: View {
     }
     
     private func handleHeroScrollVisibility(maxY: CGFloat) {
+        // Ignore uninitialized or offscreen frames during initial layout
+        guard maxY > 0 else { return }
         let visible = maxY > 80
         if visible != isHeroInView {
             isHeroInView = visible
@@ -683,24 +685,24 @@ private struct TVPlayButtonLabel: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "play.fill")
-                .font(.system(size: 17, weight: .black))
+                .font(.system(size: 17, weight: .bold))
             Text("Play")
                 .font(.system(size: 18, weight: .bold))
         }
-        .foregroundColor(.black)
+        .foregroundColor(isFocused ? .black : .white)
         .padding(.horizontal, 28)
         .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white)
+                .fill(isFocused ? Color.white : Color.white.opacity(0.18))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isFocused ? Color(white: 0.85) : Color.clear, lineWidth: 3)
+                .stroke(isFocused ? Color.white : Color.white.opacity(0.25), lineWidth: isFocused ? 2.5 : 1)
         )
-        .scaleEffect(isFocused ? 1.06 : 1.0)
-        .shadow(color: Color.white.opacity(isFocused ? 0.35 : 0.0), radius: isFocused ? 12 : 0, x: 0, y: 0)
-        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+        .scaleEffect(isFocused ? 1.08 : 1.0)
+        .shadow(color: isFocused ? Color.white.opacity(0.5) : Color.clear, radius: 14)
+        .animation(.spring(response: 0.35, dampingFraction: 0.82), value: isFocused)
     }
 }
 

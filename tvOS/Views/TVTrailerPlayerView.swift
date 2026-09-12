@@ -87,7 +87,7 @@ public final class TVTrailerPlayerUIView: UIView {
             self?.player?.play()
         }
         
-        statusObservation = playerItem.observe(\.status, options: [.new]) { [weak self] item, _ in
+        statusObservation = playerItem.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
             DispatchQueue.main.async {
                 if item.status == .readyToPlay {
                     UIView.animate(withDuration: 0.35) {

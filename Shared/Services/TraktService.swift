@@ -206,7 +206,7 @@ public actor TraktService {
             ContinueWatchingItem(
                 id: "cw-1",
                 item: MediaItem(
-                    id: 1108427,
+                    id: 1241982,
                     title: "Moana",
                     mediaType: .movie,
                     overview: "Moana journeys across the vast ocean to save her island.",
@@ -222,7 +222,7 @@ public actor TraktService {
             ContinueWatchingItem(
                 id: "cw-2",
                 item: MediaItem(
-                    id: 101,
+                    id: 693134,
                     title: "Dune: Part Two",
                     mediaType: .movie,
                     overview: "Paul Atreides unites with the Fremen while seeking revenge.",
@@ -238,7 +238,7 @@ public actor TraktService {
             ContinueWatchingItem(
                 id: "cw-3",
                 item: MediaItem(
-                    id: 201,
+                    id: 125988,
                     title: "Silo",
                     mediaType: .tvShow,
                     overview: "In a ruined and toxic future, thousands live in a giant underground silo.",
@@ -257,7 +257,7 @@ public actor TraktService {
             ContinueWatchingItem(
                 id: "cw-4",
                 item: MediaItem(
-                    id: 202,
+                    id: 97951,
                     title: "Severance",
                     mediaType: .tvShow,
                     overview: "Mark leads a team of office workers whose memories have been surgically divided.",
@@ -276,7 +276,7 @@ public actor TraktService {
             ContinueWatchingItem(
                 id: "cw-5",
                 item: MediaItem(
-                    id: 102,
+                    id: 872585,
                     title: "Oppenheimer",
                     mediaType: .movie,
                     overview: "The story of J. Robert Oppenheimer's role in the development of the atomic bomb.",
