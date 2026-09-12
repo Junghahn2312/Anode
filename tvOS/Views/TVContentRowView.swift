@@ -143,20 +143,34 @@ public struct TVExpandingMediaCardView: View {
         cardHeight * 16.0 / 9.0
     }
     
+    private var isExpanded: Bool {
+        isFocused && isPlayingTrailer
+    }
+    
     public var body: some View {
         ZStack(alignment: .bottomLeading) {
-            // Unfocused: Portrait Poster | Focused: 16:9 Landscape Backdrop or Live Trailer
-            if isFocused {
+            // Unfocused or before trailer starts playing: Portrait Poster
+            // Focused AND trailer playing: 16:9 Landscape Backdrop with Live Trailer
+            if isExpanded {
                 let backdrop = item.backdropURL(size: "w780") ?? item.posterURL(size: "w500")
                 CachedAsyncImage(url: backdrop)
                     .frame(width: expandedWidth, height: cardHeight)
                     .clipped()
                 
-                if isPlayingTrailer, let trailerURL = trailerURL {
-                    TVTrailerPlayerView(videoURL: trailerURL, isMuted: false)
-                        .frame(width: expandedWidth, height: cardHeight)
-                        .clipped()
-                        .transition(.opacity)
+                if let trailerURL = trailerURL {
+                    TVTrailerPlayerView(
+                        videoURL: trailerURL,
+                        isMuted: false,
+                        onPlaybackEnded: {
+                            withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
+                                self.isPlayingTrailer = false
+                                self.trailerURL = nil
+                            }
+                        }
+                    )
+                    .frame(width: expandedWidth, height: cardHeight)
+                    .clipped()
+                    .transition(.opacity)
                 }
             } else {
                 CachedAsyncImage(url: item.posterURL(size: "w500"))
@@ -165,7 +179,7 @@ public struct TVExpandingMediaCardView: View {
             }
             
             // Overlays
-            if isFocused {
+            if isExpanded {
                 // Soft bottom gradient for logo legibility
                 LinearGradient(
                     stops: [
@@ -200,7 +214,7 @@ public struct TVExpandingMediaCardView: View {
                 }
                 .transition(.opacity)
             } else {
-                // Unfocused state: subtle rank numeral if top 10, or rating badge
+                // Unfocused state or focused before trailer plays: rank numeral if top 10, or rating badge
                 if let rank = rank {
                     VStack {
                         HStack {
@@ -230,7 +244,7 @@ public struct TVExpandingMediaCardView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(isFocused ? Color.white.opacity(0.95) : Color.clear, lineWidth: 2.5)
         }
-        .frame(width: isFocused ? expandedWidth : normalWidth, height: cardHeight)
+        .frame(width: isExpanded ? expandedWidth : normalWidth, height: cardHeight)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .zIndex(isFocused ? 20 : 1)
         .shadow(
@@ -239,7 +253,7 @@ public struct TVExpandingMediaCardView: View {
             x: 0,
             y: isFocused ? 10 : 2
         )
-        .animation(.spring(response: 0.58, dampingFraction: 0.86), value: isFocused)
+        .animation(.spring(response: 0.58, dampingFraction: 0.86), value: isExpanded)
         .applyMoveUp(onMoveUp: onMoveUp)
         .task(id: isFocused) {
             guard isFocused else {
@@ -257,14 +271,14 @@ public struct TVExpandingMediaCardView: View {
                 onFocus?(enriched)
             }()
             
-            // 3-second hover countdown before playing trailer with sound
+            // 3-second hover countdown before expanding card and playing trailer with sound
             do {
                 try await Task.sleep(nanoseconds: 3_000_000_000)
                 guard !Task.isCancelled else { return }
                 
                 if let resolvedURL = await TrailerService.shared.resolveTrailerStream(for: item) {
                     guard !Task.isCancelled else { return }
-                    withAnimation(.easeInOut(duration: 0.4)) {
+                    withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
                         self.trailerURL = resolvedURL
                         self.isPlayingTrailer = true
                     }
@@ -279,8 +293,10 @@ public struct TVExpandingMediaCardView: View {
             if focused {
                 onFocus?(item)
             } else {
-                isPlayingTrailer = false
-                trailerURL = nil
+                withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
+                    isPlayingTrailer = false
+                    trailerURL = nil
+                }
             }
         }
         .onChange(of: item.id) { _, _ in

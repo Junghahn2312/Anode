@@ -10,9 +10,10 @@ public struct TVSearchView: View {
     @State private var inputPromptText: String = ""
     
     private let suggestions: [String] = [
+        "The Odyssey",
+        "Christopher Nolan",
         "Tom Cruise",
         "Tom Hanks",
-        "Christopher Nolan",
         "Dune",
         "Batman",
         "Cillian Murphy",

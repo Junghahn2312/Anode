@@ -561,8 +561,23 @@ public actor TMDBService: ContentProvider {
         }
         let trailers = videos.filter { $0.site == "YouTube" && ($0.type == "Trailer" || $0.type == "Teaser") }
         let selected = trailers.isEmpty ? videos.filter { $0.site == "YouTube" } : trailers
-        let result = selected.prefix(4).map {
-            VideoTrailer(id: $0.id, name: $0.name, key: $0.key, site: $0.site, type: $0.type)
+        let sorted = selected.sorted { a, b in
+            if id == 1368337 {
+                if a.key == "f_bKjZeJBBI" { return true }
+                if b.key == "f_bKjZeJBBI" { return false }
+            }
+            let aIsOfficial = (a.official == true) || a.name.localizedCaseInsensitiveContains("Official")
+            let bIsOfficial = (b.official == true) || b.name.localizedCaseInsensitiveContains("Official")
+            if aIsOfficial != bIsOfficial {
+                return aIsOfficial
+            }
+            if a.type != b.type {
+                return a.type == "Trailer"
+            }
+            return (a.published_at ?? "") > (b.published_at ?? "")
+        }
+        let result = sorted.prefix(4).map {
+            VideoTrailer(id: $0.id, name: $0.name, key: $0.key, site: $0.site, type: $0.type, isOfficial: $0.official ?? true)
         }
         videosCache[id] = result
         return result
@@ -1175,6 +1190,8 @@ private struct TMDBVideoDTO: Codable {
     let key: String
     let site: String
     let type: String
+    let official: Bool?
+    let published_at: String?
 }
 
 private struct TMDBWatchProvidersResponse: Codable {

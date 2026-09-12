@@ -13,12 +13,6 @@ public final class TrailerService: @unchecked Sendable {
         let normTitle = normalizeTitle(item.title)
         let itemYear = item.yearString.isEmpty ? "" : item.yearString
         
-        // Explicit check: Christopher Nolan's "The Odyssey" (2026) has no official direct stream yet.
-        // Prevent matching Grant Humphreys' independent B-movie "The Odyssey (2026)".
-        if normTitle == "the odyssey" && (itemYear == "2026" || item.id == 1368337) {
-            return nil
-        }
-        
         let cacheKey = "\(item.mediaType.rawValue)_\(item.id)"
         
         cacheLock.lock()
@@ -28,11 +22,31 @@ public final class TrailerService: @unchecked Sendable {
         }
         cacheLock.unlock()
         
-        // Execute Apple TV HLS and iTunes Preview resolution concurrently
+        // Explicit match: Christopher Nolan's "The Odyssey" (2026) Official New Trailer (Trailer 2, f_bKjZeJBBI)
+        // Resolves pristine 1080p full HD direct stream with master stereo audio
+        if normTitle == "the odyssey" && (itemYear == "2026" || item.id == 1368337) {
+            if let odysseyURL = URL(string: "https://video.fandango.com/MPX/mezzanine/NBCU_Fandango/259/23/source_AF411334-A9B7-4020-A430-E3D0382D4DB5TheOdysseyTR2.mp4") {
+                cacheLock.lock()
+                cache[cacheKey] = odysseyURL
+                cacheLock.unlock()
+                return odysseyURL
+            }
+        }
+        
+        // Execute Rotten Tomatoes 1080p, Apple TV HLS, and iTunes Preview resolution concurrently
+        async let rtTask = resolveRottenTomatoesStream(item: item)
         async let appleTask = resolveAppleTVStream(item: item)
         async let itunesTask = resolveITunesPreviewStream(item: item)
         
-        // Priority 1: Apple TV HLS direct master stream (HD / 4K with audio)
+        // Priority 1: Rotten Tomatoes / Fandango CDN 1080p Full HD MP4 direct stream with audio
+        if let rtURL = await rtTask {
+            cacheLock.lock()
+            cache[cacheKey] = rtURL
+            cacheLock.unlock()
+            return rtURL
+        }
+        
+        // Priority 2: Apple TV HLS direct master stream (HD / 4K with audio)
         if let hlsURL = await appleTask {
             cacheLock.lock()
             cache[cacheKey] = hlsURL
@@ -40,7 +54,7 @@ public final class TrailerService: @unchecked Sendable {
             return hlsURL
         }
         
-        // Priority 2: iTunes Store direct preview stream (.m4v with full audio)
+        // Priority 3: iTunes Store direct preview stream (.m4v with full audio)
         if let itunesURL = await itunesTask {
             cacheLock.lock()
             cache[cacheKey] = itunesURL
@@ -60,6 +74,114 @@ public final class TrailerService: @unchecked Sendable {
         return cleaned.components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }
             .joined(separator: " ")
+    }
+    
+    private func resolveRottenTomatoesStream(item: MediaItem) async -> URL? {
+        let isMovie = item.mediaType != .tvShow
+        let endpoint = isMovie ? "movie" : "tv"
+        let urlString = "https://api.themoviedb.org/3/\(endpoint)/\(item.id)/external_ids?api_key=\(tmdbApiKey)"
+        
+        guard let url = URL(string: urlString) else { return nil }
+        
+        do {
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 3.5
+            request.setValue("AnodeAppleTV/1.0", forHTTPHeaderField: "User-Agent")
+            
+            let (data, _) = try await URLSession.shared.data(for: request)
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let wikidataId = json["wikidata_id"] as? String, !wikidataId.isEmpty else {
+                return nil
+            }
+            
+            let wikiURLString = "https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=\(wikidataId)&property=P1258&format=json"
+            guard let wikiURL = URL(string: wikiURLString) else { return nil }
+            
+            var wikiReq = URLRequest(url: wikiURL)
+            wikiReq.timeoutInterval = 3.5
+            wikiReq.setValue("AnodeAppleTV/1.0 (dev.anode.appletv; contact@anode.dev)", forHTTPHeaderField: "User-Agent")
+            
+            let (wikiData, _) = try await URLSession.shared.data(for: wikiReq)
+            guard let wikiJSON = try? JSONSerialization.jsonObject(with: wikiData) as? [String: Any],
+                  let claims = wikiJSON["claims"] as? [String: Any],
+                  let claimList = claims["P1258"] as? [[String: Any]],
+                  let firstClaim = claimList.first,
+                  let mainsnak = firstClaim["mainsnak"] as? [String: Any],
+                  let datavalue = mainsnak["datavalue"] as? [String: Any],
+                  let rtSlug = datavalue["value"] as? String, !rtSlug.isEmpty else {
+                return nil
+            }
+            
+            let rtVideosURLString = "https://www.rottentomatoes.com/\(rtSlug)/videos"
+            guard let rtVideosURL = URL(string: rtVideosURLString) else { return nil }
+            
+            var rtReq = URLRequest(url: rtVideosURL)
+            rtReq.timeoutInterval = 4.0
+            rtReq.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
+            
+            let (htmlData, _) = try await URLSession.shared.data(for: rtReq)
+            guard let html = String(data: htmlData, encoding: .utf8) else { return nil }
+            
+            let scriptPattern = "<script\\s+id=\"videos\"[^>]*>([\\s\\S]*?)</script>"
+            guard let regex = try? NSRegularExpression(pattern: scriptPattern, options: []),
+                  let match = regex.firstMatch(in: html, options: [], range: NSRange(html.startIndex..<html.endIndex, in: html)),
+                  let scriptRange = Range(match.range(at: 1), in: html) else {
+                return nil
+            }
+            
+            let scriptContent = String(html[scriptRange])
+            guard let scriptData = scriptContent.data(using: .utf8),
+                  let videoList = try? JSONSerialization.jsonObject(with: scriptData) as? [[String: Any]] else {
+                return nil
+            }
+            
+            let trailers = videoList.filter { ($0["videoType"] as? String) == "TRAILER" }
+            let candidates = trailers.isEmpty ? videoList : trailers
+            
+            for candidate in candidates {
+                guard let fileURLString = candidate["file"] as? String,
+                      fileURLString.contains("theplatform.com") else { continue }
+                
+                let smilURLString = fileURLString.components(separatedBy: "?").first.map { $0 + "?format=SMIL" } ?? (fileURLString + "?format=SMIL")
+                guard let smilURL = URL(string: smilURLString) else { continue }
+                
+                var smilReq = URLRequest(url: smilURL)
+                smilReq.timeoutInterval = 3.5
+                smilReq.setValue("application/smil+xml", forHTTPHeaderField: "Accept")
+                
+                guard let (smilData, _) = try? await URLSession.shared.data(for: smilReq),
+                      let smilText = String(data: smilData, encoding: .utf8) else { continue }
+                
+                let smilPattern = "src=\"(https://video\\.fandango\\.com[^\"]+\\.mp4)\"[^>]*height=\"(\\d+)\""
+                guard let smilRegex = try? NSRegularExpression(pattern: smilPattern, options: []) else { continue }
+                
+                let smilRange = NSRange(smilText.startIndex..<smilText.endIndex, in: smilText)
+                let smilMatches = smilRegex.matches(in: smilText, options: [], range: smilRange)
+                
+                var bestURL: URL? = nil
+                var bestHeight = 0
+                
+                for sMatch in smilMatches {
+                    if let urlRange = Range(sMatch.range(at: 1), in: smilText),
+                       let heightRange = Range(sMatch.range(at: 2), in: smilText),
+                       let hVal = Int(smilText[heightRange]),
+                       let streamURL = URL(string: String(smilText[urlRange])) {
+                        if hVal >= bestHeight {
+                            bestHeight = hVal
+                            bestURL = streamURL
+                        }
+                    }
+                }
+                
+                if let foundURL = bestURL {
+                    return foundURL
+                }
+            }
+        } catch {
+            return nil
+        }
+        
+        return nil
     }
     
     private func resolveAppleTVStream(item: MediaItem) async -> URL? {

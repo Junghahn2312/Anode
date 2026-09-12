@@ -218,10 +218,16 @@ public struct TVHomeView: View {
                     
                     // Live trailer video playback when hovering over hero action controls
                     if isPlayingHeroTrailer, let heroTrailerURL = heroTrailerURL {
-                        TVTrailerPlayerView(videoURL: heroTrailerURL, isMuted: false)
-                            .frame(width: screenWidth, height: screenHeight)
-                            .clipped()
-                            .transition(.opacity)
+                        TVTrailerPlayerView(
+                            videoURL: heroTrailerURL,
+                            isMuted: false,
+                            onPlaybackEnded: {
+                                stopHeroTrailer()
+                            }
+                        )
+                        .frame(width: screenWidth, height: screenHeight)
+                        .clipped()
+                        .transition(.opacity)
                     }
                     
                     // Hardware-accelerated frosted glass overlay when carousel is out of view

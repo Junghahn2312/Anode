@@ -5,21 +5,32 @@ import AVFoundation
 public struct TVTrailerPlayerView: UIViewRepresentable {
     public let videoURL: URL
     public let isMuted: Bool
+    public let loopPlayback: Bool
+    public let onPlaybackEnded: (() -> Void)?
     
-    public init(videoURL: URL, isMuted: Bool = false) {
+    public init(
+        videoURL: URL,
+        isMuted: Bool = false,
+        loopPlayback: Bool = false,
+        onPlaybackEnded: (() -> Void)? = nil
+    ) {
         self.videoURL = videoURL
         self.isMuted = isMuted
+        self.loopPlayback = loopPlayback
+        self.onPlaybackEnded = onPlaybackEnded
     }
     
     public func makeUIView(context: Context) -> TVTrailerPlayerUIView {
         let view = TVTrailerPlayerUIView()
-        view.load(url: videoURL, isMuted: isMuted)
+        view.load(url: videoURL, isMuted: isMuted, loopPlayback: loopPlayback, onPlaybackEnded: onPlaybackEnded)
         return view
     }
     
     public func updateUIView(_ uiView: TVTrailerPlayerUIView, context: Context) {
+        uiView.onPlaybackEnded = onPlaybackEnded
+        uiView.loopPlayback = loopPlayback
         if uiView.currentURL != videoURL {
-            uiView.load(url: videoURL, isMuted: isMuted)
+            uiView.load(url: videoURL, isMuted: isMuted, loopPlayback: loopPlayback, onPlaybackEnded: onPlaybackEnded)
         }
     }
     
@@ -38,6 +49,8 @@ public final class TVTrailerPlayerUIView: UIView {
     }
     
     public private(set) var currentURL: URL?
+    public var onPlaybackEnded: (() -> Void)?
+    public var loopPlayback: Bool = false
     private var player: AVPlayer?
     private var endObserver: NSObjectProtocol?
     private var statusObservation: NSKeyValueObservation?
@@ -59,9 +72,11 @@ public final class TVTrailerPlayerUIView: UIView {
         alpha = 0.0
     }
     
-    public func load(url: URL, isMuted: Bool) {
+    public func load(url: URL, isMuted: Bool, loopPlayback: Bool = false, onPlaybackEnded: (() -> Void)? = nil) {
         tearDown()
         currentURL = url
+        self.loopPlayback = loopPlayback
+        self.onPlaybackEnded = onPlaybackEnded
         
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
@@ -71,6 +86,10 @@ public final class TVTrailerPlayerUIView: UIView {
         }
         
         let playerItem = AVPlayerItem(url: url)
+        // Ensure highest quality streaming up to 1080p full HD with zero bitrate cap
+        playerItem.preferredMaximumResolution = CGSize(width: 1920, height: 1080)
+        playerItem.preferredPeakBitRate = 0
+        
         let newPlayer = AVPlayer(playerItem: playerItem)
         newPlayer.isMuted = isMuted
         newPlayer.automaticallyWaitsToMinimizeStalling = false
@@ -83,8 +102,13 @@ public final class TVTrailerPlayerUIView: UIView {
             object: playerItem,
             queue: .main
         ) { [weak self] _ in
-            self?.player?.seek(to: .zero)
-            self?.player?.play()
+            guard let self = self else { return }
+            if self.loopPlayback {
+                self.player?.seek(to: .zero)
+                self.player?.play()
+            } else {
+                self.onPlaybackEnded?()
+            }
         }
         
         statusObservation = playerItem.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in

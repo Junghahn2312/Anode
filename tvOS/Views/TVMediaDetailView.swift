@@ -201,10 +201,18 @@ public struct TVMediaDetailView: View {
                 
                 // Live Trailer Video Stream with sound
                 if isHeroTrailerPlaying, let heroTrailerURL = heroTrailerURL {
-                    TVTrailerPlayerView(videoURL: heroTrailerURL, isMuted: false)
-                        .frame(width: screenWidth, height: heroHeight)
-                        .clipped()
-                        .transition(.opacity)
+                    TVTrailerPlayerView(
+                        videoURL: heroTrailerURL,
+                        isMuted: false,
+                        onPlaybackEnded: {
+                            withAnimation(.easeInOut(duration: 0.4)) {
+                                isHeroTrailerPlaying = false
+                            }
+                        }
+                    )
+                    .frame(width: screenWidth, height: heroHeight)
+                    .clipped()
+                    .transition(.opacity)
                 }
                 
                 // Soft left vignette for logo & typography legibility
