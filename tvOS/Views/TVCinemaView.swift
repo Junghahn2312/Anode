@@ -139,11 +139,11 @@ public struct TVCinemaView: View {
     // MARK: - Row Hover & Focus Handling
     
     private func handleRowHover(_ item: MediaItem, rowIndex: Int) {
-        withAnimation(.easeInOut(duration: 0.50)) {
+        withAnimation(.easeInOut(duration: 0.65)) {
             self.hoveredItem = item
         }
         if activeRowIndex != rowIndex {
-            withAnimation(.easeInOut(duration: 0.50)) {
+            withAnimation(.easeInOut(duration: 0.65)) {
                 self.activeRowIndex = rowIndex
                 AppNavigation.shared.isTopBarVisible = true
             }

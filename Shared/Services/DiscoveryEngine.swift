@@ -148,6 +148,14 @@ public final class DiscoveryEngine: ObservableObject {
         await tmdb.fetchCredits(id: item.id, mediaType: item.mediaType)
     }
     
+    public func fetchPersonCredits(personId: Int, personName: String? = nil) async -> (movies: [MediaItem], tvShows: [MediaItem]) {
+        await tmdb.fetchPersonCredits(personId: personId, personName: personName)
+    }
+    
+    public func fetchPersonDetail(personId: Int, personName: String? = nil) async -> PersonDetail? {
+        await tmdb.fetchPersonDetail(personId: personId, personName: personName)
+    }
+    
     public func fetchVideos(for item: MediaItem) async -> [VideoTrailer] {
         await tmdb.fetchVideos(id: item.id, mediaType: item.mediaType)
     }

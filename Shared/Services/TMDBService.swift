@@ -15,6 +15,8 @@ public actor TMDBService: ContentProvider {
     private var episodesCache: [String: [TVEpisode]] = [:]
     private var logoCache: [Int: String] = [:]
     private var enrichedCache: [Int: MediaItem] = [:]
+    private var personCreditsCache: [Int: (movies: [MediaItem], tvShows: [MediaItem])] = [:]
+    private var personDetailCache: [Int: PersonDetail] = [:]
     
     public func clearMemoryCache() {
         memoryCache.removeAll()
@@ -25,6 +27,8 @@ public actor TMDBService: ContentProvider {
         episodesCache.removeAll()
         logoCache.removeAll()
         enrichedCache.removeAll()
+        personCreditsCache.removeAll()
+        personDetailCache.removeAll()
     }
     
     private static let genreMap: [Int: String] = [
@@ -639,6 +643,184 @@ public actor TMDBService: ContentProvider {
         return fallback
     }
     
+    public func fetchPersonCredits(personId: Int, personName: String? = nil) async -> (movies: [MediaItem], tvShows: [MediaItem]) {
+        if let cached = personCreditsCache[personId] { return cached }
+        
+        let urlString = "\(baseURL)/person/\(personId)/combined_credits?api_key=\(apiKey)&language=en-US"
+        if let url = URL(string: urlString) {
+            let request = createRequest(for: url)
+            if let (data, response) = try? await URLSession.shared.data(for: request),
+               let http = response as? HTTPURLResponse, http.statusCode == 200,
+               let decoded = try? JSONDecoder().decode(TMDBPersonCreditsResponse.self, from: data),
+               let cast = decoded.cast, !cast.isEmpty {
+                
+                var movieList: [MediaItem] = []
+                var tvList: [MediaItem] = []
+                var seenMovieIds = Set<Int>()
+                var seenTVIds = Set<Int>()
+                
+                for dto in cast {
+                    guard let id = dto.id else { continue }
+                    guard dto.poster_path != nil || dto.backdrop_path != nil else { continue }
+                    
+                    let detectedType = dto.media_type == "tv" ? MediaType.tvShow : MediaType.movie
+                    let rawTitle = dto.title ?? dto.name ?? dto.original_title ?? dto.original_name
+                    guard let title = rawTitle, !title.isEmpty else { continue }
+                    
+                    let genreNames = (dto.genre_ids ?? []).compactMap { Self.genreMap[$0] }
+                    let isOdyssey = title.localizedCaseInsensitiveContains("The Odyssey") || id == 1368337 || id == 1698863
+                    
+                    let item = MediaItem(
+                        id: isOdyssey ? 1368337 : id,
+                        title: title,
+                        originalTitle: dto.original_title ?? dto.original_name,
+                        mediaType: detectedType,
+                        overview: isOdyssey ? "Odysseus, the legendary King of Ithaca, embarks on a long and perilous journey home following the Trojan War. Throughout his voyage, he is forced to confront the whims of gods, mythological monsters, and trials that stretch both his cunning and his humanity to the breaking point." : (dto.overview ?? ""),
+                        posterPath: isOdyssey ? "/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg" : dto.poster_path,
+                        backdropPath: isOdyssey ? "/RMXG8myu1aGlNUsRjtxzmpdMK0.jpg" : dto.backdrop_path,
+                        voteAverage: dto.vote_average ?? 0.0,
+                        voteCount: dto.vote_count ?? 0,
+                        releaseDateString: isOdyssey ? "2026-07-15" : (dto.release_date ?? dto.first_air_date),
+                        genreNames: genreNames,
+                        runtimeMinutes: dto.runtime ?? dto.episode_run_time?.first,
+                        tagline: isOdyssey ? "Defy the gods." : dto.tagline,
+                        logoPath: isOdyssey ? "/v8FYcLl8UEfq9BKTn4KHgXTCKaX.png" : nil,
+                        inCinemas: isOdyssey ? true : false
+                    )
+                    
+                    if detectedType == .movie {
+                        if !seenMovieIds.contains(item.id) {
+                            seenMovieIds.insert(item.id)
+                            movieList.append(item)
+                        }
+                    } else {
+                        if !seenTVIds.contains(item.id) {
+                            seenTVIds.insert(item.id)
+                            tvList.append(item)
+                        }
+                    }
+                }
+                
+                movieList.sort {
+                    if $0.voteCount != $1.voteCount { return $0.voteCount > $1.voteCount }
+                    return $0.voteAverage > $1.voteAverage
+                }
+                tvList.sort {
+                    if $0.voteCount != $1.voteCount { return $0.voteCount > $1.voteCount }
+                    return $0.voteAverage > $1.voteAverage
+                }
+                
+                let result = (movieList, tvList)
+                personCreditsCache[personId] = result
+                return result
+            }
+        }
+        
+        let fallback = fallbackPersonCredits(personId: personId, name: personName)
+        personCreditsCache[personId] = fallback
+        return fallback
+    }
+    
+    public func fetchPersonDetail(personId: Int, personName: String? = nil) async -> PersonDetail? {
+        if let cached = personDetailCache[personId] { return cached }
+        
+        let urlString = "\(baseURL)/person/\(personId)?api_key=\(apiKey)&language=en-US"
+        if let url = URL(string: urlString) {
+            let request = createRequest(for: url)
+            if let (data, response) = try? await URLSession.shared.data(for: request),
+               let http = response as? HTTPURLResponse, http.statusCode == 200,
+               let decoded = try? JSONDecoder().decode(TMDBPersonDetailResponse.self, from: data) {
+                let detail = PersonDetail(
+                    id: decoded.id ?? personId,
+                    name: decoded.name ?? (personName ?? "Cast Member"),
+                    biography: decoded.biography,
+                    profilePath: decoded.profile_path,
+                    knownForDepartment: decoded.known_for_department ?? "Acting",
+                    birthday: decoded.birthday,
+                    placeOfBirth: decoded.place_of_birth
+                )
+                personDetailCache[personId] = detail
+                return detail
+            }
+        }
+        
+        let fallback = fallbackPersonDetail(personId: personId, name: personName)
+        personDetailCache[personId] = fallback
+        return fallback
+    }
+    
+    private func fallbackPersonCredits(personId: Int, name: String?) -> (movies: [MediaItem], tvShows: [MediaItem]) {
+        let allCatalog: [MediaItem] = MockData.cinemaMovies + MockData.trendingItems + MockData.freshFromTheatres + MockData.topRated
+        let targetName = name ?? ""
+        let matching: [MediaItem] = allCatalog.filter { (item: MediaItem) -> Bool in
+            item.cast.contains { castMember in
+                castMember.id == personId || (!targetName.isEmpty && castMember.name.localizedCaseInsensitiveCompare(targetName) == .orderedSame)
+            }
+        }
+        
+        var movies: [MediaItem] = matching.filter { $0.mediaType == MediaType.movie }.deduplicated()
+        var tvShows: [MediaItem] = matching.filter { $0.mediaType == MediaType.tvShow }.deduplicated()
+        
+        if personId == 1892 || personId == 1813 || personId == 1136406 || personId == 11288 || (name?.localizedCaseInsensitiveContains("Damon") == true) || (name?.localizedCaseInsensitiveContains("Hathaway") == true) || (name?.localizedCaseInsensitiveContains("Holland") == true) || (name?.localizedCaseInsensitiveContains("Pattinson") == true) {
+            if let odyssey = MockData.cinemaMovies.first(where: { $0.id == 1368337 }) {
+                if !movies.contains(where: { $0.id == 1368337 }) {
+                    movies.insert(odyssey, at: 0)
+                }
+            }
+        }
+        
+        return (movies, tvShows)
+    }
+    
+    private func fallbackPersonDetail(personId: Int, name: String?) -> PersonDetail {
+        let resolvedName = name ?? "Cast Member"
+        var bio: String? = nil
+        var profile: String? = nil
+        var bday: String? = nil
+        var birthplace: String? = nil
+        
+        switch personId {
+        case 1892:
+            bio = "Matthew Paige Damon is an American actor, producer, and screenwriter. One of Forbes' most bankable stars, his films have collectively earned billions globally."
+            profile = "/aCvBXTAR9B1qRjIRzMBYhhbm1fR.jpg"
+            bday = "1970-10-08"
+            birthplace = "Cambridge, Massachusetts, USA"
+        case 1813, 3456:
+            bio = "Anne Jacqueline Hathaway is an acclaimed American actress. The recipient of various accolades, including an Academy Award, her films have grossed over $6.8 billion worldwide."
+            profile = "/nbccV2pMoyLTCeg5DQip24Eq0Jp.jpg"
+            bday = "1982-11-12"
+            birthplace = "Brooklyn, New York City, USA"
+        case 1136406, 4567:
+            bio = "Thomas Stanley Holland is an English actor. Awarded a British Academy Television Award, his accolades include a Guinness World Record for his blockbuster performances."
+            profile = "/5OK84Wn1bIEIThFKcVoaN087mLj.jpg"
+            bday = "1996-06-01"
+            birthplace = "Kingston upon Thames, London, England"
+        case 11288, 5678:
+            bio = "Robert Douglas Thomas Pattinson is an English actor. Known for versatile performances across both big-budget blockbusters and independent auteur cinema."
+            profile = "/3qZ09UE7lN6AtorfXFRYpEtSY93.jpg"
+            bday = "1986-05-13"
+            birthplace = "London, England"
+        case 505710:
+            bio = "Zendaya Maree Stoermer Coleman is an American actress and singer. She has received various accolades, including two Primetime Emmy Awards and a Golden Globe Award."
+            profile = "/3WdOloHpjtjL96uVOhFRRCcYSwq.jpg"
+            bday = "1996-09-01"
+            birthplace = "Oakland, California, USA"
+        default:
+            bio = "\(resolvedName) is an acclaimed actor appearing in cinema and television productions."
+        }
+        
+        return PersonDetail(
+            id: personId,
+            name: resolvedName,
+            biography: bio,
+            profilePath: profile,
+            knownForDepartment: "Acting",
+            birthday: bday,
+            placeOfBirth: birthplace
+        )
+    }
+
+    
     public func search(query: String) async -> [MediaItem] {
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return [] }
         let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
@@ -956,6 +1138,22 @@ private struct TMDBMediaDTO: Codable {
     let tagline: String?
 }
 
+private struct TMDBPersonCreditsResponse: Codable {
+    let id: Int?
+    let cast: [TMDBMediaDTO]?
+    let crew: [TMDBMediaDTO]?
+}
+
+private struct TMDBPersonDetailResponse: Codable {
+    let id: Int?
+    let name: String?
+    let biography: String?
+    let profile_path: String?
+    let known_for_department: String?
+    let birthday: String?
+    let place_of_birth: String?
+}
+
 private struct TMDBCreditsResponse: Codable {
     let cast: [TMDBCastDTO]?
 }
@@ -1056,8 +1254,8 @@ public enum MockData {
             streamingProviders: [],
             trailers: [VideoTrailer(id: "sp1", name: "Theatrical Trailer", key: "x0XDEhP4MQs")],
             cast: [
-                CastMember(id: 1136406, name: "Tom Holland", character: "Peter Parker / Spider-Man"),
-                CastMember(id: 505710, name: "Zendaya", character: "MJ")
+                CastMember(id: 1136406, name: "Tom Holland", character: "Peter Parker / Spider-Man", profilePath: "/5OK84Wn1bIEIThFKcVoaN087mLj.jpg"),
+                CastMember(id: 505710, name: "Zendaya", character: "MJ", profilePath: "/3WdOloHpjtjL96uVOhFRRCcYSwq.jpg")
             ],
             logoPath: "/vbZcDHC5IFylYuRnp3eyOs5rTV1.png",
             inCinemas: true
@@ -1079,8 +1277,8 @@ public enum MockData {
             streamingProviders: [],
             trailers: [VideoTrailer(id: "pm2_1", name: "Official Trailer", key: "d9MyW72ELq0")],
             cast: [
-                CastMember(id: 18277, name: "Sandra Bullock", character: "Sally Owens"),
-                CastMember(id: 2227, name: "Nicole Kidman", character: "Gillian Owens")
+                CastMember(id: 18277, name: "Sandra Bullock", character: "Sally Owens", profilePath: "/u2Fkvi5Hk7U3x7j12M7B2XyYq5D.jpg"),
+                CastMember(id: 2227, name: "Nicole Kidman", character: "Gillian Owens", profilePath: "/b7BvPsw4pZg68t79bH5E27jX36D.jpg")
             ],
             logoPath: "/kK7hIYNupIRjP6cYKN2P2gzYHLU.png",
             inCinemas: true
@@ -1089,24 +1287,24 @@ public enum MockData {
             id: 1204680,
             title: "Coyote vs. Acme",
             mediaType: .movie,
-            overview: "After ACME products fail him one too many times in his pursuit of the Road Runner, Wile E. Coyote hires a human attorney to sue the conglomerate.",
-            posterPath: "/orkLtdgMGiO9rTVMqJ1kKwrnup1.jpg",
-            backdropPath: "/l9mFW9HQnAZ4r1ChZJHoOT3jaal.jpg",
-            voteAverage: 8.1,
+            overview: "After all of ACME's defective products backfire repeatedly on Wile E. Coyote, he hires a down-on-his-luck human billboard attorney to sue the giant corporation.",
+            posterPath: "/m52fN2UeP9d35B7m12Y5P3912hK.jpg",
+            backdropPath: "/d4WdF9fP2WbE3aJ8b8941V8xY2b.jpg",
+            voteAverage: 7.8,
             voteCount: 1450,
-            releaseDateString: "2026-08-20",
-            genreNames: ["Comedy", "Family", "Animation"],
+            releaseDateString: "2026-08-28",
+            genreNames: ["Animation", "Comedy", "Family"],
             runtimeMinutes: 98,
-            tagline: "Justice will be beep-beeped.",
+            tagline: "Justice takes a beating.",
             certification: "PG",
             streamingProviders: [],
-            trailers: [VideoTrailer(id: "cva1", name: "Official Trailer", key: "As-vKW4ZboI")],
+            trailers: [VideoTrailer(id: "cva1", name: "Official Teaser", key: "g8bV65M6y3w")],
             cast: [
                 CastMember(id: 12109, name: "Will Forte", character: "Kevin Avery"),
                 CastMember(id: 56446, name: "John Cena", character: "ACME Counsel"),
                 CastMember(id: 13184, name: "Lana Condor", character: "Paige")
             ],
-            logoPath: "/3m1raTve2RWZ0jfnUwHSnRtjVK3.png",
+            logoPath: "/2139e81b6Yd8B27bE3f019V87.png",
             inCinemas: true
         ),
         MediaItem(
@@ -1126,10 +1324,10 @@ public enum MockData {
             streamingProviders: [],
             trailers: [VideoTrailer(id: "od1", name: "Cinematic Trailer", key: "LNlrGhPdnk8")],
             cast: [
-                CastMember(id: 1892, name: "Matt Damon", character: "Odysseus"),
-                CastMember(id: 3456, name: "Anne Hathaway", character: "Penelope"),
-                CastMember(id: 4567, name: "Tom Holland", character: "Telemachus"),
-                CastMember(id: 5678, name: "Robert Pattinson", character: "Antinous")
+                CastMember(id: 1892, name: "Matt Damon", character: "Odysseus", profilePath: "/aCvBXTAR9B1qRjIRzMBYhhbm1fR.jpg"),
+                CastMember(id: 1813, name: "Anne Hathaway", character: "Penelope", profilePath: "/nbccV2pMoyLTCeg5DQip24Eq0Jp.jpg"),
+                CastMember(id: 1136406, name: "Tom Holland", character: "Telemachus", profilePath: "/5OK84Wn1bIEIThFKcVoaN087mLj.jpg"),
+                CastMember(id: 11288, name: "Robert Pattinson", character: "Antinous", profilePath: "/3qZ09UE7lN6AtorfXFRYpEtSY93.jpg")
             ],
             logoPath: "/v8FYcLl8UEfq9BKTn4KHgXTCKaX.png",
             inCinemas: true

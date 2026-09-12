@@ -7,11 +7,23 @@ public struct TVMediaDetailView: View {
     @ObservedObject private var watchlist = WatchlistStore.shared
     @ObservedObject private var engine = DiscoveryEngine.shared
     
+    private enum DetailDestination: Identifiable {
+        case recommendation(MediaItem)
+        case castMember(CastMember)
+        
+        var id: String {
+            switch self {
+            case .recommendation(let item): return "rec-\(item.id)"
+            case .castMember(let member): return "cast-\(member.id)"
+            }
+        }
+    }
+    
     @State private var availability: WatchAvailability?
     @State private var castMembers: [CastMember] = []
     @State private var trailers: [VideoTrailer] = []
     @State private var liveRecommendations: [MediaItem] = []
-    @State private var selectedRecommendation: MediaItem?
+    @State private var activeDestination: DetailDestination?
     
     // TV Show Seasons & Episodes State
     @State private var seasons: [TVSeason] = []
@@ -103,8 +115,13 @@ public struct TVMediaDetailView: View {
                 await loadEpisodes(for: firstSeason)
             }
         }
-        .fullScreenCover(item: $selectedRecommendation) { rec in
-            TVMediaDetailView(item: rec)
+        .fullScreenCover(item: $activeDestination) { destination in
+            switch destination {
+            case .recommendation(let rec):
+                TVMediaDetailView(item: rec)
+            case .castMember(let member):
+                TVPersonDetailView(member: member)
+            }
         }
     }
     
@@ -527,45 +544,20 @@ public struct TVMediaDetailView: View {
                         .padding(.horizontal, 60)
                     
                     ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(spacing: 20) {
+                        HStack(spacing: 24) {
                             ForEach(activeCast) { member in
-                                castCard(member)
+                                TVCastMemberCard(member: member) {
+                                    activeDestination = .castMember(member)
+                                }
                             }
                         }
                         .padding(.horizontal, 60)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, 16)
                     }
                 }
+                .focusSection()
             }
         }
-    }
-    
-    private func castCard(_ member: CastMember) -> some View {
-        HStack(spacing: 12) {
-            CachedAsyncImage(url: member.profileURL)
-                .frame(width: 48, height: 48)
-                .clipShape(Circle())
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(member.name)
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.white)
-                
-                Text(member.character)
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundColor(.white.opacity(0.6))
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 0.8)
-                )
-        )
     }
     
     // MARK: - More Like This Section
@@ -584,7 +576,7 @@ public struct TVMediaDetailView: View {
                         LazyHStack(spacing: 32) {
                             ForEach(activeRecs) { rec in
                                 Button {
-                                    selectedRecommendation = rec
+                                    activeDestination = .recommendation(rec)
                                 } label: {
                                     TVMediaCardView(item: rec, width: 210)
                                 }
@@ -843,3 +835,299 @@ private struct TVTrailerCardView: View {
         .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
     }
 }
+
+// MARK: - Dedicated Interactive Cast Member Card
+
+public struct TVCastMemberCard: View {
+    let member: CastMember
+    let onSelect: () -> Void
+    
+    public init(member: CastMember, onSelect: @escaping () -> Void) {
+        self.member = member
+        self.onSelect = onSelect
+    }
+    
+    public var body: some View {
+        Button(action: onSelect) {
+            TVCastMemberCardContent(member: member)
+        }
+        .buttonStyle(.tvCard)
+    }
+}
+
+private struct TVCastMemberCardContent: View {
+    let member: CastMember
+    @Environment(\.isFocused) private var isFocused: Bool
+    
+    var body: some View {
+        HStack(spacing: 14) {
+            CachedAsyncImage(url: member.profileURL)
+                .frame(width: 52, height: 52)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(isFocused ? Color.black.opacity(0.30) : Color.white.opacity(0.18), lineWidth: isFocused ? 2 : 1)
+                )
+            
+            VStack(alignment: .leading, spacing: 3) {
+                Text(member.name)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(isFocused ? .black : .white)
+                    .lineLimit(1)
+                
+                Text(member.character)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(isFocused ? Color.black.opacity(0.75) : Color.white.opacity(0.70))
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: 180, alignment: .leading)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(isFocused ? Color.white : Color.white.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(isFocused ? Color.white : Color.white.opacity(0.15), lineWidth: isFocused ? 2.5 : 1)
+                )
+        )
+        .scaleEffect(isFocused ? 1.08 : 1.0)
+        .shadow(
+            color: isFocused ? Color.white.opacity(0.35) : Color.black.opacity(0.20),
+            radius: isFocused ? 16 : 4,
+            x: 0,
+            y: isFocused ? 8 : 2
+        )
+        .animation(.spring(response: 0.38, dampingFraction: 0.86), value: isFocused)
+    }
+}
+
+// MARK: - Full Screen Person / Cast Member Filmography View
+
+public struct TVPersonDetailView: View {
+    let member: CastMember
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var engine = DiscoveryEngine.shared
+    
+    @State private var personDetail: PersonDetail?
+    @State private var movies: [MediaItem] = []
+    @State private var tvShows: [MediaItem] = []
+    @State private var isLoading: Bool = true
+    @State private var selectedMedia: MediaItem?
+    @FocusState private var isBackFocused: Bool
+    
+    public init(member: CastMember) {
+        self.member = member
+    }
+    
+    public var body: some View {
+        GeometryReader { screenGeo in
+            let screenWidth = max(screenGeo.size.width, UIScreen.main.bounds.width)
+            let screenHeight = max(screenGeo.size.height, UIScreen.main.bounds.height)
+            
+            ZStack(alignment: .topLeading) {
+                // Ambient background
+                Color(red: 0.04, green: 0.04, blue: 0.06)
+                    .ignoresSafeArea()
+                
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 36) {
+                        // Top Bar: Back Button
+                        HStack {
+                            Button {
+                                dismiss()
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "chevron.left")
+                                        .font(.system(size: 16, weight: .bold))
+                                    Text("Back")
+                                        .font(.system(size: 16, weight: .semibold))
+                                }
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(isBackFocused ? Color.white : Color.white.opacity(0.12))
+                                )
+                                .foregroundColor(isBackFocused ? .black : .white)
+                            }
+                            .buttonStyle(.plain)
+                            .focused($isBackFocused)
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal, 60)
+                        .padding(.top, 40)
+                        
+                        // Header: Actor Profile Info
+                        personHeaderSection
+                            .padding(.horizontal, 60)
+                        
+                        // Movies Section
+                        if !movies.isEmpty {
+                            VStack(alignment: .leading, spacing: 14) {
+                                HStack(spacing: 12) {
+                                    Text("Movies")
+                                        .font(.system(size: 26, weight: .bold))
+                                        .foregroundColor(.white)
+                                    
+                                    Text("(\(movies.count))")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(.white.opacity(0.55))
+                                }
+                                .padding(.horizontal, 60)
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    LazyHStack(spacing: 28) {
+                                        ForEach(movies) { movie in
+                                            Button {
+                                                selectedMedia = movie
+                                            } label: {
+                                                TVExpandingMediaCardView(
+                                                    item: movie,
+                                                    normalWidth: 190,
+                                                    showCinemaBadge: movie.inCinemas
+                                                )
+                                            }
+                                            .buttonStyle(.tvCard)
+                                        }
+                                    }
+                                    .padding(.horizontal, 60)
+                                    .padding(.vertical, 20)
+                                }
+                            }
+                            .focusSection()
+                        }
+                        
+                        // TV Shows Section
+                        if !tvShows.isEmpty {
+                            VStack(alignment: .leading, spacing: 14) {
+                                HStack(spacing: 12) {
+                                    Text("TV Shows")
+                                        .font(.system(size: 26, weight: .bold))
+                                        .foregroundColor(.white)
+                                    
+                                    Text("(\(tvShows.count))")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(.white.opacity(0.55))
+                                }
+                                .padding(.horizontal, 60)
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    LazyHStack(spacing: 28) {
+                                        ForEach(tvShows) { show in
+                                            Button {
+                                                selectedMedia = show
+                                            } label: {
+                                                TVExpandingMediaCardView(
+                                                    item: show,
+                                                    normalWidth: 190,
+                                                    showCinemaBadge: false
+                                                )
+                                            }
+                                            .buttonStyle(.tvCard)
+                                        }
+                                    }
+                                    .padding(.horizontal, 60)
+                                    .padding(.vertical, 20)
+                                }
+                            }
+                            .focusSection()
+                        }
+                        
+                        if movies.isEmpty && tvShows.isEmpty && !isLoading {
+                            VStack(spacing: 12) {
+                                Text("No titles found for this cast member.")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.60))
+                            }
+                            .padding(.horizontal, 60)
+                            .padding(.vertical, 40)
+                        }
+                    }
+                    .padding(.bottom, 90)
+                }
+            }
+            .frame(width: screenWidth, height: screenHeight)
+            .ignoresSafeArea()
+        }
+        .task(id: member.id) {
+            isLoading = true
+            async let detailTask = engine.fetchPersonDetail(personId: member.id, personName: member.name)
+            async let creditsTask = engine.fetchPersonCredits(personId: member.id, personName: member.name)
+            
+            let detail = await detailTask
+            let (movieItems, tvItems) = await creditsTask
+            
+            self.personDetail = detail
+            self.movies = movieItems
+            self.tvShows = tvItems
+            self.isLoading = false
+        }
+        .fullScreenCover(item: $selectedMedia) { media in
+            TVMediaDetailView(item: media)
+        }
+    }
+    
+    private var personHeaderSection: some View {
+        HStack(alignment: .top, spacing: 32) {
+            let photoURL = personDetail?.profileURL ?? member.highResProfileURL ?? member.profileURL
+            CachedAsyncImage(url: photoURL)
+                .frame(width: 170, height: 230)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.20), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.70), radius: 14, x: 0, y: 8)
+            
+            VStack(alignment: .leading, spacing: 12) {
+                Text(personDetail?.name ?? member.name)
+                    .font(.system(size: 42, weight: .heavy))
+                    .foregroundColor(.white)
+                
+                HStack(spacing: 16) {
+                    if let dept = personDetail?.knownForDepartment, !dept.isEmpty {
+                        Text("Known for \(dept)")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(Color(red: 0.90, green: 0.70, blue: 0.30))
+                    }
+                    
+                    if let birth = personDetail?.birthday, !birth.isEmpty {
+                        Text("•")
+                            .foregroundColor(.white.opacity(0.40))
+                        Text("Born \(birth)")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.white.opacity(0.75))
+                    }
+                    
+                    if let place = personDetail?.placeOfBirth, !place.isEmpty {
+                        Text("•")
+                            .foregroundColor(.white.opacity(0.40))
+                        Text(place)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.white.opacity(0.75))
+                    }
+                }
+                
+                if let bio = personDetail?.biography, !bio.isEmpty {
+                    Text(bio)
+                        .font(.system(size: 15, weight: .regular))
+                        .foregroundColor(.white.opacity(0.85))
+                        .lineSpacing(4)
+                        .lineLimit(5)
+                        .frame(maxWidth: 1000, alignment: .leading)
+                } else {
+                    Text("Acclaimed member of the cast appearing in major film and television productions.")
+                        .font(.system(size: 15, weight: .regular))
+                        .foregroundColor(.white.opacity(0.70))
+                        .frame(maxWidth: 900, alignment: .leading)
+                }
+            }
+            
+            Spacer()
+        }
+    }
+}
+

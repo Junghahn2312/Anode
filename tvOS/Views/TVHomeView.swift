@@ -79,11 +79,11 @@ public struct TVHomeView: View {
                     .coordinateSpace(name: "homeScroll")
                     .onChange(of: activeRowIndex) { _, newIndex in
                         if newIndex == 0 {
-                            withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
+                            withAnimation(.spring(response: 0.62, dampingFraction: 0.90)) {
                                 scrollProxy.scrollTo("row-0", anchor: UnitPoint(x: 0.5, y: 0.65))
                             }
                         } else if newIndex == -1 {
-                            withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
+                            withAnimation(.spring(response: 0.62, dampingFraction: 0.90)) {
                                 scrollProxy.scrollTo("heroSection", anchor: .top)
                             }
                         }
@@ -193,8 +193,8 @@ public struct TVHomeView: View {
                     }
                     .opacity(isCarouselOutOfView ? 0.0 : 1.0)
                 }
-                .animation(.easeInOut(duration: 0.55), value: bgItem.id)
-                .animation(.easeInOut(duration: 0.55), value: isCarouselOutOfView)
+                .animation(.easeInOut(duration: 0.68), value: bgItem.id)
+                .animation(.easeInOut(duration: 0.68), value: isCarouselOutOfView)
             }
         }
         .frame(width: screenWidth, height: screenHeight)
@@ -383,19 +383,19 @@ public struct TVHomeView: View {
         if rowIndex == 0 {
             // Continue Watching row does NOT affect the background at all
             if hoveredItem != nil {
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
+                withAnimation(.spring(response: 0.60, dampingFraction: 0.90)) {
                     self.hoveredItem = nil
                 }
             }
         } else {
             if hoveredItem?.id != item.id {
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
+                withAnimation(.spring(response: 0.60, dampingFraction: 0.90)) {
                     self.hoveredItem = item
                 }
             }
         }
         if activeRowIndex != rowIndex {
-            withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
+            withAnimation(.spring(response: 0.62, dampingFraction: 0.90)) {
                 self.activeRowIndex = rowIndex
                 AppNavigation.shared.isTopBarVisible = true
             }

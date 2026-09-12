@@ -85,7 +85,7 @@ public struct TVLandscapeCardView: View {
                 x: 0,
                 y: isFocused ? 10 : 2
             )
-            .animation(.spring(response: 0.40, dampingFraction: 0.86), value: isFocused)
+            .animation(.spring(response: 0.58, dampingFraction: 0.88), value: isFocused)
         }
         .frame(width: width)
         .task(id: isFocused) {

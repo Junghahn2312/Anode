@@ -230,7 +230,7 @@ public struct TVExpandingMediaCardView: View {
             x: 0,
             y: isFocused ? 10 : 2
         )
-        .animation(.spring(response: 0.42, dampingFraction: 0.88), value: isFocused)
+        .animation(.spring(response: 0.58, dampingFraction: 0.86), value: isFocused)
         .applyMoveUp(onMoveUp: onMoveUp)
         .task(id: isFocused) {
             guard isFocused else { return }
@@ -307,7 +307,7 @@ public struct TVContentRowView: View {
                                     showCinemaBadge: showCinemaBadge,
                                     onMoveUp: onMoveUp
                                 ) { focused in
-                                    withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                                    withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
                                         self.focusedItem = focused
                                     }
                                     self.onHover?(focused)
@@ -330,7 +330,7 @@ public struct TVContentRowView: View {
                 .frame(height: 72, alignment: .top)
                 .clipped()
                 .padding(.horizontal, horizontalPadding)
-                .animation(.easeInOut(duration: 0.35), value: isRowActive)
+                .animation(.easeInOut(duration: 0.48), value: isRowActive)
             }
             .focusSection()
         }
@@ -383,7 +383,7 @@ public struct TVLandscapeRowView: View {
                                     width: 380,
                                     subtitle: item.releaseDate
                                 ) { focused in
-                                    withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                                    withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
                                         self.focusedItem = focused
                                     }
                                     self.onHover?(focused)
@@ -406,7 +406,7 @@ public struct TVLandscapeRowView: View {
                 .frame(height: 72, alignment: .top)
                 .clipped()
                 .padding(.horizontal, 60)
-                .animation(.easeInOut(duration: 0.35), value: isRowActive)
+                .animation(.easeInOut(duration: 0.48), value: isRowActive)
             }
             .focusSection()
         }
@@ -463,7 +463,7 @@ public struct TVTopTenRowView: View {
                                     rank: index + 1,
                                     onMoveUp: onMoveUp
                                 ) { focused in
-                                    withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                                    withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
                                         self.focusedItem = focused
                                     }
                                     self.onHover?(focused)
@@ -486,7 +486,7 @@ public struct TVTopTenRowView: View {
                 .frame(height: 72, alignment: .top)
                 .clipped()
                 .padding(.horizontal, 60)
-                .animation(.easeInOut(duration: 0.35), value: isRowActive)
+                .animation(.easeInOut(duration: 0.48), value: isRowActive)
             }
             .focusSection()
         }
