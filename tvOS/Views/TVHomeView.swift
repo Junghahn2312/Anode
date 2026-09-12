@@ -18,6 +18,10 @@ public struct TVHomeView: View {
     @State private var activeRowIndex: Int = -1
     @State private var cachedRowCollections: HomeRowCollections? = nil
     @FocusState private var isHeroFocused: Bool
+    @FocusState private var isBookmarkFocused: Bool
+    @State private var heroTrailerURL: URL? = nil
+    @State private var isPlayingHeroTrailer: Bool = false
+    @State private var heroTrailerTask: Task<Void, Never>? = nil
     
     private let timer = Timer.publish(every: 20.0, on: .main, in: .common).autoconnect()
     
@@ -124,9 +128,72 @@ public struct TVHomeView: View {
         .onAppear {
             AppNavigation.shared.isTopBarVisible = true
         }
+        .onChange(of: heroIndex) { _, _ in
+            if isAnyHeroButtonFocused {
+                startHeroTrailer(for: spotlightHero)
+            } else {
+                stopHeroTrailer()
+            }
+        }
+        .onChange(of: isCarouselOutOfView) { _, outOfView in
+            if outOfView {
+                stopHeroTrailer()
+            }
+        }
+        .onDisappear {
+            stopHeroTrailer()
+        }
         .fullScreenCover(item: $selectedItem) { item in
             TVMediaDetailView(item: item)
         }
+    }
+    
+    private var isAnyHeroButtonFocused: Bool {
+        isHeroFocused || isBookmarkFocused
+    }
+    
+    private func handleHeroButtonFocusChange(isFocused: Bool) {
+        if isFocused && !isCarouselOutOfView {
+            startHeroTrailer(for: spotlightHero)
+            withAnimation(.easeInOut(duration: 0.40)) {
+                self.hoveredItem = nil
+                self.activeRowIndex = -1
+                AppNavigation.shared.isTopBarVisible = true
+            }
+        } else if !isAnyHeroButtonFocused {
+            stopHeroTrailer()
+        }
+    }
+    
+    private func startHeroTrailer(for item: MediaItem?) {
+        heroTrailerTask?.cancel()
+        guard let item = item else {
+            stopHeroTrailer()
+            return
+        }
+        
+        heroTrailerTask = Task {
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard !Task.isCancelled else { return }
+            
+            if let streamURL = await TrailerService.shared.resolveTrailerStream(for: item) {
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    self.heroTrailerURL = streamURL
+                    self.isPlayingHeroTrailer = true
+                }
+            } else {
+                guard !Task.isCancelled else { return }
+                stopHeroTrailer()
+            }
+        }
+    }
+    
+    private func stopHeroTrailer() {
+        heroTrailerTask?.cancel()
+        heroTrailerTask = nil
+        isPlayingHeroTrailer = false
+        heroTrailerURL = nil
     }
     
     // MARK: - Dynamic Full-Screen Background (Zero Black Spaces)
@@ -148,6 +215,14 @@ public struct TVHomeView: View {
                     .clipped()
                     .id(bgItem.id)
                     .transition(.opacity)
+                    
+                    // Live trailer video playback when hovering over hero action controls
+                    if isPlayingHeroTrailer, let heroTrailerURL = heroTrailerURL {
+                        TVTrailerPlayerView(videoURL: heroTrailerURL, isMuted: false)
+                            .frame(width: screenWidth, height: screenHeight)
+                            .clipped()
+                            .transition(.opacity)
+                    }
                     
                     // Hardware-accelerated frosted glass overlay when carousel is out of view
                     Rectangle()
@@ -287,6 +362,7 @@ public struct TVHomeView: View {
                 HStack {
                     HStack(spacing: 16) {
                         Button {
+                            stopHeroTrailer()
                             selectedItem = hero
                         } label: {
                             TVHomePrimaryHeroButtonLabel(
@@ -325,6 +401,7 @@ public struct TVHomeView: View {
                             }
                         }
                         .buttonStyle(.tvCard)
+                        .focused($isBookmarkFocused)
                         .onMoveCommand { direction in
                             if direction == .right {
                                 withAnimation(.easeInOut(duration: 0.40)) {
@@ -341,13 +418,10 @@ public struct TVHomeView: View {
                 .focusSection()
                 .padding(.top, 4)
                 .onChange(of: isHeroFocused) { _, focused in
-                    if focused {
-                        withAnimation(.easeInOut(duration: 0.40)) {
-                            self.hoveredItem = nil
-                            self.activeRowIndex = -1
-                            AppNavigation.shared.isTopBarVisible = true
-                        }
-                    }
+                    handleHeroButtonFocusChange(isFocused: focused)
+                }
+                .onChange(of: isBookmarkFocused) { _, focused in
+                    handleHeroButtonFocusChange(isFocused: focused)
                 }
                 
                 // Centered Carousel Page Indicator Dots (Matching Photo 1)

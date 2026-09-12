@@ -66,12 +66,6 @@ public struct TVMediaDetailView: View {
                             if item.mediaType == .tvShow {
                                 // Season Selector & Episode Grid (TV Shows)
                                 tvShowSeasonsAndEpisodesSection
-                                
-                                // Dedicated Trailers Carousel (underneath seasons & episodes)
-                                trailersCarouselSection
-                            } else {
-                                // Dedicated Trailers Carousel (Movies)
-                                trailersCarouselSection
                             }
                             
                             // Where to Watch Section (Platforms only, zero prices, zero attributions)
@@ -145,12 +139,13 @@ public struct TVMediaDetailView: View {
     // MARK: - Massive Hero Showcase Section (Matching Home Hero Presence)
     
     private func detailHeroShowcaseSection(screenWidth: CGFloat, screenHeight: CGFloat) -> some View {
-        ZStack(alignment: .bottomLeading) {
+        let heroHeight: CGFloat = max(screenHeight * 0.95, 1020)
+        return ZStack(alignment: .bottomLeading) {
             // Full-bleed Backdrop & Vignettes
             ZStack {
                 // Ambient color bleed
                 CachedAsyncImage(url: currentItem.backdropURL(size: "w780"), contentMode: .fill)
-                    .frame(width: screenWidth, height: 860)
+                    .frame(width: screenWidth, height: heroHeight)
                     .blur(radius: 80)
                     .opacity(0.38)
                     .clipped()
@@ -158,13 +153,13 @@ public struct TVMediaDetailView: View {
                 // Crisp 4K Backdrop
                 let backdrop = currentItem.backdropURL(size: "original") ?? currentItem.posterURL(size: "original")
                 CachedAsyncImage(url: backdrop, contentMode: .fill)
-                    .frame(width: screenWidth, height: 860, alignment: .top)
+                    .frame(width: screenWidth, height: heroHeight, alignment: .top)
                     .clipped()
                 
                 // Live Trailer Video Stream with sound
                 if isHeroTrailerPlaying, let heroTrailerURL = heroTrailerURL {
                     TVTrailerPlayerView(videoURL: heroTrailerURL, isMuted: false)
-                        .frame(width: screenWidth, height: 860)
+                        .frame(width: screenWidth, height: heroHeight)
                         .clipped()
                         .transition(.opacity)
                 }
@@ -190,18 +185,18 @@ public struct TVMediaDetailView: View {
                     endPoint: .bottom
                 )
                 
-                // Bottom fade blending seamlessly into trailers and lower content
+                // Bottom fade blending seamlessly into lower content
                 LinearGradient(
                     stops: [
-                        .init(color: Color.clear, location: 0.35),
-                        .init(color: Color.black.opacity(0.60), location: 0.70),
+                        .init(color: Color.clear, location: 0.55),
+                        .init(color: Color.black.opacity(0.60), location: 0.82),
                         .init(color: Color.black, location: 1.0)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
             }
-            .frame(width: screenWidth, height: 860)
+            .frame(width: screenWidth, height: heroHeight)
             .clipped()
             
             // Top Back Navigation Button
@@ -220,7 +215,7 @@ public struct TVMediaDetailView: View {
                 .padding(.top, 40)
                 Spacer()
             }
-            .frame(width: screenWidth, height: 860)
+            .frame(width: screenWidth, height: heroHeight)
             
             // Hero Metadata, Logo Artwork & Action Buttons
             VStack(alignment: .leading, spacing: 18) {
@@ -329,9 +324,9 @@ public struct TVMediaDetailView: View {
                 .padding(.top, 4)
             }
             .padding(.horizontal, 60)
-            .padding(.bottom, 50)
+            .padding(.bottom, 60)
         }
-        .frame(width: screenWidth, height: 860)
+        .frame(width: screenWidth, height: heroHeight)
     }
     
     // MARK: - Season Selector & Episodes Section (Images 1 & 3)
@@ -389,48 +384,6 @@ public struct TVMediaDetailView: View {
         let list = await engine.fetchEpisodes(for: item, seasonNumber: seasonNumber)
         self.episodes = list
         self.isLoadingEpisodes = false
-    }
-    
-    // MARK: - Trailers Carousel Section (Image 1)
-    
-    private var trailersCarouselSection: some View {
-        let activeTrailers = trailers.isEmpty ? item.trailers : trailers
-        return Group {
-            if !activeTrailers.isEmpty {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Trailers")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 60)
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 26) {
-                            ForEach(Array(activeTrailers.enumerated()), id: \.element.id) { index, trailer in
-                                Button {
-                                    if let url = trailer.youtubeURL {
-                                        openURL(url)
-                                    }
-                                } label: {
-                                    TVTrailerCardView(
-                                        trailer: trailer,
-                                        label: "Trailer \(index + 1)",
-                                        backdropURL: item.backdropURL(size: "w780")
-                                    )
-                                }
-                                .buttonStyle(.tvCard)
-                                .onMoveCommand { direction in
-                                    if direction == .up && item.mediaType != .tvShow {
-                                        isHeroPlayFocused = true
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 60)
-                        .padding(.vertical, 14)
-                    }
-                }
-            }
-        }
     }
     
     // MARK: - Where to Watch Section (Zero Prices, Zero Attributions)

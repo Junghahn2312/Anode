@@ -20,7 +20,7 @@ public final class TrailerService: @unchecked Sendable {
         cacheLock.unlock()
         
         // Priority 1: Apple TV HLS direct master stream (HD / 4K with audio)
-        if let hlsURL = await resolveAppleTVStream(tmdbId: item.id, isMovie: item.mediaType != .tvShow) {
+        if let hlsURL = await resolveAppleTVStream(item: item) {
             cacheLock.lock()
             cache[cacheKey] = hlsURL
             cacheLock.unlock()
@@ -28,20 +28,32 @@ public final class TrailerService: @unchecked Sendable {
         }
         
         // Priority 2: iTunes Store direct preview stream (.m4v with full audio)
-        if let itunesURL = await resolveITunesPreviewStream(title: item.title, isMovie: item.mediaType != .tvShow) {
+        if let itunesURL = await resolveITunesPreviewStream(item: item) {
             cacheLock.lock()
             cache[cacheKey] = itunesURL
             cacheLock.unlock()
             return itunesURL
         }
         
+        // No verified trailer found: return nil to avoid playing incorrect video
         return nil
     }
     
-    private func resolveAppleTVStream(tmdbId: Int, isMovie: Bool) async -> URL? {
+    private func normalizeTitle(_ text: String) -> String {
+        let lower = text.lowercased()
+        let allowed = CharacterSet.alphanumerics.union(.whitespaces)
+        let filtered = lower.unicodeScalars.filter { allowed.contains($0) }
+        let cleaned = String(String.UnicodeScalarView(filtered))
+        return cleaned.components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+    
+    private func resolveAppleTVStream(item: MediaItem) async -> URL? {
+        let isMovie = item.mediaType != .tvShow
         let endpoint = isMovie ? "movie" : "tv"
         let wikidataProp = isMovie ? "P9586" : "P9751"
-        let urlString = "https://api.themoviedb.org/3/\(endpoint)/\(tmdbId)/external_ids?api_key=\(tmdbApiKey)"
+        let urlString = "https://api.themoviedb.org/3/\(endpoint)/\(item.id)/external_ids?api_key=\(tmdbApiKey)"
         
         guard let url = URL(string: urlString) else { return nil }
         
@@ -87,6 +99,14 @@ public final class TrailerService: @unchecked Sendable {
             let (appleHtmlData, _) = try await URLSession.shared.data(for: appleReq)
             guard let html = String(data: appleHtmlData, encoding: .utf8) else { return nil }
             
+            // Verify Apple TV page contains title to prevent mismatched catalog claims
+            let normItemTitle = normalizeTitle(item.title)
+            let normHtml = normalizeTitle(html.prefix(1500).description)
+            if !normItemTitle.isEmpty && !normHtml.contains(normItemTitle) {
+                // If the page header doesn't contain the item title, skip to avoid wrong stream
+                return nil
+            }
+            
             // Regex to find https://play-edge.itunes.apple.com/...playlist.m3u8
             let pattern = "https://play-edge\\.itunes\\.apple\\.com/[^\"'\\s<>]+\\.m3u8[^\"'\\s<>]*"
             guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return nil }
@@ -109,12 +129,12 @@ public final class TrailerService: @unchecked Sendable {
         return nil
     }
     
-    private func resolveITunesPreviewStream(title: String, isMovie: Bool) async -> URL? {
-        guard let escaped = title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+    private func resolveITunesPreviewStream(item: MediaItem) async -> URL? {
+        guard let escaped = item.title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
             return nil
         }
         
-        let searchURLString = "https://itunes.apple.com/search?term=\(escaped)&limit=10"
+        let searchURLString = "https://itunes.apple.com/search?term=\(escaped)&limit=15"
         guard let url = URL(string: searchURLString) else { return nil }
         
         do {
@@ -128,27 +148,47 @@ public final class TrailerService: @unchecked Sendable {
                 return nil
             }
             
+            let isMovie = item.mediaType != .tvShow
             let targetKind = isMovie ? "feature-movie" : "tv-episode"
-            let sanitizedTitle = title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            let normQuery = normalizeTitle(item.title)
+            guard !normQuery.isEmpty else { return nil }
             
-            // First pass: match kind and title
+            let itemYear = item.yearString.isEmpty ? nil : item.yearString
+            
             for result in results {
                 let kind = result["kind"] as? String ?? ""
-                let trackName = (result["trackName"] as? String ?? "").lowercased()
+                if kind != targetKind {
+                    continue
+                }
                 
-                if kind == targetKind && (trackName.contains(sanitizedTitle) || sanitizedTitle.contains(trackName)) {
+                let trackName = result["trackName"] as? String ?? ""
+                let normTrack = normalizeTitle(trackName)
+                guard !normTrack.isEmpty else { continue }
+                
+                let releaseDate = result["releaseDate"] as? String ?? ""
+                let trackYear = releaseDate.count >= 4 ? String(releaseDate.prefix(4)) : nil
+                
+                // Condition 1: Exact title match with year consistency check
+                if normTrack == normQuery {
+                    if let iy = itemYear, let ty = trackYear, let iVal = Int(iy), let tVal = Int(ty) {
+                        if abs(iVal - tVal) > 2 {
+                            // Different movie made in another decade with same name
+                            continue
+                        }
+                    }
                     if let previewStr = result["previewUrl"] as? String, let previewURL = URL(string: previewStr) {
                         return previewURL
                     }
                 }
-            }
-            
-            // Second pass: any feature-movie or tv-episode with previewUrl
-            for result in results {
-                let kind = result["kind"] as? String ?? ""
-                if kind == targetKind {
-                    if let previewStr = result["previewUrl"] as? String, let previewURL = URL(string: previewStr) {
-                        return previewURL
+                
+                // Condition 2: Title prefix/containment match ONLY if release years match within 1 year
+                if normTrack.hasPrefix(normQuery) || normQuery.hasPrefix(normTrack) {
+                    if let iy = itemYear, let ty = trackYear, let iVal = Int(iy), let tVal = Int(ty) {
+                        if abs(iVal - tVal) <= 1 {
+                            if let previewStr = result["previewUrl"] as? String, let previewURL = URL(string: previewStr) {
+                                return previewURL
+                            }
+                        }
                     }
                 }
             }
@@ -156,6 +196,7 @@ public final class TrailerService: @unchecked Sendable {
             return nil
         }
         
+        // Strict policy: If no high-confidence trailer matches, return nil so nothing plays
         return nil
     }
 }
