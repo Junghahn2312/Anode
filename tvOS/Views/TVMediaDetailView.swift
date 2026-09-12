@@ -33,8 +33,10 @@ public struct TVMediaDetailView: View {
     @State private var currentItem: MediaItem
     @State private var heroTrailerURL: URL? = nil
     @State private var isHeroTrailerPlaying: Bool = false
+    @State private var isHeroInView: Bool = true
     @FocusState private var isHeroPlayFocused: Bool
     @FocusState private var isBackFocused: Bool
+    @FocusState private var isFirstEpisodeFocused: Bool
     
     public init(item: MediaItem) {
         self.item = item
@@ -60,6 +62,14 @@ public struct TVMediaDetailView: View {
                     VStack(alignment: .leading, spacing: 38) {
                         // Big Hero Section (Takes full initial presence like Home Hero)
                         detailHeroShowcaseSection(screenWidth: screenWidth, screenHeight: screenHeight)
+                            .background(
+                                GeometryReader { heroGeo in
+                                    Color.clear.preference(
+                                        key: TVDetailHeroVisibilityKey.self,
+                                        value: heroGeo.frame(in: .named("mediaDetailScroll")).maxY
+                                    )
+                                }
+                            )
                         
                         // Content Below the Hero Fold
                         VStack(alignment: .leading, spacing: 38) {
@@ -81,6 +91,10 @@ public struct TVMediaDetailView: View {
                         .padding(.bottom, 90)
                     }
                 }
+                .coordinateSpace(name: "mediaDetailScroll")
+                .onPreferenceChange(TVDetailHeroVisibilityKey.self) { maxY in
+                    handleHeroScrollVisibility(maxY: maxY)
+                }
                 .ignoresSafeArea()
             }
             .frame(width: screenWidth, height: screenHeight)
@@ -89,13 +103,27 @@ public struct TVMediaDetailView: View {
         .task(id: item.id) {
             isHeroTrailerPlaying = false
             heroTrailerURL = nil
+            isHeroInView = true
+            
+            // Resolve trailer stream concurrently and start playing immediately
+            Task {
+                if let streamURL = await TrailerService.shared.resolveTrailerStream(for: item) {
+                    await MainActor.run {
+                        self.heroTrailerURL = streamURL
+                        if isHeroInView {
+                            withAnimation(.easeInOut(duration: 0.45)) {
+                                self.isHeroTrailerPlaying = true
+                            }
+                        }
+                    }
+                }
+            }
             
             async let enrichTask = engine.enrichItem(item)
             async let availTask = engine.fetchAvailability(for: item)
             async let castTask = engine.fetchCredits(for: item)
             async let videoTask = engine.fetchVideos(for: item)
             async let recTask = engine.fetchRecommendations(for: item)
-            async let trailerStreamTask = TrailerService.shared.resolveTrailerStream(for: item)
             
             let enriched = await enrichTask
             self.currentItem = enriched
@@ -106,13 +134,6 @@ public struct TVMediaDetailView: View {
             if !v.isEmpty { self.trailers = v }
             let r = await recTask
             if !r.isEmpty { self.liveRecommendations = r }
-            
-            if let streamURL = await trailerStreamTask {
-                withAnimation(.easeInOut(duration: 0.5)) {
-                    self.heroTrailerURL = streamURL
-                    self.isHeroTrailerPlaying = true
-                }
-            }
             
             if item.mediaType == .tvShow {
                 let s = await engine.fetchSeasons(for: item)
@@ -132,6 +153,26 @@ public struct TVMediaDetailView: View {
                 TVMediaDetailView(item: rec)
             case .castMember(let member):
                 TVPersonDetailView(member: member)
+            }
+        }
+    }
+    
+    private func handleHeroScrollVisibility(maxY: CGFloat) {
+        let visible = maxY > 80
+        if visible != isHeroInView {
+            isHeroInView = visible
+            if !visible {
+                if isHeroTrailerPlaying {
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        isHeroTrailerPlaying = false
+                    }
+                }
+            } else {
+                if heroTrailerURL != nil && !isHeroTrailerPlaying {
+                    withAnimation(.easeInOut(duration: 0.45)) {
+                        isHeroTrailerPlaying = true
+                    }
+                }
             }
         }
     }
@@ -363,14 +404,36 @@ public struct TVMediaDetailView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 28) {
                     ForEach(Array(episodes.enumerated()), id: \.element.id) { index, episode in
-                        Button {
-                            if let idx = episodes.firstIndex(where: { $0.id == episode.id }) {
-                                episodes[idx].isWatched.toggle()
+                        if index == 0 {
+                            Button {
+                                if let idx = episodes.firstIndex(where: { $0.id == episode.id }) {
+                                    episodes[idx].isWatched.toggle()
+                                }
+                            } label: {
+                                TVEpisodeCardView(episode: episode)
                             }
-                        } label: {
-                            TVEpisodeCardView(episode: episode)
+                            .buttonStyle(.tvCard)
+                            .focused($isFirstEpisodeFocused)
+                            .onMoveCommand { direction in
+                                if direction == .up {
+                                    isHeroPlayFocused = true
+                                }
+                            }
+                        } else {
+                            Button {
+                                if let idx = episodes.firstIndex(where: { $0.id == episode.id }) {
+                                    episodes[idx].isWatched.toggle()
+                                }
+                            } label: {
+                                TVEpisodeCardView(episode: episode)
+                            }
+                            .buttonStyle(.tvCard)
+                            .onMoveCommand { direction in
+                                if direction == .up {
+                                    isHeroPlayFocused = true
+                                }
+                            }
                         }
-                        .buttonStyle(.tvCard)
                     }
                 }
                 .padding(.horizontal, 60)
@@ -527,6 +590,15 @@ public struct TVMediaDetailView: View {
                                 TVCastMemberCard(member: member) {
                                     activeDestination = .castMember(member)
                                 }
+                                .onMoveCommand { direction in
+                                    if direction == .up {
+                                        if item.mediaType == .tvShow && !episodes.isEmpty {
+                                            isFirstEpisodeFocused = true
+                                        } else {
+                                            isHeroPlayFocused = true
+                                        }
+                                    }
+                                }
                             }
                         }
                         .padding(.horizontal, 60)
@@ -572,7 +644,7 @@ public struct TVMediaDetailView: View {
 
 // MARK: - Dedicated Focusable Button Labels & Helper Views
 
-private struct TVBackButtonLabel: View {
+struct TVBackButtonLabel: View {
     @Environment(\.isFocused) private var isFocused: Bool
     
     var body: some View {
@@ -916,21 +988,9 @@ public struct TVPersonDetailView: View {
                             Button {
                                 dismiss()
                             } label: {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "chevron.left")
-                                        .font(.system(size: 16, weight: .bold))
-                                    Text("Back")
-                                        .font(.system(size: 16, weight: .semibold))
-                                }
-                                .padding(.horizontal, 18)
-                                .padding(.vertical, 10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(isBackFocused ? Color.white : Color.white.opacity(0.12))
-                                )
-                                .foregroundColor(isBackFocused ? .black : .white)
+                                TVBackButtonLabel()
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.tvCard)
                             .focused($isBackFocused)
                             
                             Spacer()
@@ -1106,6 +1166,15 @@ public struct TVPersonDetailView: View {
             
             Spacer()
         }
+    }
+}
+
+// MARK: - Hero Visibility Scroll Tracking Preference Key
+
+private struct TVDetailHeroVisibilityKey: PreferenceKey {
+    static var defaultValue: CGFloat = 1000
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 
